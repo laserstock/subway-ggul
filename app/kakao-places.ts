@@ -1,5 +1,3 @@
-"use client";
-
 import type { LatLng } from "./KakaoMap";
 
 export type KakaoStation = {
