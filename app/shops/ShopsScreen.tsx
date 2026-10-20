@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image, { type StaticImageData } from "next/image";
 import oliveyoungIcon from "@/public/icons/oliveyoung.png";
 import daisoIcon from "@/public/icons/daiso.png";
@@ -13,9 +13,12 @@ import StationSearch from "../_components/StationSearch";
 import { LocateIcon } from "../_components/icons";
 import { useLocale } from "../_lib/locale";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
+import { AT_STATION_METERS, findStoreJumps, type JumpCandidate } from "../_lib/storeJump";
+import { angleBetween, bearingDegrees, lineLabel } from "../_lib/subwayLine";
 import {
   STATIONS,
   curatedOption,
+  kakaoOption,
   distanceMeters,
   formatDistance,
   t,
@@ -38,6 +41,7 @@ type ListItem = {
   status?: Localized;
   note: Localized;
   position: LatLng;
+  distance?: number;
   badge?: number;
   url?: string;
 };
@@ -68,7 +72,16 @@ const COPY = {
   outside: { ko: "역외", en: "Outside station" },
   unpaid: { ko: "개찰구 밖", en: "Unpaid area" },
   nearby: { ko: "역 주변", en: "Near station" },
+  jumpTitle: { ko: "스마트 점핑 안내", en: "Smart station jump" },
+  jumpSearching: { ko: "앞뒤 역에서 찾는 중…", en: "Checking nearby stops…" },
+  jumpNone: {
+    ko: "앞뒤 3정거장 안에도 역 바로 앞 매장이 없어요",
+    en: "No store right by a station within 3 stops either",
+  },
+  jumpGo: { ko: "이 역 매장 보기", en: "Show that station" },
 };
+
+const HEADING_MIN_METERS = 100;
 
 const WALK_METERS_PER_MINUTE = 67;
 const ALL_PER_CATEGORY = 3;
@@ -153,7 +166,54 @@ function nearbyItem(category: CategoryId, place: NearbyPlace): ListItem {
     walkMinutes: minutes,
     note: { ko: place.address, en: place.address },
     position: place.position,
+    distance: place.distance,
     url: place.url,
+  };
+}
+
+function subjectParticle(word: string) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code <= 11171 && code % 28 !== 0 ? "이" : "가";
+}
+
+function pickJump(
+  candidates: JumpCandidate[],
+  station: StationOption,
+  heading: number | null,
+): { candidate: JumpCandidate; ahead: boolean } | null {
+  if (candidates.length === 0) return null;
+  const isAhead = (candidate: JumpCandidate) =>
+    heading !== null && angleBetween(bearingDegrees(station.center, candidate.toward.center), heading) < 90;
+  const ordered = [...candidates].sort(
+    (a, b) => Number(isAhead(b)) - Number(isAhead(a)) || a.place.distance - b.place.distance,
+  );
+  return { candidate: ordered[0], ahead: isAhead(ordered[0]) };
+}
+
+function jumpMessage(
+  categoryName: Localized,
+  pick: { candidate: JumpCandidate; ahead: boolean },
+  locale: Locale,
+) {
+  const { candidate, ahead } = pick;
+  const minutes = Math.max(1, Math.round(candidate.place.distance / WALK_METERS_PER_MINUTE));
+  const line = t(lineLabel(candidate.line), locale);
+  if (locale === "ko") {
+    const brand = categoryName.ko;
+    const where = ahead
+      ? `${candidate.stops}정거장 뒤`
+      : `${line} ${candidate.toward.name} 방면 ${candidate.stops}정거장`;
+    return {
+      missing: `현재 역에는 ${brand}${subjectParticle(brand)} 없어요.`,
+      suggestion: `${where} [${candidate.stop.name} · ${candidate.place.name} 도보 ${minutes}분] 매장을 추천해요.`,
+    };
+  }
+  const where = ahead
+    ? `${candidate.stops} stop${candidate.stops > 1 ? "s" : ""} ahead`
+    : `${candidate.stops} stop${candidate.stops > 1 ? "s" : ""} toward ${candidate.toward.name} (${line})`;
+  return {
+    missing: `No ${categoryName.en} at this station.`,
+    suggestion: `Try ${where}: [${candidate.stop.name} · ${candidate.place.name}, ${minutes} min walk].`,
   };
 }
 
@@ -326,11 +386,19 @@ export default function ShopsScreen({
   });
   const [fit, setFit] = useState<MapFit | null>(null);
   const [pinned, setPinned] = useState(Boolean(initialStation) && !follow);
+  const [heading, setHeading] = useState<number | null>(null);
+  const [jump, setJump] = useState<{ key: string; candidates: JumpCandidate[] } | null>(null);
+  const lastFixRef = useRef<LatLng | null>(null);
   const kakaoStatus = useKakaoMaps();
 
   const tracker = useStationTracker({
     autoStart: follow,
     onNearest: ({ station: next, position: here, seq }) => {
+      const last = lastFixRef.current;
+      lastFixRef.current = here;
+      if (last && distanceMeters(last, here) >= HEADING_MIN_METERS) {
+        setHeading(bearingDegrees(last, here));
+      }
       if (next.key !== station.key) {
         setStation(next);
         setQuery(t(next.name, locale));
@@ -387,6 +455,28 @@ export default function ShopsScreen({
       : []),
     ...(nearbyLoaded && nearby.items ? nearby.items : []),
   ].sort((a, b) => a.walkMinutes - b.walkMinutes);
+
+  const activeCategory = CATEGORIES.find((item) => item.id === category) ?? null;
+  const needJump =
+    activeCategory !== null &&
+    nearbyLoaded &&
+    nearby.items !== null &&
+    !items.some((item) => item.zone !== "nearby" || (item.distance ?? Infinity) <= AT_STATION_METERS);
+
+  useEffect(() => {
+    if (!needJump || !activeCategory) return;
+    let alive = true;
+    findStoreJumps(station, nearbyKey, activeCategory.nearby).then((candidates) => {
+      if (alive) setJump({ key: nearbyKey, candidates });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [needJump, activeCategory, station, nearbyKey]);
+
+  const jumpCandidates = jump?.key === nearbyKey ? jump.candidates : null;
+  const jumpPick = jumpCandidates ? pickJump(jumpCandidates, station, tracking ? heading : null) : null;
+  const jumpText = jumpPick && activeCategory ? jumpMessage(activeCategory.name, jumpPick, locale) : null;
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const activeId = selected?.id ?? items[0]?.id ?? null;
@@ -515,6 +605,31 @@ export default function ShopsScreen({
                     {t(COPY.stopTracking, locale)}
                   </button>
                 ) : null}
+              </div>
+            ) : null}
+            {needJump && activeCategory ? (
+              <div className="mb-3 rounded-xl border border-[#fde3b0] bg-[#fff8e8] px-3 py-2.5 text-[12px] text-[#92400e]">
+                <p className="font-extrabold">
+                  <span aria-hidden>🦘 </span>
+                  {t(COPY.jumpTitle, locale)}
+                </p>
+                {jumpText && jumpPick ? (
+                  <>
+                    <p className="mt-1 leading-snug">{jumpText.missing}</p>
+                    <p className="mt-0.5 font-bold leading-snug">{jumpText.suggestion}</p>
+                    <button
+                      type="button"
+                      onClick={() => selectStation(kakaoOption(jumpPick.candidate.stop))}
+                      className="mt-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#b45309] shadow-sm"
+                    >
+                      {jumpPick.candidate.stop.name} · {t(COPY.jumpGo, locale)} →
+                    </button>
+                  </>
+                ) : (
+                  <p className="mt-1">
+                    {t(jumpCandidates ? COPY.jumpNone : COPY.jumpSearching, locale)}
+                  </p>
+                )}
               </div>
             ) : null}
             <div className="mb-3 flex items-end justify-between gap-3">

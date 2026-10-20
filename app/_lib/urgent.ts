@@ -1,15 +1,8 @@
 "use client";
 
-import type { LatLng } from "../KakaoMap";
 import { loadKakaoMaps } from "../kakao-sdk";
-import {
-  findLineStations,
-  normalizeLine,
-  searchNearby,
-  type KakaoStation,
-  type NearbyPlace,
-} from "../kakao-places";
-import { distanceMeters, formatDistance, type Localized, type StationOption } from "./stations";
+import { searchNearby, type NearbyPlace } from "../kakao-places";
+import { formatDistance, type Localized, type StationOption } from "./stations";
 
 export type UrgentKind = "restroom" | "pharmacy" | "clinic";
 export type UrgentZone = "inside" | "exit" | "outside" | "unknown";
@@ -214,67 +207,6 @@ export function loadUrgent(station: StationOption): Promise<StationUrgent> {
     });
   urgentCache.set(station.key, request);
   return request;
-}
-
-const lineCache = new Map<string, Promise<KakaoStation[]>>();
-
-export function lineCacheKey(station: StationOption, line: string) {
-  return `${station.key}|${normalizeLine(line)}`;
-}
-
-export function loadLineStations(station: StationOption, line: string): Promise<KakaoStation[]> {
-  const key = lineCacheKey(station, line);
-  const cached = lineCache.get(key);
-  if (cached) return cached;
-  const request = loadKakaoMaps()
-    .then(() => findLineStations(line, station.center))
-    .catch(() => {
-      lineCache.delete(key);
-      return [];
-    });
-  lineCache.set(key, request);
-  return request;
-}
-
-export function bearingDegrees(from: LatLng, to: LatLng) {
-  const rad = Math.PI / 180;
-  const y = Math.sin((to.lng - from.lng) * rad) * Math.cos(to.lat * rad);
-  const x =
-    Math.cos(from.lat * rad) * Math.sin(to.lat * rad) -
-    Math.sin(from.lat * rad) * Math.cos(to.lat * rad) * Math.cos((to.lng - from.lng) * rad);
-  return (Math.atan2(y, x) / rad + 360) % 360;
-}
-
-export function angleBetween(a: number, b: number) {
-  const diff = Math.abs(a - b) % 360;
-  return diff > 180 ? 360 - diff : diff;
-}
-
-export function lineNeighbors(station: StationOption, stations: KakaoStation[]): KakaoStation[] {
-  const others = stations
-    .filter((candidate) => candidate.name !== station.name.ko)
-    .map((candidate) => ({
-      candidate,
-      distance: distanceMeters(station.center, candidate.center),
-      bearing: bearingDegrees(station.center, candidate.center),
-    }))
-    .sort((a, b) => a.distance - b.distance);
-  const [first, ...rest] = others;
-  if (!first) return [];
-  const opposite = rest.find((other) => angleBetween(other.bearing, first.bearing) > 100);
-  return opposite ? [first.candidate, opposite.candidate] : [first.candidate];
-}
-
-export function stationLines(station: StationOption) {
-  return station.lines.ko.split(" · ").filter(Boolean);
-}
-
-export function sameLine(a: string, b: string) {
-  return normalizeLine(a) === normalizeLine(b);
-}
-
-export function lineLabel(line: string): Localized {
-  return { ko: line, en: line.replace(/^(\d+)호선$/, "Line $1") };
 }
 
 export function sortSpots(spots: UrgentSpot[]) {
