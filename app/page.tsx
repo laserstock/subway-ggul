@@ -14,6 +14,15 @@ import oliveyoungIcon from "@/public/icons/oliveyoung.png";
 import daisoIcon from "@/public/icons/daiso.png";
 import cafeIcon from "@/public/icons/cafe.png";
 import KakaoMap, { type LatLng, type MapOverlay } from "./KakaoMap";
+import { useKakaoMaps } from "./kakao-sdk";
+import {
+  lineColor,
+  searchNearby,
+  searchStations,
+  type KakaoStation,
+  type NearbyPlace,
+  type NearbyQuery,
+} from "./kakao-places";
 
 type Locale = "ko" | "en";
 type Localized = { ko: string; en: string };
@@ -24,7 +33,7 @@ type CategoryId =
   | "cafe"
   | "convenience";
 type StationId = "hongdae" | "gangnam" | "seoul" | "irwon" | "dapsimni";
-type Zone = "inside" | "outside" | "unpaid";
+type Zone = "inside" | "outside" | "unpaid" | "nearby";
 type Place = {
   id: string;
   category: CategoryId;
@@ -58,6 +67,29 @@ type Station = {
   places: Place[];
 };
 
+type StationOption = {
+  key: string;
+  name: Localized;
+  lines: Localized;
+  center: LatLng;
+  color: string;
+  curated?: Station;
+};
+
+type ListItem = {
+  id: string;
+  category: CategoryId;
+  zone: Zone;
+  name: Localized;
+  walk: Localized;
+  walkMinutes: number;
+  status?: Localized;
+  note: Localized;
+  position: LatLng;
+  badge?: number;
+  url?: string;
+};
+
 const COPY = {
   title: { ko: "지하철꿀정보", en: "Subway Tips" },
   search: {
@@ -68,22 +100,66 @@ const COPY = {
   sortHint: { ko: "현재 위치에서 가장 빠른 순", en: "Fastest from here" },
   empty: { ko: "조건에 맞는 장소가 없어요", en: "No matching places" },
   noStation: { ko: "일치하는 역이 없어요", en: "No matching stations" },
+  searching: { ko: "역을 찾는 중…", en: "Searching stations…" },
+  loading: { ko: "주변 장소를 불러오는 중…", en: "Loading nearby places…" },
+  loadFailed: {
+    ko: "주변 장소를 불러오지 못했어요",
+    en: "Couldn't load nearby places",
+  },
+  gatePending: {
+    ko: "이 역은 개찰구 안/밖 정보를 준비 중이에요",
+    en: "Fare gate tips for this station are coming soon",
+  },
+  kakaoLink: { ko: "카카오맵에서 보기", en: "View on Kakao Map" },
   inside: { ko: "개찰구 안", en: "Inside fare gate" },
   outside: { ko: "역외", en: "Outside station" },
   unpaid: { ko: "개찰구 밖", en: "Unpaid area" },
+  nearby: { ko: "역 주변", en: "Near station" },
 };
+
+const WALK_METERS_PER_MINUTE = 67;
 
 const CATEGORIES: {
   id: CategoryId;
   name: Localized;
   emoji: string;
   icon?: StaticImageData;
+  nearby: NearbyQuery;
 }[] = [
-  { id: "pharmacy", name: { ko: "약국", en: "Pharmacy" }, emoji: "💊", icon: pharmacyIcon },
-  { id: "oliveyoung", name: { ko: "올리브영", en: "Olive Young" }, emoji: "💄", icon: oliveyoungIcon },
-  { id: "daiso", name: { ko: "다이소", en: "Daiso" }, emoji: "🛍️", icon: daisoIcon },
-  { id: "cafe", name: { ko: "카페", en: "Cafe" }, emoji: "☕", icon: cafeIcon },
-  { id: "convenience", name: { ko: "편의점", en: "Store" }, emoji: "🏪" },
+  {
+    id: "pharmacy",
+    name: { ko: "약국", en: "Pharmacy" },
+    emoji: "💊",
+    icon: pharmacyIcon,
+    nearby: { kind: "category", code: "PM9", radius: 700 },
+  },
+  {
+    id: "oliveyoung",
+    name: { ko: "올리브영", en: "Olive Young" },
+    emoji: "💄",
+    icon: oliveyoungIcon,
+    nearby: { kind: "keyword", keyword: "올리브영", radius: 1500 },
+  },
+  {
+    id: "daiso",
+    name: { ko: "다이소", en: "Daiso" },
+    emoji: "🛍️",
+    icon: daisoIcon,
+    nearby: { kind: "keyword", keyword: "다이소", radius: 1500 },
+  },
+  {
+    id: "cafe",
+    name: { ko: "카페", en: "Cafe" },
+    emoji: "☕",
+    icon: cafeIcon,
+    nearby: { kind: "category", code: "CE7", radius: 500 },
+  },
+  {
+    id: "convenience",
+    name: { ko: "편의점", en: "Store" },
+    emoji: "🏪",
+    nearby: { kind: "category", code: "CS2", radius: 500 },
+  },
 ];
 
 const STATIONS: Station[] = [
@@ -1122,6 +1198,72 @@ function stationMatches(station: Station, query: string) {
   return haystack.includes(q);
 }
 
+function curatedOption(station: Station): StationOption {
+  return {
+    key: station.id,
+    name: station.name,
+    lines: station.lines,
+    center: station.center,
+    color: station.color,
+    curated: station,
+  };
+}
+
+function kakaoOption(found: KakaoStation): StationOption {
+  const curated = STATIONS.find((station) => station.name.ko === found.name);
+  if (curated) return curatedOption(curated);
+  return {
+    key: `kakao:${found.name}`,
+    name: { ko: found.name, en: found.name },
+    lines: {
+      ko: found.lines.join(" · "),
+      en: found.lines.map((line) => line.replace(/^(\d+)호선$/, "Line $1")).join(" · "),
+    },
+    center: found.center,
+    color: lineColor(found.lines),
+  };
+}
+
+function curatedItem(station: Station, place: Place): ListItem {
+  return {
+    id: place.id,
+    category: place.category,
+    zone: place.zone,
+    name: place.name,
+    walk: place.walk,
+    walkMinutes: place.walkMinutes,
+    status: place.status,
+    note: place.note,
+    position: layoutToLatLng(station.center, place.x, place.y),
+    badge: place.badge,
+  };
+}
+
+function nearbyItem(category: CategoryId, place: NearbyPlace): ListItem {
+  const minutes = Math.max(1, Math.round(place.distance / WALK_METERS_PER_MINUTE));
+  return {
+    id: `kakao-${place.id}`,
+    category,
+    zone: "nearby",
+    name: { ko: place.name, en: place.name },
+    walk: {
+      ko: `도보 ${minutes}분 · ${place.distance}m`,
+      en: `${minutes} min on foot · ${place.distance} m`,
+    },
+    walkMinutes: minutes,
+    note: { ko: place.address, en: place.address },
+    position: place.position,
+    url: place.url,
+  };
+}
+
+function zoneLabel(zone: Zone) {
+  if (zone === "inside") return COPY.inside;
+  if (zone === "unpaid") return COPY.unpaid;
+  if (zone === "nearby") return COPY.nearby;
+  return COPY.outside;
+}
+
 function SearchIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -1235,44 +1377,48 @@ function YellowLabel({
 function buildOverlays({
   locale,
   station,
-  places,
-  selectedId,
+  items,
+  activeId,
   onSelect,
-  category,
 }: {
   locale: Locale;
-  station: Station;
-  places: Place[];
-  selectedId: string | null;
+  station: StationOption;
+  items: ListItem[];
+  activeId: string | null;
   onSelect: (id: string) => void;
-  category: CategoryId;
 }): MapOverlay[] {
+  const curated = station.curated;
+  const labels: MapOverlay[] = curated
+    ? [
+        {
+          key: `${curated.id}-paid-area`,
+          position: layoutToLatLng(curated.center, 49, 47),
+          zIndex: 1,
+          content: <YellowLabel>{t(curated.insidePaid, locale)}</YellowLabel>,
+        },
+        ...curated.exits.map((exit) => ({
+          key: `${curated.id}-${exit.id}`,
+          position: layoutToLatLng(curated.center, exit.x, exit.y),
+          zIndex: 1,
+          content: <YellowLabel>{t(exit.label, locale)}</YellowLabel>,
+        })),
+      ]
+    : [];
   return [
-    {
-      key: `${station.id}-paid-area`,
-      position: layoutToLatLng(station.center, 49, 47),
-      zIndex: 1,
-      content: <YellowLabel>{t(station.insidePaid, locale)}</YellowLabel>,
-    },
-    ...station.exits.map((exit) => ({
-      key: `${station.id}-${exit.id}`,
-      position: layoutToLatLng(station.center, exit.x, exit.y),
-      zIndex: 1,
-      content: <YellowLabel>{t(exit.label, locale)}</YellowLabel>,
-    })),
-    ...places.map((place) => ({
-      key: place.id,
-      position: layoutToLatLng(station.center, place.x, place.y),
-      zIndex: place.id === selectedId ? 4 : 3,
+    ...labels,
+    ...items.map((item) => ({
+      key: item.id,
+      position: item.position,
+      zIndex: item.id === activeId ? 4 : 3,
       content: (
         <button
           type="button"
-          onClick={() => onSelect(place.id)}
-          aria-label={t(place.name, locale)}
+          onClick={() => onSelect(item.id)}
+          aria-label={t(item.name, locale)}
         >
           <span className="relative inline-flex">
-            <PlacePin category={category} selected={selectedId === place.id} />
-            {place.badge ? <NumberBadge n={place.badge} /> : null}
+            <PlacePin category={item.category} selected={item.id === activeId} />
+            {item.badge ? <NumberBadge n={item.badge} /> : null}
           </span>
         </button>
       ),
@@ -1283,35 +1429,96 @@ function buildOverlays({
 export default function Home() {
   const [locale, setLocale] = useState<Locale>("ko");
   const [category, setCategory] = useState<CategoryId>("pharmacy");
-  const [stationId, setStationId] = useState<StationId>("hongdae");
+  const [station, setStation] = useState<StationOption>(() =>
+    curatedOption(STATIONS[0]),
+  );
   const [query, setQuery] = useState("");
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>("hongdae-ph-1");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [remote, setRemote] = useState<{ query: string; stations: StationOption[] }>({
+    query: "",
+    stations: [],
+  });
+  const [nearby, setNearby] = useState<{ key: string; items: ListItem[] | null }>({
+    key: "",
+    items: [],
+  });
   const searchRef = useRef<HTMLDivElement>(null);
+  const kakaoStatus = useKakaoMaps();
 
-  const station = STATIONS.find((item) => item.id === stationId) ?? STATIONS[0];
+  const trimmedQuery = query.trim();
+  const searchPending =
+    kakaoStatus === "ready" && trimmedQuery !== "" && remote.query !== trimmedQuery;
 
-  const suggestions = useMemo(
-    () => STATIONS.filter((item) => stationMatches(item, query)),
-    [query],
-  );
+  const suggestions = useMemo(() => {
+    const local = STATIONS.filter((item) => stationMatches(item, query)).map(curatedOption);
+    if (remote.query !== query.trim()) return local;
+    const localKeys = new Set(local.map((item) => item.key));
+    return [...local, ...remote.stations.filter((item) => !localKeys.has(item.key))].slice(0, 8);
+  }, [query, remote]);
 
-  const filtered = useMemo(
-    () =>
-      station.places
-        .filter((place) => place.category === category)
-        .sort((a, b) => a.walkMinutes - b.walkMinutes),
-    [station, category],
-  );
+  useEffect(() => {
+    if (kakaoStatus !== "ready" || !suggestOpen || !trimmedQuery) return;
+    let alive = true;
+    const timer = window.setTimeout(() => {
+      searchStations(trimmedQuery).then((found) => {
+        if (alive) setRemote({ query: trimmedQuery, stations: found.map(kakaoOption) });
+      });
+    }, 250);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, [kakaoStatus, suggestOpen, trimmedQuery]);
+
+  const nearbyKey = `${station.key}:${category}`;
+  const { lat: centerLat, lng: centerLng } = station.center;
+  useEffect(() => {
+    if (kakaoStatus !== "ready") return;
+    let alive = true;
+    const nearbyQuery = CATEGORIES.find((item) => item.id === category)?.nearby;
+    if (!nearbyQuery) return;
+    searchNearby(nearbyQuery, { lat: centerLat, lng: centerLng }).then(
+      (found) => {
+        if (alive) {
+          setNearby({ key: nearbyKey, items: found.map((place) => nearbyItem(category, place)) });
+        }
+      },
+      () => {
+        if (alive) setNearby({ key: nearbyKey, items: null });
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [kakaoStatus, nearbyKey, category, centerLat, centerLng]);
+
+  const nearbyLoaded = nearby.key === nearbyKey;
+  const nearbyFailed = kakaoStatus === "error" || (nearbyLoaded && nearby.items === null);
+  const nearbyLoading = !nearbyFailed && !nearbyLoaded;
+  const curated = station.curated;
+  const items = [
+    ...(curated
+      ? curated.places
+          .filter(
+            (place) =>
+              place.category === category && (nearbyFailed || place.zone !== "outside"),
+          )
+          .map((place) => curatedItem(curated, place))
+      : []),
+    ...(nearbyLoaded && nearby.items ? nearby.items : []),
+  ].sort((a, b) => a.walkMinutes - b.walkMinutes);
+
+  const selected = items.find((item) => item.id === selectedId) ?? null;
+  const activeId = selected?.id ?? items[0]?.id ?? null;
 
   const overlays = buildOverlays({
     locale,
     station,
-    places: filtered,
-    selectedId,
+    items,
+    activeId,
     onSelect: setSelectedId,
-    category,
   });
 
   useEffect(() => {
@@ -1324,30 +1531,21 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
-  function selectStation(next: Station) {
-    const first =
-      next.places
-        .filter((place) => place.category === category)
-        .sort((a, b) => a.walkMinutes - b.walkMinutes)[0] ?? null;
-    setStationId(next.id);
+  function selectStation(next: StationOption) {
+    setStation(next);
     setQuery(t(next.name, locale));
-    setSelectedId(first?.id ?? null);
+    setSelectedId(null);
     setSuggestOpen(false);
   }
 
   function selectCategory(next: CategoryId) {
     setCategory(next);
-    const first =
-      station.places
-        .filter((place) => place.category === next)
-        .sort((a, b) => a.walkMinutes - b.walkMinutes)[0] ?? null;
-    setSelectedId(first?.id ?? null);
+    setSelectedId(null);
   }
 
   function toggleLocale() {
     const nextLocale: Locale = locale === "ko" ? "en" : "ko";
-    const stationNames = STATIONS.flatMap((item) => [item.name.ko, item.name.en]);
-    if (stationNames.includes(query)) {
+    if (query === t(station.name, locale)) {
       setQuery(t(station.name, nextLocale));
     }
     setLocale(nextLocale);
@@ -1438,15 +1636,15 @@ export default function Home() {
             >
               {suggestions.length === 0 ? (
                 <p className="px-4 py-3 text-[13px] text-neutral-400">
-                  {t(COPY.noStation, locale)}
+                  {t(searchPending ? COPY.searching : COPY.noStation, locale)}
                 </p>
               ) : (
                 suggestions.map((item, index) => {
                   const active = index === highlightIndex;
-                  const current = item.id === stationId;
+                  const current = item.key === station.key;
                   return (
                     <button
-                      key={item.id}
+                      key={item.key}
                       type="button"
                       role="option"
                       aria-selected={current}
@@ -1499,7 +1697,11 @@ export default function Home() {
 
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#eef1f3]">
           <div className="relative isolate min-h-0 flex-1">
-            <KakaoMap center={station.center} overlays={overlays} />
+            <KakaoMap
+              center={station.center}
+              focus={selected?.position}
+              overlays={overlays}
+            />
           </div>
 
           <section className="relative z-40 shrink-0 rounded-t-[22px] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_28px_rgba(15,23,42,0.08)]">
@@ -1514,48 +1716,73 @@ export default function Home() {
                 {t(COPY.sortHint, locale)}
               </p>
             </div>
+            {curated ? null : (
+              <p className="-mt-1.5 mb-2.5 text-[12px] text-neutral-400">
+                {t(COPY.gatePending, locale)}
+              </p>
+            )}
             <div className="flex max-h-[188px] flex-col gap-2.5 overflow-y-auto pb-1">
-              {filtered.length === 0 ? (
+              {items.length === 0 ? (
                 <p className="rounded-2xl border border-neutral-100 px-4 py-8 text-center text-sm text-neutral-400">
-                  {t(COPY.empty, locale)}
+                  {t(
+                    nearbyLoading
+                      ? COPY.loading
+                      : nearbyFailed && !curated
+                        ? COPY.loadFailed
+                        : COPY.empty,
+                    locale,
+                  )}
                 </p>
               ) : (
-                filtered.map((place) => {
-                  const active = place.id === selectedId;
+                items.map((item) => {
+                  const active = item.id === activeId;
                   return (
-                    <button
-                      key={place.id}
-                      type="button"
-                      onClick={() => setSelectedId(place.id)}
-                      className={`rounded-[18px] border bg-white px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${
+                    <div
+                      key={item.id}
+                      className={`rounded-[18px] border bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${
                         active ? "border-neutral-200" : "border-neutral-100"
                       }`}
                     >
-                      <p className="flex items-start gap-2 text-[15px] font-bold leading-snug text-neutral-900">
-                        <span className="mt-[2px]">
-                          <CategoryIcon category={place.category} size={18} />
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(item.id)}
+                        className="block w-full text-left"
+                      >
+                        <p className="flex items-start gap-2 text-[15px] font-bold leading-snug text-neutral-900">
+                          <span className="mt-[2px]">
+                            <CategoryIcon category={item.category} size={18} />
+                          </span>
+                          {t(item.name, locale)}
+                        </p>
+                        <p className="mt-1.5 text-[13px] text-neutral-500">
+                          {t(item.walk, locale)}
+                          {item.status ? (
+                            <>
+                              <span className="mx-1.5 text-neutral-300">|</span>
+                              {t(item.status, locale)}
+                            </>
+                          ) : null}
+                        </p>
+                        <p className="mt-1 text-[13px] text-neutral-400">
+                          {t(item.note, locale)}
+                        </p>
+                      </button>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span className="inline-flex rounded-full bg-neutral-100 px-2 py-[3px] text-[11px] font-medium text-neutral-500">
+                          {t(zoneLabel(item.zone), locale)}
                         </span>
-                        {t(place.name, locale)}
-                      </p>
-                      <p className="mt-1.5 text-[13px] text-neutral-500">
-                        {t(place.walk, locale)}
-                        <span className="mx-1.5 text-neutral-300">|</span>
-                        {t(place.status, locale)}
-                      </p>
-                      <p className="mt-1 text-[13px] text-neutral-400">
-                        {t(place.note, locale)}
-                      </p>
-                      <span className="mt-2 inline-flex rounded-full bg-neutral-100 px-2 py-[3px] text-[11px] font-medium text-neutral-500">
-                        {t(
-                          place.zone === "inside"
-                            ? COPY.inside
-                            : place.zone === "unpaid"
-                              ? COPY.unpaid
-                              : COPY.outside,
-                          locale,
-                        )}
-                      </span>
-                    </button>
+                        {item.url ? (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[12px] font-medium text-[#2563eb]"
+                          >
+                            {t(COPY.kakaoLink, locale)} ›
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
                   );
                 })
               )}

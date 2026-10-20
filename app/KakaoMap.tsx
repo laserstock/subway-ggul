@@ -1,8 +1,8 @@
 "use client";
 
-import Script from "next/script";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { KAKAO_APP_KEY, useKakaoMaps } from "./kakao-sdk";
 
 export type LatLng = { lat: number; lng: number };
 
@@ -14,22 +14,21 @@ export type MapOverlay = {
   yAnchor?: number;
 };
 
-const APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
-const SDK_URL = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${APP_KEY}&autoload=false`;
-
 export default function KakaoMap({
   center,
+  focus,
   level = 3,
   overlays,
 }: {
   center: LatLng;
+  focus?: LatLng | null;
   level?: number;
   overlays: MapOverlay[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef(overlays);
-  const [ready, setReady] = useState(false);
+  const ready = useKakaoMaps() === "ready";
 
   const overlayKeys = overlays.map((overlay) => overlay.key).join("|");
   const layoutKey = overlays
@@ -64,6 +63,14 @@ export default function KakaoMap({
     }
   }, [ready, center.lat, center.lng, level]);
 
+  const focusLat = focus?.lat;
+  const focusLng = focus?.lng;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || focusLat === undefined || focusLng === undefined) return;
+    map.panTo(new kakao.maps.LatLng(focusLat, focusLng));
+  }, [ready, focusLat, focusLng]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!ready || !container) return;
@@ -97,7 +104,7 @@ export default function KakaoMap({
     return () => created.forEach((overlay) => overlay.setMap(null));
   }, [hosts, layoutKey]);
 
-  if (!APP_KEY) {
+  if (!KAKAO_APP_KEY) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-[#eef1f3] px-6 text-center text-[13px] text-neutral-500">
         NEXT_PUBLIC_KAKAO_MAP_KEY 환경 변수가 없어 지도를 불러올 수 없어요.
@@ -107,11 +114,6 @@ export default function KakaoMap({
 
   return (
     <>
-      <Script
-        src={SDK_URL}
-        strategy="afterInteractive"
-        onReady={() => kakao.maps.load(() => setReady(true))}
-      />
       <div ref={containerRef} className="absolute inset-0 bg-[#eef1f3]" />
       {hosts
         ? overlays.map((overlay) => {
