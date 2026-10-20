@@ -79,10 +79,16 @@ const COPY = {
     ja: "どの駅へ行きますか？（例：光化門駅、ソウル駅）",
   },
   mainTitle: {
-    ko: "유저 목적별 4대 대형 해결 버튼",
-    en: "4 quick fixes for your trip",
-    zh: "按目的划分的4大快捷按钮",
-    ja: "目的別4大お助けボタン",
+    ko: "지하철 내리기 전 필수 체크",
+    en: "Check before you get off",
+    zh: "下车前必看",
+    ja: "降りる前に必ずチェック",
+  },
+  mainSubtitle: {
+    ko: "지하철 내리기 전 꼭 필요한 긴급 동선 해결사",
+    en: "Your quick route fixer for the moment before your stop",
+    zh: "下车前必备的紧急动线助手",
+    ja: "降車前に役立つ緊急ルートお助け",
   },
   feedTitle: {
     ko: "실시간 현장 소식 & 제보",
@@ -463,9 +469,20 @@ export default function HomeScreen() {
             <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-400">{t(COPY.search, locale)}</span>
           </button>
 
-          <h2 className="mb-2.5 mt-5 text-[16px] font-extrabold tracking-tight text-neutral-900">
-            {t(COPY.mainTitle, locale)}
-          </h2>
+          <header className="mb-3 mt-6 flex items-start gap-2.5">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#ffe7c2] to-[#ffd6a0] text-[18px] shadow-[0_2px_6px_rgba(245,158,11,0.25)]"
+              aria-hidden
+            >
+              ✨
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold leading-tight tracking-tight text-neutral-900">
+                {t(COPY.mainTitle, locale)}
+              </h2>
+              <p className="mt-0.5 text-[13px] leading-snug text-gray-500">{t(COPY.mainSubtitle, locale)}</p>
+            </div>
+          </header>
           <div className="grid grid-cols-2 gap-2.5">
             {MAIN_ACTIONS.map((action) => {
               const body = (
