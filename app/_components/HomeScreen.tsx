@@ -7,6 +7,7 @@ import { flushSync } from "react-dom";
 import AppHeader from "./AppHeader";
 import BottomNav, { type NavTab } from "./BottomNav";
 import { SearchIcon } from "./icons";
+import LiveFeed from "./LiveFeed";
 import LocationSheet from "./LocationSheet";
 import ReportSheet from "./ReportSheet";
 import SearchOverlay from "./SearchOverlay";
@@ -14,7 +15,6 @@ import { Toast, useToast } from "./Toast";
 import { useHomeResetToken } from "../_lib/homeReset";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
-import { formatAgo, toggleLike, useNow, useStationReports } from "../_lib/reports";
 import {
   clearSelectedStation,
   selectStation,
@@ -90,20 +90,7 @@ const COPY = {
     zh: "下车前必备的紧急动线助手",
     ja: "降車前に役立つ緊急ルートお助け",
   },
-  feedTitle: {
-    ko: "실시간 현장 소식 & 제보",
-    en: "live updates & reports",
-    zh: "实时现场消息 & 上报",
-    ja: "リアルタイム現場情報 & 投稿",
-  },
-  feedEmpty: {
-    ko: "역을 찾으면 실시간 소식이 보여요",
-    en: "Live updates appear once a station is found",
-    zh: "找到车站后将显示实时消息",
-    ja: "駅が見つかるとリアルタイム情報が表示されます",
-  },
   reportCta: { ko: "나도 1초 제보하기", en: "Report in 1 second", zh: "1秒快速上报", ja: "1秒で投稿する" },
-  like: { ko: "추천", en: "Like", zh: "赞", ja: "いいね" },
   comingSoon: {
     ko: "곧 열려요! 조금만 기다려 주세요",
     en: "Coming soon!",
@@ -239,7 +226,6 @@ export default function HomeScreen() {
   const closeLocation = useCallback(() => setLocationOpen(false), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
   const { toast, showToast } = useToast();
-  const now = useNow();
   const mainRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const resetToken = useHomeResetToken();
@@ -261,7 +247,6 @@ export default function HomeScreen() {
   const current = selected?.station ?? null;
   const isManual = selected !== null && selected.source !== "gps";
   const station = destination ?? current;
-  const reports = useStationReports(station);
 
   useEffect(() => {
     syncSelectedStation(tracker.position);
@@ -532,43 +517,7 @@ export default function HomeScreen() {
             })}
           </div>
 
-          <Card className="mt-4 px-4 py-3.5">
-            <h2 className="text-[14px] font-extrabold text-neutral-900">
-              <span aria-hidden>💬 </span>
-              {station ? `${t(station.name, locale)} ` : ""}
-              {t(COPY.feedTitle, locale)}
-            </h2>
-            {reports.length === 0 ? (
-              <p className="mt-2 text-[12px] text-neutral-400">{t(COPY.feedEmpty, locale)}</p>
-            ) : (
-              <ul className="mt-2 divide-y divide-neutral-100">
-                {reports.slice(0, 5).map((report) => (
-                  <li key={report.id} className="flex items-center gap-2 py-2">
-                    <p className="min-w-0 flex-1 truncate text-[13px] text-neutral-800">
-                      {t(report.text, locale)}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => toggleLike(report.id)}
-                      aria-pressed={report.liked}
-                      aria-label={t(COPY.like, locale)}
-                      className={`flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[12px] font-semibold ${
-                        report.liked ? "bg-[#fff1d6] text-[#b45309]" : "text-neutral-500"
-                      }`}
-                    >
-                      <span aria-hidden>👍</span>
-                      {report.likes}
-                    </button>
-                    {now !== null && (
-                      <span className="shrink-0 text-[11px] text-neutral-400">
-                        ({formatAgo(report.createdAt, now, locale)})
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+          <LiveFeed station={station} onToast={showToast} />
 
           <button
             type="button"

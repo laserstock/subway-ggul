@@ -6,7 +6,7 @@ import { saveFeedback } from "../_lib/feedback";
 import { requestHomeReset } from "../_lib/homeReset";
 import { t, type Localized } from "../_lib/i18n";
 import { useLocale, useMessages } from "../_lib/locale";
-import { deleteReport, formatAgo, useMyReports, useNow } from "../_lib/reports";
+import { deleteReport, formatRelativeTime, useMyReports, useNow } from "../_lib/reports";
 import { clearSelectedStation, setDestinationStation } from "../_lib/selectedStation";
 import { TrainLogo } from "./icons";
 
@@ -345,7 +345,7 @@ export default function SideDrawer({
                           📍 {t(report.stationName, locale)}
                           {now !== null ? (
                             <span className="ml-1.5 font-medium text-neutral-400">
-                              {formatAgo(report.createdAt, now, locale)}
+                              {formatRelativeTime(report.createdAt, now, locale)}
                             </span>
                           ) : null}
                         </p>

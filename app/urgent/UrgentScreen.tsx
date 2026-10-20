@@ -9,7 +9,8 @@ import { Toast, useToast } from "../_components/Toast";
 import type { LatLng } from "../KakaoMap";
 import type { KakaoStation } from "../kakao-places";
 import { useLocale } from "../_lib/locale";
-import { toggleLike, useStationReports } from "../_lib/reports";
+import { rankReports } from "../_lib/freshness";
+import { confirmReport, useNow, useStationReports } from "../_lib/reports";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
 import {
   distanceMeters,
@@ -426,7 +427,8 @@ export default function UrgentScreen({
 
   const feedStation = recommendation?.target === "current" ? current : (nextOption ?? current);
   const reports = useStationReports(feedStation);
-  const topReports = [...reports].sort((a, b) => b.likes - a.likes).slice(0, 2);
+  const now = useNow();
+  const topReports = now !== null ? rankReports(reports, now).active.slice(0, 2) : [];
 
   const kinds = tab === "all" ? DISPLAY_ORDER : [tab];
   const limit = tab === "all" ? 1 : 3;
@@ -607,7 +609,7 @@ export default function UrgentScreen({
                           </p>
                           <button
                             type="button"
-                            onClick={() => toggleLike(report.id)}
+                            onClick={() => confirmReport(report.id)}
                             aria-pressed={report.liked}
                             aria-label={t(COPY.like, locale)}
                             className={`flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[12px] font-semibold ${

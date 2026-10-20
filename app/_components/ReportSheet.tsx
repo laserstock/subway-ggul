@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useLocale } from "../_lib/locale";
-import { addReport } from "../_lib/reports";
+import { addReport, type ReportType } from "../_lib/reports";
 import { t, type Localized, type StationOption } from "../_lib/stations";
+
+export type QuickReport = { emoji: string; text: Localized; type?: ReportType };
 
 const COPY = {
   title: {
@@ -35,13 +37,15 @@ const COPY = {
   close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
 };
 
-const QUICK_REPORTS: { emoji: string; text: Localized }[] = [
+const QUICK_REPORTS: QuickReport[] = [
   {
     emoji: "🧻",
+    type: "toilet_paper",
     text: { ko: "화장실 휴지 있어요", en: "Restroom has tissue", zh: "卫生间有纸巾", ja: "トイレにティッシュあり" },
   },
   {
     emoji: "🚧",
+    type: "toilet_paper",
     text: {
       ko: "화장실 청소·고장 중",
       en: "Restroom closed for cleaning/repair",
@@ -51,18 +55,22 @@ const QUICK_REPORTS: { emoji: string; text: Localized }[] = [
   },
   {
     emoji: "🛗",
+    type: "escalator",
     text: { ko: "엘리베이터 정상 운행", en: "Elevator is working", zh: "电梯运行正常", ja: "エレベーター正常運転" },
   },
   {
     emoji: "⚠️",
+    type: "escalator",
     text: { ko: "에스컬레이터 고장", en: "Escalator out of order", zh: "扶梯故障", ja: "エスカレーター故障" },
   },
   {
     emoji: "👥",
+    type: "crowd",
     text: { ko: "지금 많이 붐벼요", en: "Very crowded right now", zh: "现在非常拥挤", ja: "今とても混雑しています" },
   },
   {
     emoji: "🧳",
+    type: "general",
     text: {
       ko: "T-Locker 빈자리 있어요",
       en: "T-Locker has free space",
@@ -79,16 +87,16 @@ export default function ReportSheet({
   onPosted,
 }: {
   station: StationOption | null;
-  quickReports?: { emoji: string; text: Localized }[];
+  quickReports?: QuickReport[];
   onClose: () => void;
   onPosted: () => void;
 }) {
   const locale = useLocale();
   const [draft, setDraft] = useState("");
 
-  function post(text: Localized) {
+  function post(text: Localized, type?: ReportType) {
     if (!station) return;
-    addReport(station, text);
+    addReport(station, text, type);
     setDraft("");
     onPosted();
   }
@@ -117,7 +125,7 @@ export default function ReportSheet({
                 <button
                   key={item.text.ko}
                   type="button"
-                  onClick={() => post(item.text)}
+                  onClick={() => post(item.text, item.type)}
                   className="flex items-center gap-1.5 rounded-xl border border-neutral-200 px-3 py-2.5 text-left text-[13px] font-medium text-neutral-800 active:bg-neutral-50"
                 >
                   <span aria-hidden>{item.emoji}</span>

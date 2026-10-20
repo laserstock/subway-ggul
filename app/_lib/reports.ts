@@ -4,12 +4,17 @@ import { useMemo, useSyncExternalStore } from "react";
 import { t, type Locale } from "./i18n";
 import { STATIONS, type Localized, type StationOption } from "./stations";
 
+export type ReportType = "toilet_paper" | "escalator" | "crowd" | "general";
+
 export type Report = {
   id: string;
+  type: ReportType;
   text: Localized;
   likes: number;
   liked: boolean;
   createdAt: number;
+  /** Last time this user tapped "still true"; restarts the report's TTL. */
+  confirmedAt: number | null;
 };
 
 export type MyReport = {
@@ -23,10 +28,16 @@ type StoredReport = {
   id: string;
   stationKey: string;
   stationName?: Localized;
+  type?: ReportType;
   text: Localized;
   createdAt: number;
 };
-type Stored = { reports: StoredReport[]; liked: string[] };
+type Stored = {
+  reports: StoredReport[];
+  liked: string[];
+  confirmed: Record<string, number>;
+  resolved: string[];
+};
 
 const STORAGE_KEY = "subway-ggul:reports";
 const MAX_STORED = 100;
@@ -44,17 +55,36 @@ function readRaw(): string | null {
   }
 }
 
+function emptyStored(): Stored {
+  return { reports: [], liked: [], confirmed: {}, resolved: [] };
+}
+
 function parse(raw: string | null): Stored {
-  if (!raw) return { reports: [], liked: [] };
+  if (!raw) return emptyStored();
   try {
     const value = JSON.parse(raw) as Partial<Stored>;
     return {
       reports: Array.isArray(value.reports) ? value.reports : [],
       liked: Array.isArray(value.liked) ? value.liked : [],
+      confirmed:
+        value.confirmed && typeof value.confirmed === "object" && !Array.isArray(value.confirmed)
+          ? value.confirmed
+          : {},
+      resolved: Array.isArray(value.resolved) ? value.resolved : [],
     };
   } catch {
-    return { reports: [], liked: [] };
+    return emptyStored();
   }
+}
+
+const TYPE_KEYWORDS: [ReportType, RegExp][] = [
+  ["toilet_paper", /휴지|화장실|위생|tissue|toilet|restroom|卫生间|纸巾|トイレ|ティッシュ/i],
+  ["escalator", /에스컬|엘리베이터|승강기|고장|escalator|elevator|lift|扶梯|电梯|エスカレーター|エレベーター/i],
+  ["crowd", /붐|혼잡|사람\s*많|crowd|busy|拥挤|混雑/i],
+];
+
+export function inferReportType(text: string): ReportType {
+  return TYPE_KEYWORDS.find(([, pattern]) => pattern.test(text))?.[0] ?? "general";
 }
 
 function write(next: Stored) {
@@ -101,6 +131,7 @@ function seedsFor(station: StationOption): StoredReport[] {
     {
       id: `seed:${station.key}:restroom`,
       stationKey: station.key,
+      type: "toilet_paper",
       text: {
         ko: `${prefix("ko")} 승강장 화장실 휴지 있어요!`.replace(/\s+/g, " "),
         en: `${prefix("en")} platform restroom has tissue!`.replace(/\s+/g, " "),
@@ -112,6 +143,7 @@ function seedsFor(station: StationOption): StoredReport[] {
     {
       id: `seed:${station.key}:escalator`,
       stationKey: station.key,
+      type: "escalator",
       text: {
         ko: `${exit}번 출구 에스컬레이터 정상 가동`,
         en: `Exit ${exit} escalator is running normally`,
@@ -120,10 +152,22 @@ function seedsFor(station: StationOption): StoredReport[] {
       },
       createdAt: seedBase - 10 * 60_000,
     },
+    {
+      id: `seed:${station.key}:crowd`,
+      stationKey: station.key,
+      type: "crowd",
+      text: {
+        ko: `${prefix("ko")} 승강장 지금 많이 붐벼요`.replace(/\s+/g, " "),
+        en: `${prefix("en")} platform is very crowded now`.replace(/\s+/g, " "),
+        zh: `${prefix("zh")} 站台现在非常拥挤`.replace(/\s+/g, " "),
+        ja: `${prefix("ja")} ホームが今とても混雑`.replace(/\s+/g, " "),
+      },
+      createdAt: seedBase - 24 * 60_000,
+    },
   ];
 }
 
-const SEED_LIKES = [24, 12];
+const SEED_LIKES = [24, 12, 5];
 
 export function useStationReports(station: StationOption | null): Report[] {
   const raw = useSyncExternalStore(subscribe, readRaw, () => null);
@@ -131,6 +175,7 @@ export function useStationReports(station: StationOption | null): Report[] {
     if (!station) return [];
     const stored = parse(raw);
     const liked = new Set(stored.liked);
+    const resolved = new Set(stored.resolved);
     const seeds = seedsFor(station).map((report, index) => ({
       ...report,
       baseLikes: SEED_LIKES[index] ?? 0,
@@ -139,12 +184,15 @@ export function useStationReports(station: StationOption | null): Report[] {
       .filter((report) => report.stationKey === station.key)
       .map((report) => ({ ...report, baseLikes: 0 }));
     return [...mine, ...seeds]
-      .map(({ id, text, createdAt, baseLikes }) => ({
+      .filter((report) => !resolved.has(report.id))
+      .map(({ id, type, text, createdAt, baseLikes }) => ({
         id,
+        type: type ?? inferReportType(text.ko),
         text,
         createdAt,
         liked: liked.has(id),
         likes: baseLikes + (liked.has(id) ? 1 : 0),
+        confirmedAt: liked.has(id) ? (stored.confirmed[id] ?? null) : null,
       }))
       .sort((a, b) => b.createdAt - a.createdAt);
   }, [raw, station]);
@@ -176,24 +224,44 @@ export function deleteReport(id: string) {
   write({ ...stored, reports: stored.reports.filter((report) => report.id !== id) });
 }
 
-export function addReport(station: StationOption, text: Localized) {
+export function addReport(
+  station: StationOption,
+  text: Localized,
+  type: ReportType = inferReportType(text.ko),
+) {
   const stored = parse(readRaw());
   const report: StoredReport = {
     id: `user:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
     stationKey: station.key,
     stationName: station.name,
+    type,
     text,
     createdAt: Date.now(),
   };
   write({ ...stored, reports: [report, ...stored.reports].slice(0, MAX_STORED) });
 }
 
-export function toggleLike(id: string) {
+function withoutConfirmation(stored: Stored, id: string): Stored {
+  const confirmed = { ...stored.confirmed };
+  delete confirmed[id];
+  return { ...stored, liked: stored.liked.filter((item) => item !== id), confirmed };
+}
+
+/** "Still true": +1 upvote and restarts the TTL. Tapping again withdraws both. */
+export function confirmReport(id: string) {
   const stored = parse(readRaw());
-  const liked = stored.liked.includes(id)
-    ? stored.liked.filter((item) => item !== id)
-    : [...stored.liked, id];
-  write({ ...stored, liked });
+  if (stored.liked.includes(id)) {
+    write(withoutConfirmation(stored, id));
+    return false;
+  }
+  write({ ...stored, liked: [...stored.liked, id], confirmed: { ...stored.confirmed, [id]: Date.now() } });
+  return true;
+}
+
+/** "Resolved": hides the report from every feed on this device. */
+export function resolveReport(id: string) {
+  const stored = withoutConfirmation(parse(readRaw()), id);
+  write({ ...stored, resolved: [...stored.resolved.filter((item) => item !== id), id].slice(-MAX_STORED) });
 }
 
 const AGO: Record<Locale, { now: string; minutes: string; hours: string; days: string }> = {
@@ -203,7 +271,7 @@ const AGO: Record<Locale, { now: string; minutes: string; hours: string; days: s
   ja: { now: "たった今", minutes: "{n}分前", hours: "{n}時間前", days: "{n}日前" },
 };
 
-export function formatAgo(createdAt: number, now: number, locale: Locale) {
+export function formatRelativeTime(createdAt: number, now: number, locale: Locale) {
   const copy = AGO[locale];
   const minutes = Math.max(0, Math.floor((now - createdAt) / 60_000));
   if (minutes < 1) return copy.now;
