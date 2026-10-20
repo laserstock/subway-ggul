@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AppHeader from "../_components/AppHeader";
-import { stationFromParams, type CategoryId } from "../_lib/stations";
-import ShopsScreen from "./ShopsScreen";
+import { stationFromParams } from "../_lib/stations";
+import ShopsScreen, { type ShopCategoryId } from "./ShopsScreen";
 
 export const metadata: Metadata = {
   title: "출구 매장 & 픽업 · 지하철꿀정보",
 };
 
-const CATEGORY_IDS: CategoryId[] = ["pharmacy", "oliveyoung", "daiso", "cafe", "convenience"];
+const CATEGORY_IDS: ShopCategoryId[] = ["oliveyoung", "daiso", "cafe", "convenience"];
 
 type SearchParams = PageProps<"/shops">["searchParams"];
 

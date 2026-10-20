@@ -15,7 +15,6 @@ import {
   formatDistance,
   stationParams,
   t,
-  type CategoryId,
   type Locale,
   type Localized,
   type StationOption,
@@ -64,7 +63,6 @@ type MainAction = {
   bg: string;
   accent: string;
   href?: "/urgent" | "/shops";
-  category?: CategoryId;
 };
 
 const MAIN_ACTIONS: MainAction[] = [
@@ -86,7 +84,6 @@ const MAIN_ACTIONS: MainAction[] = [
     bg: "#fdf1df",
     accent: "#b45309",
     href: "/shops",
-    category: "oliveyoung",
   },
   {
     id: "transfer",
@@ -158,10 +155,9 @@ export default function HomeScreen() {
     }
   }
 
-  function actionHref(href: string, action: MainAction) {
+  function actionHref(href: string) {
     const params = station ? stationParams(station) : new URLSearchParams();
     if (!destination) params.set("near", "1");
-    if (action.category) params.set("category", action.category);
     return `${href}?${params.toString()}`;
   }
 
@@ -306,7 +302,7 @@ export default function HomeScreen() {
               return action.href ? (
                 <Link
                   key={action.id}
-                  href={actionHref(action.href, action)}
+                  href={actionHref(action.href)}
                   className={className}
                   style={{ backgroundColor: action.bg }}
                 >

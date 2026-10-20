@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Image, { type StaticImageData } from "next/image";
-import pharmacyIcon from "@/public/icons/pharmacy.png";
 import oliveyoungIcon from "@/public/icons/oliveyoung.png";
 import daisoIcon from "@/public/icons/daiso.png";
 import cafeIcon from "@/public/icons/cafe.png";
@@ -72,21 +71,20 @@ const COPY = {
 };
 
 const WALK_METERS_PER_MINUTE = 67;
+const ALL_PER_CATEGORY = 3;
+
+export type ShopCategoryId = Exclude<CategoryId, "pharmacy">;
+export type ShopFilter = "all" | ShopCategoryId;
+
+const ALL_FILTER: Localized = { ko: "전체", en: "All" };
 
 const CATEGORIES: {
-  id: CategoryId;
+  id: ShopCategoryId;
   name: Localized;
   emoji: string;
   icon?: StaticImageData;
   nearby: NearbyQuery;
 }[] = [
-  {
-    id: "pharmacy",
-    name: { ko: "약국", en: "Pharmacy" },
-    emoji: "💊",
-    icon: pharmacyIcon,
-    nearby: { kind: "category", code: "PM9", radius: 700 },
-  },
   {
     id: "oliveyoung",
     name: { ko: "올리브영", en: "Olive Young" },
@@ -312,11 +310,11 @@ export default function ShopsScreen({
   follow,
 }: {
   initialStation: StationOption | null;
-  initialCategory: CategoryId | null;
+  initialCategory: ShopCategoryId | null;
   follow: boolean;
 }) {
   const locale = useLocale();
-  const [category, setCategory] = useState<CategoryId>(initialCategory ?? "pharmacy");
+  const [category, setCategory] = useState<ShopFilter>(initialCategory ?? "all");
   const [station, setStation] = useState<StationOption>(
     () => initialStation ?? curatedOption(STATIONS[0]),
   );
@@ -349,18 +347,24 @@ export default function ShopsScreen({
   useEffect(() => {
     if (kakaoStatus !== "ready") return;
     let alive = true;
-    const nearbyQuery = CATEGORIES.find((item) => item.id === category)?.nearby;
-    if (!nearbyQuery) return;
-    searchNearby(nearbyQuery, { lat: centerLat, lng: centerLng }).then(
-      (found) => {
-        if (alive) {
-          setNearby({ key: nearbyKey, items: found.map((place) => nearbyItem(category, place)) });
-        }
-      },
-      () => {
-        if (alive) setNearby({ key: nearbyKey, items: null });
-      },
-    );
+    const targets = CATEGORIES.filter((item) => category === "all" || item.id === category);
+    const limit = category === "all" ? ALL_PER_CATEGORY : undefined;
+    Promise.allSettled(
+      targets.map((item) =>
+        searchNearby(item.nearby, { lat: centerLat, lng: centerLng }).then((found) =>
+          found.slice(0, limit).map((place) => nearbyItem(item.id, place)),
+        ),
+      ),
+    ).then((results) => {
+      if (!alive) return;
+      const loaded = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+      if (loaded.length === 0) {
+        setNearby({ key: nearbyKey, items: null });
+        return;
+      }
+      const unique = new Map(loaded.flat().map((item) => [item.id, item]));
+      setNearby({ key: nearbyKey, items: [...unique.values()] });
+    });
     return () => {
       alive = false;
     };
@@ -375,7 +379,9 @@ export default function ShopsScreen({
       ? curated.places
           .filter(
             (place) =>
-              place.category === category && (nearbyFailed || place.zone !== "outside"),
+              place.category !== "pharmacy" &&
+              (category === "all" || place.category === category) &&
+              (nearbyFailed || place.zone !== "outside"),
           )
           .map((place) => curatedItem(curated, place))
       : []),
@@ -420,7 +426,7 @@ export default function ShopsScreen({
     setSelectedId(null);
   }
 
-  function selectCategory(next: CategoryId) {
+  function selectCategory(next: ShopFilter) {
     setCategory(next);
     setSelectedId(null);
     if (!tracking && !pinned && tracker.issue !== "denied") startTracking();
@@ -446,13 +452,14 @@ export default function ShopsScreen({
         />
 
         <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-4 pb-3">
-          {CATEGORIES.map((item) => {
+          {[{ id: "all" as const, name: ALL_FILTER }, ...CATEGORIES].map((item) => {
             const selected = item.id === category;
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => selectCategory(item.id)}
+                aria-pressed={selected}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full border bg-white px-3.5 py-[7px] text-[13px] font-medium ${
                   selected
                     ? "border-[#3b82f6] text-neutral-900 shadow-[0_0_0_1px_#3b82f6]"
@@ -460,7 +467,7 @@ export default function ShopsScreen({
                 }`}
               >
                 {t(item.name, locale)}
-                <CategoryIcon category={item.id} size={18} />
+                {item.id === "all" ? null : <CategoryIcon category={item.id} size={18} />}
               </button>
             );
           })}
