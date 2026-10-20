@@ -14,20 +14,25 @@ export type MapOverlay = {
   yAnchor?: number;
 };
 
+export type MapFit = { key: string; points: LatLng[] };
+
 export default function KakaoMap({
   center,
   focus,
+  fit,
   level = 3,
   overlays,
 }: {
   center: LatLng;
   focus?: LatLng | null;
+  fit?: MapFit | null;
   level?: number;
   overlays: MapOverlay[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef(overlays);
+  const fitRef = useRef(fit);
   const ready = useKakaoMaps() === "ready";
 
   const overlayKeys = overlays.map((overlay) => overlay.key).join("|");
@@ -50,6 +55,7 @@ export default function KakaoMap({
 
   useEffect(() => {
     overlaysRef.current = overlays;
+    fitRef.current = fit;
   });
 
   useEffect(() => {
@@ -57,11 +63,25 @@ export default function KakaoMap({
     if (!ready || !container) return;
     const position = new kakao.maps.LatLng(center.lat, center.lng);
     if (mapRef.current) {
+      mapRef.current.setLevel(level);
       mapRef.current.setCenter(position);
     } else {
       mapRef.current = new kakao.maps.Map(container, { center: position, level });
     }
   }, [ready, center.lat, center.lng, level]);
+
+  const fitKey = fit?.key;
+  useEffect(() => {
+    const map = mapRef.current;
+    const target = fitRef.current;
+    if (!ready || !map || !target || target.points.length === 0) return;
+    const bounds = new kakao.maps.LatLngBounds();
+    for (const point of target.points) {
+      bounds.extend(new kakao.maps.LatLng(point.lat, point.lng));
+    }
+    map.setBounds(bounds, 70, 50, 50, 50);
+    if (map.getLevel() < level) map.setLevel(level);
+  }, [ready, fitKey, level]);
 
   const focusLat = focus?.lat;
   const focusLng = focus?.lng;
@@ -77,12 +97,13 @@ export default function KakaoMap({
     const observer = new ResizeObserver(() => {
       const map = mapRef.current;
       if (!map) return;
+      const current = map.getCenter();
       map.relayout();
-      map.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+      map.setCenter(current);
     });
     observer.observe(container);
     return () => observer.disconnect();
-  }, [ready, center.lat, center.lng]);
+  }, [ready]);
 
   useEffect(() => {
     const map = mapRef.current;

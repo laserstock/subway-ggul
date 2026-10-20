@@ -66,28 +66,57 @@ function places() {
   return new kakao.maps.services.Places();
 }
 
+function groupStations(result: kakao.maps.services.PlacesSearchResult) {
+  const grouped = new Map<string, KakaoStation & { distance: number }>();
+  for (const item of result) {
+    const { name, line } = splitStationName(item.place_name);
+    const existing = grouped.get(name);
+    if (existing) {
+      if (line && !existing.lines.includes(line)) existing.lines.push(line);
+    } else {
+      grouped.set(name, {
+        name,
+        lines: line ? [line] : [],
+        center: toLatLng(item),
+        distance: Number(item.distance) || 0,
+      });
+    }
+  }
+  return [...grouped.values()];
+}
+
 export function searchStations(query: string): Promise<KakaoStation[]> {
   return new Promise((resolve) => {
     places().keywordSearch(
       query,
       (result, status) => {
-        if (status !== kakao.maps.services.Status.OK) {
-          resolve([]);
-          return;
-        }
-        const grouped = new Map<string, KakaoStation>();
-        for (const item of result) {
-          const { name, line } = splitStationName(item.place_name);
-          const existing = grouped.get(name);
-          if (existing) {
-            if (line && !existing.lines.includes(line)) existing.lines.push(line);
-          } else {
-            grouped.set(name, { name, lines: line ? [line] : [], center: toLatLng(item) });
-          }
-        }
-        resolve([...grouped.values()]);
+        resolve(status === kakao.maps.services.Status.OK ? groupStations(result) : []);
       },
       { category_group_code: "SW8", size: 15 },
+    );
+  });
+}
+
+export function findNearestStation(
+  position: LatLng,
+): Promise<{ station: KakaoStation; distance: number } | null> {
+  return new Promise((resolve, reject) => {
+    places().categorySearch(
+      "SW8",
+      (result, status) => {
+        if (status === kakao.maps.services.Status.ERROR) {
+          reject(new Error("Kakao station search failed"));
+          return;
+        }
+        const [nearest] = status === kakao.maps.services.Status.OK ? groupStations(result) : [];
+        resolve(nearest ? { station: nearest, distance: nearest.distance } : null);
+      },
+      {
+        location: new kakao.maps.LatLng(position.lat, position.lng),
+        radius: 5000,
+        sort: kakao.maps.services.SortBy.DISTANCE,
+        size: 5,
+      },
     );
   });
 }

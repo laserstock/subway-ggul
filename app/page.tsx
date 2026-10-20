@@ -13,9 +13,10 @@ import pharmacyIcon from "@/public/icons/pharmacy.png";
 import oliveyoungIcon from "@/public/icons/oliveyoung.png";
 import daisoIcon from "@/public/icons/daiso.png";
 import cafeIcon from "@/public/icons/cafe.png";
-import KakaoMap, { type LatLng, type MapOverlay } from "./KakaoMap";
-import { useKakaoMaps } from "./kakao-sdk";
+import KakaoMap, { type LatLng, type MapFit, type MapOverlay } from "./KakaoMap";
+import { loadKakaoMaps, useKakaoMaps } from "./kakao-sdk";
 import {
+  findNearestStation,
   lineColor,
   searchNearby,
   searchStations,
@@ -111,6 +112,30 @@ const COPY = {
     en: "Fare gate tips for this station are coming soon",
   },
   kakaoLink: { ko: "카카오맵에서 보기", en: "View on Kakao Map" },
+  myLocation: { ko: "내 위치로 가장 가까운 역 찾기", en: "Find the station nearest to me" },
+  locating: { ko: "현재 위치를 찾는 중…", en: "Finding your location…" },
+  nearestStation: { ko: "내 위치에서 가장 가까운 역", en: "Nearest station to you" },
+  stopTracking: { ko: "추적 끄기", en: "Stop" },
+  locDenied: {
+    ko: "위치 권한이 꺼져 있어요. 브라우저 설정에서 허용해 주세요",
+    en: "Location access is off. Allow it in your browser settings",
+  },
+  locUnavailable: {
+    ko: "위치 신호가 약해요. 신호가 잡히면 자동으로 갱신돼요",
+    en: "Weak location signal. It will update once a signal is found",
+  },
+  locUnsupported: {
+    ko: "이 브라우저는 위치 기능을 지원하지 않아요",
+    en: "This browser doesn't support location",
+  },
+  locNoStation: {
+    ko: "주변 5km 안에 지하철역이 없어요",
+    en: "No subway station within 5 km",
+  },
+  locLookupFailed: {
+    ko: "가까운 역을 찾지 못했어요. 이동하면 다시 시도해요",
+    en: "Couldn't find a nearby station. Will retry as you move",
+  },
   inside: { ko: "개찰구 안", en: "Inside fare gate" },
   outside: { ko: "역외", en: "Outside station" },
   unpaid: { ko: "개찰구 밖", en: "Unpaid area" },
@@ -118,6 +143,17 @@ const COPY = {
 };
 
 const WALK_METERS_PER_MINUTE = 67;
+const NEAREST_LOOKUP_METERS = 150;
+
+type LocationIssue = "denied" | "unavailable" | "unsupported" | "noStation" | "lookupFailed";
+
+const LOCATION_ISSUE_COPY: Record<LocationIssue, Localized> = {
+  denied: COPY.locDenied,
+  unavailable: COPY.locUnavailable,
+  unsupported: COPY.locUnsupported,
+  noStation: COPY.locNoStation,
+  lookupFailed: COPY.locLookupFailed,
+};
 
 const CATEGORIES: {
   id: CategoryId;
@@ -1175,6 +1211,20 @@ function layoutToLatLng(center: LatLng, x: number, y: number): LatLng {
   };
 }
 
+function distanceMeters(a: LatLng, b: LatLng) {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(h));
+}
+
+function formatDistance(meters: number) {
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`;
+}
+
 function t(value: Localized, locale: Locale) {
   return value[locale];
 }
@@ -1291,6 +1341,30 @@ function GlobeIcon() {
   );
 }
 
+function LocateIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="6.5" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+      <path
+        d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MyLocationDot() {
+  return (
+    <span className="relative flex h-6 w-6 items-center justify-center">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff3b5c]/40" />
+      <span className="relative h-4 w-4 rounded-full border-[3px] border-white bg-[#ff3b5c] shadow-md" />
+    </span>
+  );
+}
+
 function TrainLogo() {
   return (
     <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#1e3a8a] text-white shadow-sm">
@@ -1380,13 +1454,18 @@ function buildOverlays({
   items,
   activeId,
   onSelect,
+  myPosition,
 }: {
   locale: Locale;
   station: StationOption;
   items: ListItem[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  myPosition: LatLng | null;
 }): MapOverlay[] {
+  const me: MapOverlay[] = myPosition
+    ? [{ key: "my-location", position: myPosition, zIndex: 6, content: <MyLocationDot /> }]
+    : [];
   const curated = station.curated;
   const labels: MapOverlay[] = curated
     ? [
@@ -1406,6 +1485,7 @@ function buildOverlays({
     : [];
   return [
     ...labels,
+    ...me,
     ...items.map((item) => ({
       key: item.id,
       position: item.position,
@@ -1444,7 +1524,18 @@ export default function Home() {
     key: "",
     items: [],
   });
+  const [tracking, setTracking] = useState(false);
+  const [myPosition, setMyPosition] = useState<LatLng | null>(null);
+  const [nearestKey, setNearestKey] = useState<string | null>(null);
+  const [locationIssue, setLocationIssue] = useState<LocationIssue | null>(null);
+  const [fit, setFit] = useState<MapFit | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const lastLookupRef = useRef<LatLng | null>(null);
+  const lookupSeqRef = useRef(0);
+  const stationPinnedRef = useRef(false);
+  const localeRef = useRef(locale);
+  const stationKeyRef = useRef("");
   const kakaoStatus = useKakaoMaps();
 
   const trimmedQuery = query.trim();
@@ -1519,7 +1610,20 @@ export default function Home() {
     items,
     activeId,
     onSelect: setSelectedId,
+    myPosition,
   });
+
+  const nearestReady = tracking && myPosition !== null && nearestKey === station.key;
+  let locationMessage: string | null = null;
+  if (locationIssue) {
+    locationMessage = t(LOCATION_ISSUE_COPY[locationIssue], locale);
+  } else if (nearestReady && myPosition) {
+    locationMessage = `${t(COPY.nearestStation, locale)} · ${t(station.name, locale)} · ${formatDistance(
+      distanceMeters(myPosition, station.center),
+    )}`;
+  } else if (tracking) {
+    locationMessage = t(COPY.locating, locale);
+  }
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -1531,7 +1635,98 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
+  useEffect(() => {
+    localeRef.current = locale;
+    stationKeyRef.current = station.key;
+  });
+
+  useEffect(
+    () => () => {
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+    },
+    [],
+  );
+
+  function lookupNearest(here: LatLng) {
+    const seq = ++lookupSeqRef.current;
+    loadKakaoMaps()
+      .then(() => findNearestStation(here))
+      .then((found) => {
+        if (seq !== lookupSeqRef.current) return;
+        if (!found) {
+          setLocationIssue("noStation");
+          return;
+        }
+        const next = kakaoOption(found.station);
+        setLocationIssue(null);
+        setNearestKey(next.key);
+        if (next.key !== stationKeyRef.current) {
+          setStation(next);
+          setQuery(t(next.name, localeRef.current));
+          setSelectedId(null);
+        }
+        setFit({ key: `${next.key}@${seq}`, points: [here, next.center] });
+      })
+      .catch(() => {
+        if (seq !== lookupSeqRef.current) return;
+        lastLookupRef.current = null;
+        setLocationIssue("lookupFailed");
+      });
+  }
+
+  function stopTracking() {
+    if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+    watchIdRef.current = null;
+    lookupSeqRef.current += 1;
+    lastLookupRef.current = null;
+    setTracking(false);
+    setMyPosition(null);
+    setNearestKey(null);
+    setLocationIssue(null);
+  }
+
+  function startTracking() {
+    stationPinnedRef.current = false;
+    if (!("geolocation" in navigator)) {
+      setLocationIssue("unsupported");
+      return;
+    }
+    if (watchIdRef.current !== null) {
+      if (myPosition) {
+        lastLookupRef.current = myPosition;
+        lookupNearest(myPosition);
+      }
+      return;
+    }
+    setTracking(true);
+    setLocationIssue(null);
+    lastLookupRef.current = null;
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const here = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setMyPosition(here);
+        setLocationIssue((issue) => (issue === "unavailable" ? null : issue));
+        const last = lastLookupRef.current;
+        if (last && distanceMeters(last, here) < NEAREST_LOOKUP_METERS) return;
+        lastLookupRef.current = here;
+        lookupNearest(here);
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          stopTracking();
+          setLocationIssue("denied");
+        } else {
+          setLocationIssue("unavailable");
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
+    );
+  }
+
   function selectStation(next: StationOption) {
+    stationPinnedRef.current = true;
+    if (tracking) stopTracking();
+    setLocationIssue(null);
     setStation(next);
     setQuery(t(next.name, locale));
     setSelectedId(null);
@@ -1541,6 +1736,9 @@ export default function Home() {
   function selectCategory(next: CategoryId) {
     setCategory(next);
     setSelectedId(null);
+    if (!tracking && !stationPinnedRef.current && locationIssue !== "denied") {
+      startTracking();
+    }
   }
 
   function toggleLocale() {
@@ -1700,14 +1898,45 @@ export default function Home() {
             <KakaoMap
               center={station.center}
               focus={selected?.position}
+              fit={fit}
               overlays={overlays}
             />
+            <button
+              type="button"
+              onClick={startTracking}
+              aria-label={t(COPY.myLocation, locale)}
+              aria-pressed={tracking}
+              className={`absolute bottom-3 right-3 z-20 flex h-11 w-11 items-center justify-center rounded-full border bg-white shadow-[0_2px_10px_rgba(15,23,42,0.18)] ${
+                tracking ? "border-[#2563eb] text-[#2563eb]" : "border-white text-neutral-600"
+              } ${tracking && !nearestReady ? "animate-pulse" : ""}`}
+            >
+              <LocateIcon />
+            </button>
           </div>
 
           <section className="relative z-40 shrink-0 rounded-t-[22px] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_28px_rgba(15,23,42,0.08)]">
             <div className="mb-3 flex justify-center">
               <span className="h-[4px] w-10 rounded-full bg-neutral-300" />
             </div>
+            {locationMessage ? (
+              <div
+                className={`mb-3 flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-[12px] ${
+                  locationIssue ? "bg-amber-50 text-amber-800" : "bg-[#eef4ff] text-[#1d4ed8]"
+                }`}
+                role="status"
+              >
+                <p className="min-w-0 font-medium">{locationMessage}</p>
+                {tracking ? (
+                  <button
+                    type="button"
+                    onClick={stopTracking}
+                    className="shrink-0 font-semibold text-neutral-500"
+                  >
+                    {t(COPY.stopTracking, locale)}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <div className="mb-3 flex items-end justify-between gap-3">
               <h2 className="text-[18px] font-bold text-neutral-900">
                 {t(COPY.smartList, locale)}
