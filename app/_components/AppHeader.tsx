@@ -11,11 +11,13 @@ import SideDrawer from "./SideDrawer";
 export default function AppHeader({
   backHref,
   title,
+  subtitle,
   icon = <TrainLogo />,
   onLocaleChange,
 }: {
   backHref?: string;
   title?: Localized;
+  subtitle?: string;
   icon?: ReactNode;
   onLocaleChange?: (next: Locale, previous: Locale) => void;
 }) {
@@ -68,9 +70,18 @@ export default function AppHeader({
         >
           {icon}
         </button>
-        <h1 className="truncate text-[18px] font-bold tracking-tight text-neutral-900">
-          {title ? t(title, locale) : m.app.name}
-        </h1>
+        <div className="min-w-0">
+          <h1
+            className={`truncate font-bold tracking-tight text-neutral-900 ${
+              subtitle ? "text-[16px] leading-tight" : "text-[18px]"
+            }`}
+          >
+            {title ? t(title, locale) : m.app.name}
+          </h1>
+          {subtitle ? (
+            <p className="truncate text-[12px] font-semibold leading-tight text-neutral-500">{subtitle}</p>
+          ) : null}
+        </div>
       </div>
       <button
         type="button"

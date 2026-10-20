@@ -73,7 +73,7 @@ type Tile = {
   sub: Localized;
   bg: string;
   accent: string;
-  href?: "/urgent" | "/shops";
+  href?: "/urgent" | "/shops" | "/transfer";
 };
 
 const TILES: Tile[] = [
@@ -122,6 +122,7 @@ const TILES: Tile[] = [
     },
     bg: "#e5efff",
     accent: "#2563eb",
+    href: "/transfer",
   },
   {
     id: "luggage",

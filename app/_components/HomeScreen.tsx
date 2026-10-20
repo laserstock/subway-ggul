@@ -140,7 +140,7 @@ type MainAction = {
   sub: Localized;
   bg: string;
   accent: string;
-  href?: "/urgent" | "/shops";
+  href?: "/urgent" | "/shops" | "/transfer";
 };
 
 const MAIN_ACTIONS: MainAction[] = [
@@ -182,7 +182,7 @@ const MAIN_ACTIONS: MainAction[] = [
     id: "transfer",
     emoji: "🛗♿",
     title: {
-      ko: "빠른환승 & 편안길",
+      ko: "빠른환승 & 편한길",
       en: "Fast Transfer & Easy Route",
       zh: "快速换乘 & 舒适路线",
       ja: "スムーズ乗換 & らくらくルート",
@@ -195,6 +195,7 @@ const MAIN_ACTIONS: MainAction[] = [
     },
     bg: "#e5efff",
     accent: "#2563eb",
+    href: "/transfer",
   },
   {
     id: "luggage",
