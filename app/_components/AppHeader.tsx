@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { setLocale, useLocale } from "../_lib/locale";
-import { t, type Locale } from "../_lib/stations";
+import { t, type Locale, type Localized } from "../_lib/stations";
 import { GlobeIcon, TrainLogo } from "./icons";
 
 const TITLE = { ko: "지하철꿀정보", en: "Subway Tips" };
@@ -10,9 +11,13 @@ const BACK = { ko: "홈으로", en: "Home" };
 
 export default function AppHeader({
   backHref,
+  title = TITLE,
+  icon = <TrainLogo />,
   onLocaleChange,
 }: {
   backHref?: string;
+  title?: Localized;
+  icon?: ReactNode;
   onLocaleChange?: (next: Locale, previous: Locale) => void;
 }) {
   const locale = useLocale();
@@ -25,7 +30,7 @@ export default function AppHeader({
 
   return (
     <header className="flex items-center justify-between px-4 pb-2 pt-3">
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         {backHref ? (
           <Link
             href={backHref}
@@ -43,13 +48,13 @@ export default function AppHeader({
             </svg>
           </Link>
         ) : null}
-        <TrainLogo />
-        <h1 className="text-[18px] font-bold tracking-tight text-neutral-900">{t(TITLE, locale)}</h1>
+        {icon}
+        <h1 className="truncate text-[18px] font-bold tracking-tight text-neutral-900">{t(title, locale)}</h1>
       </div>
       <button
         type="button"
         onClick={toggleLocale}
-        className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[13px] font-medium"
+        className="flex shrink-0 items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[13px] font-medium"
         aria-label="Change language"
       >
         <GlobeIcon />

@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import AppHeader from "./AppHeader";
+import BottomNav, { type NavTab } from "./BottomNav";
+import ReportSheet from "./ReportSheet";
 import StationSearch from "./StationSearch";
+import { Toast, useToast } from "./Toast";
 import { useLocale } from "../_lib/locale";
-import { addReport, formatAgo, toggleLike, useNow, useStationReports } from "../_lib/reports";
+import { formatAgo, toggleLike, useNow, useStationReports } from "../_lib/reports";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
 import {
   distanceMeters,
@@ -49,24 +52,7 @@ const COPY = {
   reportCta: { ko: "나도 1초 제보하기", en: "Report in 1 second" },
   like: { ko: "추천", en: "Like" },
   comingSoon: { ko: "곧 열려요! 조금만 기다려 주세요", en: "Coming soon!" },
-  reportTitle: { ko: "에서 지금 무슨 일이 있나요?", en: ": what's happening now?" },
-  reportHint: { ko: "누르면 바로 등록돼요", en: "Tap to post instantly" },
-  reportPlaceholder: { ko: "직접 입력 (최대 60자)", en: "Write your own (max 60 chars)" },
-  reportSubmit: { ko: "등록", en: "Post" },
-  reportNeedStation: {
-    ko: "위치를 허용하거나 역을 검색하면 제보할 수 있어요",
-    en: "Allow location or search a station to report",
-  },
-  reportLocalNote: {
-    ko: "베타: 제보는 이 기기에만 저장돼요",
-    en: "Beta: reports are saved on this device only",
-  },
   reportDone: { ko: "제보가 등록됐어요. 고마워요!", en: "Report posted. Thank you!" },
-  close: { ko: "닫기", en: "Close" },
-  tabHome: { ko: "홈", en: "Home" },
-  tabSearch: { ko: "검색", en: "Search" },
-  tabMine: { ko: "내 역", en: "My Stn" },
-  tabReport: { ko: "제보", en: "Report" },
 };
 
 type MainAction = {
@@ -77,6 +63,7 @@ type MainAction = {
   sub: Localized;
   bg: string;
   accent: string;
+  href?: "/urgent" | "/shops";
   category?: CategoryId;
 };
 
@@ -89,7 +76,7 @@ const MAIN_ACTIONS: MainAction[] = [
     sub: { ko: "개찰구 안! 3초 비교 →", en: "Inside the gate! 3-sec compare →" },
     bg: "#fde9ec",
     accent: "#e5484d",
-    category: "pharmacy",
+    href: "/urgent",
   },
   {
     id: "shops",
@@ -98,6 +85,7 @@ const MAIN_ACTIONS: MainAction[] = [
     sub: { ko: "올영 · 다이소 · 카페 · 편의점", en: "Olive Young · Daiso · Cafe · Store" },
     bg: "#fdf1df",
     accent: "#b45309",
+    href: "/shops",
     category: "oliveyoung",
   },
   {
@@ -118,62 +106,9 @@ const MAIN_ACTIONS: MainAction[] = [
   },
 ];
 
-const QUICK_REPORTS: { emoji: string; text: Localized }[] = [
-  { emoji: "🧻", text: { ko: "화장실 휴지 있어요", en: "Restroom has tissue" } },
-  { emoji: "🚧", text: { ko: "화장실 청소·고장 중", en: "Restroom closed for cleaning/repair" } },
-  { emoji: "🛗", text: { ko: "엘리베이터 정상 운행", en: "Elevator is working" } },
-  { emoji: "⚠️", text: { ko: "에스컬레이터 고장", en: "Escalator out of order" } },
-  { emoji: "👥", text: { ko: "지금 많이 붐벼요", en: "Very crowded right now" } },
-  { emoji: "🧳", text: { ko: "T-Locker 빈자리 있어요", en: "T-Locker has free space" } },
-];
-
-type NavTab = "home" | "search" | "station" | "report";
-
-const NAV_TABS: { id: NavTab; label: Localized }[] = [
-  { id: "home", label: COPY.tabHome },
-  { id: "search", label: COPY.tabSearch },
-  { id: "station", label: COPY.tabMine },
-  { id: "report", label: COPY.tabReport },
-];
-
 function stationLabel(station: StationOption, locale: Locale) {
   const lines = t(station.lines, locale);
   return lines ? `${t(station.name, locale)} (${lines})` : t(station.name, locale);
-}
-
-function NavIcon({ name }: { name: NavTab }) {
-  const common = {
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    fill: "none",
-  };
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
-      {name === "home" ? <path {...common} d="M4 11l8-7 8 7v8.5a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z" /> : null}
-      {name === "search" ? (
-        <>
-          <circle {...common} cx="11" cy="11" r="6.5" />
-          <path {...common} d="M20 20l-4-4" />
-        </>
-      ) : null}
-      {name === "station" ? (
-        <>
-          <rect {...common} x="6" y="3.5" width="12" height="13" rx="3" />
-          <path {...common} d="M6 11h12M9.5 20.5l1.5-4M14.5 20.5l-1.5-4" />
-          <circle cx="9.5" cy="13.8" r="1" fill="currentColor" />
-          <circle cx="14.5" cy="13.8" r="1" fill="currentColor" />
-        </>
-      ) : null}
-      {name === "report" ? (
-        <>
-          <path {...common} d="M4 10.5v3a1 1 0 0 0 1 1h2l6 4V5.5l-6 4H5a1 1 0 0 0-1 1z" />
-          <path {...common} d="M17 9a4 4 0 0 1 0 6" />
-        </>
-      ) : null}
-    </svg>
-  );
 }
 
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -192,28 +127,19 @@ export default function HomeScreen() {
   const [destination, setDestination] = useState<StationOption | null>(null);
   const [query, setQuery] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast, showToast } = useToast();
   const now = useNow();
   const mainRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const toastTimerRef = useRef<number | null>(null);
 
   const station = destination ?? tracker.nearest;
   const reports = useStationReports(station);
 
-  useEffect(
-    () => () => {
-      if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
-    },
-    [],
-  );
-
-  function showToast(message: string) {
-    setToast(message);
-    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = window.setTimeout(() => setToast(null), 2200);
-  }
+  useEffect(() => {
+    if (window.location.hash !== "#search") return;
+    window.history.replaceState(null, "", window.location.pathname);
+    searchInputRef.current?.focus();
+  }, []);
 
   function selectDestination(next: StationOption) {
     setDestination(next);
@@ -232,18 +158,15 @@ export default function HomeScreen() {
     }
   }
 
-  function actionHref(action: MainAction) {
+  function actionHref(href: string, action: MainAction) {
     const params = station ? stationParams(station) : new URLSearchParams();
     if (!destination) params.set("near", "1");
     if (action.category) params.set("category", action.category);
-    return `/shops?${params.toString()}`;
+    return `${href}?${params.toString()}`;
   }
 
-  function postReport(text: Localized) {
-    if (!station) return;
-    addReport(station, text);
+  function onReportPosted() {
     setSheetOpen(false);
-    setDraft("");
     showToast(t(COPY.reportDone, locale));
   }
 
@@ -380,10 +303,10 @@ export default function HomeScreen() {
               );
               const className =
                 "block min-h-[132px] rounded-2xl p-3.5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition active:scale-[0.98]";
-              return action.category ? (
+              return action.href ? (
                 <Link
                   key={action.id}
-                  href={actionHref(action)}
+                  href={actionHref(action.href, action)}
                   className={className}
                   style={{ backgroundColor: action.bg }}
                 >
@@ -456,95 +379,12 @@ export default function HomeScreen() {
           </button>
         </main>
 
-        <nav className="grid shrink-0 grid-cols-4 border-t border-neutral-200 bg-white pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5">
-          {NAV_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onTab(tab.id)}
-              aria-current={tab.id === "home" ? "page" : undefined}
-              className={`flex flex-col items-center gap-0.5 py-1 text-[11px] font-semibold ${
-                tab.id === "home" ? "text-neutral-900" : "text-neutral-400"
-              }`}
-            >
-              <NavIcon name={tab.id} />
-              {t(tab.label, locale)}
-            </button>
-          ))}
-        </nav>
+        <BottomNav active="home" onTab={onTab} />
 
-        {toast ? (
-          <div
-            role="status"
-            className="pointer-events-none absolute inset-x-6 bottom-20 z-[70] rounded-xl bg-neutral-900/90 px-4 py-2.5 text-center text-[13px] font-medium text-white"
-          >
-            {toast}
-          </div>
-        ) : null}
+        <Toast message={toast} />
 
         {sheetOpen ? (
-          <div className="absolute inset-0 z-[60] flex items-end bg-black/35" role="dialog" aria-modal>
-            <button
-              type="button"
-              aria-label={t(COPY.close, locale)}
-              className="absolute inset-0"
-              onClick={() => setSheetOpen(false)}
-            />
-            <div className="relative w-full rounded-t-3xl bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3">
-              <div className="mb-3 flex justify-center">
-                <span className="h-[4px] w-10 rounded-full bg-neutral-300" />
-              </div>
-              {station ? (
-                <>
-                  <h2 className="text-[17px] font-extrabold text-neutral-900">
-                    {t(station.name, locale)}
-                    {t(COPY.reportTitle, locale)}
-                  </h2>
-                  <p className="mt-0.5 text-[12px] text-neutral-500">{t(COPY.reportHint, locale)}</p>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {QUICK_REPORTS.map((item) => (
-                      <button
-                        key={item.text.ko}
-                        type="button"
-                        onClick={() => postReport(item.text)}
-                        className="flex items-center gap-1.5 rounded-xl border border-neutral-200 px-3 py-2.5 text-left text-[13px] font-medium text-neutral-800 active:bg-neutral-50"
-                      >
-                        <span aria-hidden>{item.emoji}</span>
-                        {t(item.text, locale)}
-                      </button>
-                    ))}
-                  </div>
-                  <form
-                    className="mt-3 flex gap-2"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const text = draft.trim();
-                      if (text) postReport({ ko: text, en: text });
-                    }}
-                  >
-                    <input
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value.slice(0, 60))}
-                      placeholder={t(COPY.reportPlaceholder, locale)}
-                      className="min-w-0 flex-1 rounded-xl bg-[#f3f4f6] px-3 py-2.5 text-[13px] outline-none placeholder:text-neutral-400"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!draft.trim()}
-                      className="shrink-0 rounded-xl bg-[#1e3a8a] px-4 text-[13px] font-bold text-white disabled:bg-neutral-300"
-                    >
-                      {t(COPY.reportSubmit, locale)}
-                    </button>
-                  </form>
-                  <p className="mt-2 text-[11px] text-neutral-400">{t(COPY.reportLocalNote, locale)}</p>
-                </>
-              ) : (
-                <p className="py-6 text-center text-[13px] text-neutral-500">
-                  {t(COPY.reportNeedStation, locale)}
-                </p>
-              )}
-            </div>
-          </div>
+          <ReportSheet station={station} onClose={() => setSheetOpen(false)} onPosted={onReportPosted} />
         ) : null}
       </div>
     </div>

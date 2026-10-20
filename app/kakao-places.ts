@@ -16,7 +16,7 @@ export type NearbyPlace = {
 };
 
 export type NearbyQuery =
-  | { kind: "category"; code: "PM9" | "CE7" | "CS2"; radius: number }
+  | { kind: "category"; code: "PM9" | "CE7" | "CS2" | "HP8"; radius: number }
   | { kind: "keyword"; keyword: string; radius: number };
 
 const LINE_COLORS: [RegExp, string][] = [
@@ -114,6 +114,41 @@ export function findNearestStation(
         radius: 5000,
         sort: kakao.maps.services.SortBy.DISTANCE,
         size: 5,
+      },
+    );
+  });
+}
+
+export function normalizeLine(line: string) {
+  return line.replace(/[\s·]/g, "");
+}
+
+export function findLineStations(line: string, center: LatLng): Promise<KakaoStation[]> {
+  const target = normalizeLine(line);
+  return new Promise((resolve, reject) => {
+    places().keywordSearch(
+      target,
+      (result, status) => {
+        if (status === kakao.maps.services.Status.ERROR) {
+          reject(new Error("Kakao line search failed"));
+          return;
+        }
+        const items = status === kakao.maps.services.Status.OK ? result : [];
+        resolve(
+          items.flatMap((item) => {
+            const { name, line: found } = splitStationName(item.place_name);
+            return normalizeLine(found) === target
+              ? [{ name, lines: [found], center: toLatLng(item) }]
+              : [];
+          }),
+        );
+      },
+      {
+        category_group_code: "SW8",
+        location: new kakao.maps.LatLng(center.lat, center.lng),
+        radius: 8000,
+        sort: kakao.maps.services.SortBy.DISTANCE,
+        size: 15,
       },
     );
   });
