@@ -13,6 +13,7 @@ import pharmacyIcon from "@/public/icons/pharmacy.png";
 import oliveyoungIcon from "@/public/icons/oliveyoung.png";
 import daisoIcon from "@/public/icons/daiso.png";
 import cafeIcon from "@/public/icons/cafe.png";
+import KakaoMap, { type LatLng, type MapOverlay } from "./KakaoMap";
 
 type Locale = "ko" | "en";
 type Localized = { ko: string; en: string };
@@ -45,27 +46,15 @@ type Exit = {
   y: number;
 };
 
-type MapLabel = {
-  text: Localized;
-  x: number;
-  y: number;
-  size: number;
-};
-
 type Station = {
   id: StationId;
   name: Localized;
   aliases: string[];
   lines: Localized;
   insidePaid: Localized;
-  extraLineBadge?: Localized;
-  map: {
-    primary: string;
-    secondary: string;
-    angle: number;
-  };
+  center: LatLng;
+  color: string;
   exits: Exit[];
-  labels: MapLabel[];
   places: Place[];
 };
 
@@ -107,8 +96,8 @@ const STATIONS: Station[] = [
       ko: "홍대입구역 역사 내(개찰구 안)",
       en: "Inside station (paid area)",
     },
-    extraLineBadge: { ko: "경의, 경의중앙선", en: "Gyeongui–Jungang" },
-    map: { primary: "#2fba4e", secondary: "#77c4a3", angle: -16 },
+    center: { lat: 37.5575, lng: 126.9245 },
+    color: "#2fba4e",
     exits: [
       { id: "e9a", label: { ko: "9번 출구", en: "Exit 9" }, x: 39, y: 24 },
       { id: "e2", label: { ko: "2번 출구", en: "Exit 2" }, x: 18, y: 34 },
@@ -118,11 +107,6 @@ const STATIONS: Station[] = [
       { id: "e9b", label: { ko: "9번 출구", en: "Exit 9" }, x: 27, y: 58 },
       { id: "e7", label: { ko: "7번 출구", en: "Exit 7" }, x: 43, y: 59 },
       { id: "e4", label: { ko: "4번 출구", en: "Exit 4" }, x: 55, y: 54 },
-    ],
-    labels: [
-      { text: { ko: "동교동", en: "Donggyo" }, x: 5, y: 16, size: 10 },
-      { text: { ko: "서교동", en: "Seogyo" }, x: 6, y: 40, size: 10 },
-      { text: { ko: "서울의대", en: "Med School" }, x: 84, y: 11, size: 10 },
     ],
     places: [
       {
@@ -324,8 +308,8 @@ const STATIONS: Station[] = [
       ko: "강남역 역사 내(개찰구 안)",
       en: "Inside Gangnam station (paid area)",
     },
-    extraLineBadge: { ko: "신분당선", en: "Shinbundang" },
-    map: { primary: "#2fba4e", secondary: "#d31145", angle: 2 },
+    center: { lat: 37.4979, lng: 127.0276 },
+    color: "#2fba4e",
     exits: [
       { id: "g11", label: { ko: "11번 출구", en: "Exit 11" }, x: 18, y: 28 },
       { id: "g10", label: { ko: "10번 출구", en: "Exit 10" }, x: 32, y: 22 },
@@ -333,11 +317,6 @@ const STATIONS: Station[] = [
       { id: "g2", label: { ko: "2번 출구", en: "Exit 2" }, x: 78, y: 44 },
       { id: "g1", label: { ko: "1번 출구", en: "Exit 1" }, x: 16, y: 50 },
       { id: "g4", label: { ko: "4번 출구", en: "Exit 4" }, x: 54, y: 56 },
-    ],
-    labels: [
-      { text: { ko: "강남대로", en: "Gangnam-daero" }, x: 8, y: 14, size: 10 },
-      { text: { ko: "역삼동", en: "Yeoksam" }, x: 78, y: 12, size: 10 },
-      { text: { ko: "서초동", en: "Seocho" }, x: 6, y: 58, size: 10 },
     ],
     places: [
       {
@@ -542,8 +521,8 @@ const STATIONS: Station[] = [
       ko: "서울역 역사 내(개찰구 안)",
       en: "Inside Seoul Station (paid area)",
     },
-    extraLineBadge: { ko: "1호선 · 4호선", en: "Line 1 · Line 4" },
-    map: { primary: "#0032a0", secondary: "#00a5de", angle: 10 },
+    center: { lat: 37.5547, lng: 126.9707 },
+    color: "#0032a0",
     exits: [
       { id: "s1", label: { ko: "1번 출구", en: "Exit 1" }, x: 20, y: 30 },
       { id: "s3", label: { ko: "3번 출구", en: "Exit 3" }, x: 38, y: 22 },
@@ -551,11 +530,6 @@ const STATIONS: Station[] = [
       { id: "s9", label: { ko: "9번 출구", en: "Exit 9" }, x: 78, y: 48 },
       { id: "s15", label: { ko: "15번 출구", en: "Exit 15" }, x: 18, y: 54 },
       { id: "s8", label: { ko: "8번 출구", en: "Exit 8" }, x: 50, y: 58 },
-    ],
-    labels: [
-      { text: { ko: "남대문", en: "Namdaemun" }, x: 8, y: 16, size: 10 },
-      { text: { ko: "회현동", en: "Hoehyeon" }, x: 80, y: 14, size: 10 },
-      { text: { ko: "서울로", en: "Seoullo" }, x: 76, y: 58, size: 10 },
     ],
     places: [
       {
@@ -757,18 +731,13 @@ const STATIONS: Station[] = [
       ko: "일원역 역사 내(개찰구 안)",
       en: "Inside Irwon station (paid area)",
     },
-    extraLineBadge: { ko: "3호선", en: "Line 3" },
-    map: { primary: "#ef7c1b", secondary: "#f4c790", angle: -8 },
+    center: { lat: 37.4837, lng: 127.0843 },
+    color: "#ef7c1b",
     exits: [
       { id: "i1", label: { ko: "1번 출구", en: "Exit 1" }, x: 22, y: 32 },
       { id: "i2", label: { ko: "2번 출구", en: "Exit 2" }, x: 70, y: 28 },
       { id: "i3", label: { ko: "3번 출구", en: "Exit 3" }, x: 74, y: 50 },
       { id: "i4", label: { ko: "4번 출구", en: "Exit 4" }, x: 28, y: 54 },
-    ],
-    labels: [
-      { text: { ko: "일원동", en: "Irwon-dong" }, x: 8, y: 16, size: 10 },
-      { text: { ko: "삼성서울병원", en: "Samsung Hospital" }, x: 68, y: 14, size: 10 },
-      { text: { ko: "대청동", en: "Daecheong" }, x: 8, y: 58, size: 10 },
     ],
     places: [
       {
@@ -963,17 +932,15 @@ const STATIONS: Station[] = [
   },
 ];
 
-const CITY_BLOCKS = Array.from({ length: 80 }, (_, i) => {
-  const col = i % 8;
-  const row = Math.floor(i / 8);
+const LAYOUT_ORIGIN = { x: 50, y: 38 };
+const LAYOUT_SPAN = { lat: 0.0045, lng: 0.0045 };
+
+function layoutToLatLng(center: LatLng, x: number, y: number): LatLng {
   return {
-    x: 6 + col * 50 + ((i * 13) % 9),
-    y: 4 + row * 42 + ((i * 7) % 8),
-    w: 28 + ((i * 5) % 16),
-    h: 18 + ((i * 3) % 14),
-    r: 3,
+    lat: center.lat - ((y - LAYOUT_ORIGIN.y) / 100) * LAYOUT_SPAN.lat,
+    lng: center.lng + ((x - LAYOUT_ORIGIN.x) / 100) * LAYOUT_SPAN.lng,
   };
-});
+}
 
 function t(value: Localized, locale: Locale) {
   return value[locale];
@@ -1032,32 +999,6 @@ function TrainLogo() {
         <path d="M12 2c-4.6 0-8 1.35-8 4.2V15c0 1.8 1.4 3.3 3.2 3.6V21h-1.4v1.5h5.1V21h2.2v1.5h5.1V21h-1.4v-2.4c1.8-.3 3.2-1.8 3.2-3.6V6.2C20 3.35 16.6 2 12 2zm-4.2 15.1a1.35 1.35 0 1 1 0-2.7 1.35 1.35 0 0 1 0 2.7zm8.4 0a1.35 1.35 0 1 1 0-2.7 1.35 1.35 0 0 1 0 2.7zM18 12.2H6V7.1h12v5.1z" />
       </svg>
     </div>
-  );
-}
-
-function DropPin({
-  icon,
-  color = "#2f6bff",
-}: {
-  icon?: "restroom" | "dot";
-  color?: string;
-}) {
-  return (
-    <svg width="22" height="30" viewBox="0 0 22 30" aria-hidden>
-      <path
-        d="M11 0C5.15 0 0.5 4.65 0.5 10.5 0.5 18.4 11 30 11 30s10.5-11.6 10.5-19.5C21.5 4.65 16.85 0 11 0z"
-        fill={color}
-      />
-      <circle cx="11" cy="10.5" r="5.2" fill="white" />
-      {icon === "restroom" ? (
-        <g fill={color}>
-          <circle cx="11" cy="7.8" r="1.1" />
-          <rect x="9.6" y="9.2" width="2.8" height="3.4" rx="0.6" />
-        </g>
-      ) : (
-        <circle cx="11" cy="10.5" r="2.4" fill={color} />
-      )}
-    </svg>
   );
 }
 
@@ -1127,14 +1068,14 @@ function YellowLabel({
 }) {
   return (
     <span
-      className={`inline-block rounded-[6px] bg-[#f1d24f] px-[7px] py-[3px] text-[11px] font-semibold leading-none text-neutral-800 shadow-[0_1px_2px_rgba(0,0,0,0.18)] ${className}`}
+      className={`inline-block whitespace-nowrap rounded-[6px] bg-[#f1d24f] px-[7px] py-[3px] text-[11px] font-semibold leading-none text-neutral-800 shadow-[0_1px_2px_rgba(0,0,0,0.18)] ${className}`}
     >
       {children}
     </span>
   );
 }
 
-function MockMap({
+function buildOverlays({
   locale,
   station,
   places,
@@ -1148,164 +1089,27 @@ function MockMap({
   selectedId: string | null;
   onSelect: (id: string) => void;
   category: CategoryId;
-}) {
-  return (
-    <div className="absolute inset-0 overflow-hidden bg-[#eef1f3]">
-      <svg
-        viewBox="0 0 400 420"
-        className="h-full w-full"
-        preserveAspectRatio="xMidYMid slice"
-        aria-hidden
-      >
-        <rect width="400" height="420" fill="#eef1f3" />
-        <g stroke="#e2e6ea" strokeWidth="1">
-          {Array.from({ length: 18 }).map((_, i) => (
-            <line key={`h-${i}`} x1="0" y1={i * 24} x2="400" y2={i * 24} />
-          ))}
-          {Array.from({ length: 18 }).map((_, i) => (
-            <line key={`v-${i}`} x1={i * 24} y1="0" x2={i * 24} y2="420" />
-          ))}
-        </g>
-
-        {CITY_BLOCKS.map((b, i) => (
-          <rect
-            key={i}
-            x={b.x}
-            y={b.y}
-            width={b.w}
-            height={b.h}
-            rx={b.r}
-            fill="#f7f8f9"
-            stroke="#e4e8ec"
-            strokeWidth="1"
-          />
-        ))}
-
-        <g stroke="#d5dbe2" strokeWidth="20" strokeLinecap="square">
-          <line x1="-20" y1="96" x2="430" y2="78" />
-          <line x1="78" y1="-20" x2="52" y2="450" />
-          <line x1="198" y1="-20" x2="238" y2="450" />
-          <line x1="-20" y1="248" x2="430" y2="226" />
-          <line x1="318" y1="-20" x2="348" y2="450" />
-        </g>
-        <g stroke="#ffffff" strokeWidth="15" strokeLinecap="square">
-          <line x1="-20" y1="96" x2="430" y2="78" />
-          <line x1="78" y1="-20" x2="52" y2="450" />
-          <line x1="198" y1="-20" x2="238" y2="450" />
-          <line x1="-20" y1="248" x2="430" y2="226" />
-          <line x1="318" y1="-20" x2="348" y2="450" />
-        </g>
-
-        <path
-          d="M170 62 C 250 78, 330 118, 430 148"
-          fill="none"
-          stroke={station.map.secondary}
-          strokeWidth="10"
-          strokeLinecap="round"
-        />
-
-        <g transform={`translate(200 168) rotate(${station.map.angle})`}>
-          <rect
-            x="-240"
-            y="-8"
-            width="170"
-            height="16"
-            rx="8"
-            fill={station.map.primary}
-          />
-          <rect
-            x="-78"
-            y="-18"
-            width="210"
-            height="36"
-            rx="11"
-            fill={station.map.primary}
-          />
-          <rect
-            x="124"
-            y="-8"
-            width="190"
-            height="16"
-            rx="8"
-            fill={station.map.primary}
-          />
-          <rect x="-64" y="-3.5" width="182" height="7" rx="3.5" fill="#e7f8ed" />
-        </g>
-
-        <path
-          d="M 128 178 C 176 148, 238 140, 286 158 C 318 174, 322 208, 286 232 C 248 256, 196 250, 164 222 C 142 202, 134 188, 128 178"
-          fill="none"
-          stroke="#3b6dff"
-          strokeWidth="2.3"
-          strokeLinejoin="round"
-        />
-      </svg>
-
-      {station.extraLineBadge ? (
-        <div className="pointer-events-none absolute right-[16%] top-[12%]">
-          <span
-            className="rounded-md px-2 py-[3px] text-[11px] font-semibold text-white shadow-sm"
-            style={{ backgroundColor: station.map.secondary }}
-          >
-            {t(station.extraLineBadge, locale)}
-          </span>
-        </div>
-      ) : null}
-
-      <div className="pointer-events-none absolute left-[57%] top-[27%] z-10 -translate-x-1/2">
-        <span className="text-[13px] font-extrabold tracking-tight text-neutral-900 [text-shadow:0_0_5px_#fff,0_0_8px_#fff]">
-          {t(station.name, locale)}
-        </span>
-      </div>
-
-      <div className="pointer-events-none absolute left-[49%] top-[40%] z-10 -translate-x-1/2">
-        <YellowLabel>{t(station.insidePaid, locale)}</YellowLabel>
-      </div>
-
-      {station.exits.map((exit) => (
-        <div
-          key={exit.id}
-          className="pointer-events-none absolute z-10"
-          style={{ left: `${exit.x}%`, top: `${exit.y}%` }}
-        >
-          <YellowLabel>{t(exit.label, locale)}</YellowLabel>
-        </div>
-      ))}
-
-      {station.labels.map((label) => (
-        <div
-          key={label.text.ko}
-          className="pointer-events-none absolute whitespace-pre text-neutral-400"
-          style={{
-            left: `${label.x}%`,
-            top: `${label.y}%`,
-            fontSize: `${label.size}px`,
-            lineHeight: 1.25,
-          }}
-        >
-          {t(label.text, locale)}
-        </div>
-      ))}
-
-      <div className="absolute left-[50%] top-[31%] z-20 -translate-x-1/2">
-        <DropPin icon="restroom" />
-      </div>
-      <div className="absolute left-[61%] top-[24%] z-20">
-        <div className="relative">
-          <DropPin />
-          <NumberBadge n={2} />
-        </div>
-      </div>
-      <div className="absolute left-[70%] top-[14%] z-20">
-        <DropPin />
-      </div>
-
-      {places.map((place) => (
+}): MapOverlay[] {
+  return [
+    {
+      key: `${station.id}-paid-area`,
+      position: layoutToLatLng(station.center, 49, 47),
+      zIndex: 1,
+      content: <YellowLabel>{t(station.insidePaid, locale)}</YellowLabel>,
+    },
+    ...station.exits.map((exit) => ({
+      key: `${station.id}-${exit.id}`,
+      position: layoutToLatLng(station.center, exit.x, exit.y),
+      zIndex: 1,
+      content: <YellowLabel>{t(exit.label, locale)}</YellowLabel>,
+    })),
+    ...places.map((place) => ({
+      key: place.id,
+      position: layoutToLatLng(station.center, place.x, place.y),
+      zIndex: place.id === selectedId ? 4 : 3,
+      content: (
         <button
-          key={place.id}
           type="button"
-          className="absolute z-30 -translate-x-1/2 -translate-y-1/2"
-          style={{ left: `${place.x}%`, top: `${place.y}%` }}
           onClick={() => onSelect(place.id)}
           aria-label={t(place.name, locale)}
         >
@@ -1314,9 +1118,9 @@ function MockMap({
             {place.badge ? <NumberBadge n={place.badge} /> : null}
           </span>
         </button>
-      ))}
-    </div>
-  );
+      ),
+    })),
+  ];
 }
 
 export default function Home() {
@@ -1343,6 +1147,15 @@ export default function Home() {
         .sort((a, b) => a.walkMinutes - b.walkMinutes),
     [station, category],
   );
+
+  const overlays = buildOverlays({
+    locale,
+    station,
+    places: filtered,
+    selectedId,
+    onSelect: setSelectedId,
+    category,
+  });
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -1496,7 +1309,7 @@ export default function Home() {
                       </span>
                       <span
                         className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: item.map.primary }}
+                        style={{ backgroundColor: item.color }}
                       />
                     </button>
                   );
@@ -1527,17 +1340,12 @@ export default function Home() {
           })}
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          <MockMap
-            locale={locale}
-            station={station}
-            places={filtered}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            category={category}
-          />
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#eef1f3]">
+          <div className="relative isolate min-h-0 flex-1">
+            <KakaoMap center={station.center} overlays={overlays} />
+          </div>
 
-          <section className="absolute inset-x-0 bottom-0 z-40 rounded-t-[22px] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_28px_rgba(15,23,42,0.08)]">
+          <section className="relative z-40 shrink-0 rounded-t-[22px] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_28px_rgba(15,23,42,0.08)]">
             <div className="mb-3 flex justify-center">
               <span className="h-[4px] w-10 rounded-full bg-neutral-300" />
             </div>
