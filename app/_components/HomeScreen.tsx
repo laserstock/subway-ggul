@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import AppHeader from "./AppHeader";
 import BottomNav, { type NavTab } from "./BottomNav";
 import ReportSheet from "./ReportSheet";
 import StationSearch from "./StationSearch";
 import { Toast, useToast } from "./Toast";
+import { useHomeResetToken } from "../_lib/homeReset";
 import { useLocale } from "../_lib/locale";
 import { formatAgo, toggleLike, useNow, useStationReports } from "../_lib/reports";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
@@ -128,6 +129,15 @@ export default function HomeScreen() {
   const now = useNow();
   const mainRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const resetToken = useHomeResetToken();
+  const [handledReset, setHandledReset] = useState(resetToken);
+
+  if (handledReset !== resetToken) {
+    setHandledReset(resetToken);
+    setDestination(null);
+    setQuery("");
+    setSheetOpen(false);
+  }
 
   const station = destination ?? tracker.nearest;
   const reports = useStationReports(station);
@@ -137,6 +147,16 @@ export default function HomeScreen() {
     window.history.replaceState(null, "", window.location.pathname);
     searchInputRef.current?.focus();
   }, []);
+
+  const onHomeReset = useEffectEvent(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    searchInputRef.current?.blur();
+    if (!tracker.tracking) tracker.start();
+  });
+
+  useEffect(() => {
+    if (resetToken > 0) onHomeReset();
+  }, [resetToken]);
 
   function selectDestination(next: StationOption) {
     setDestination(next);

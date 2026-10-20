@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useCallback, useId, useState, type ReactNode } from "react";
 import { setLocale, useLocale } from "../_lib/locale";
 import { t, type Locale, type Localized } from "../_lib/stations";
 import { GlobeIcon, TrainLogo } from "./icons";
+import SideDrawer from "./SideDrawer";
 
 const TITLE = { ko: "지하철꿀정보", en: "Subway Tips" };
 const BACK = { ko: "홈으로", en: "Home" };
+const OPEN_MENU = { ko: "메뉴 열기", en: "Open menu" };
 
 export default function AppHeader({
   backHref,
@@ -21,6 +23,9 @@ export default function AppHeader({
   onLocaleChange?: (next: Locale, previous: Locale) => void;
 }) {
   const locale = useLocale();
+  const drawerId = useId();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
 
   function toggleLocale() {
     const next: Locale = locale === "ko" ? "en" : "ko";
@@ -48,7 +53,17 @@ export default function AppHeader({
             </svg>
           </Link>
         ) : null}
-        {icon}
+        <button
+          type="button"
+          onClick={() => setIsDrawerOpen(true)}
+          aria-label={t(OPEN_MENU, locale)}
+          aria-haspopup="dialog"
+          aria-expanded={isDrawerOpen}
+          aria-controls={drawerId}
+          className="shrink-0 rounded-[10px] transition-transform active:scale-95"
+        >
+          {icon}
+        </button>
         <h1 className="truncate text-[18px] font-bold tracking-tight text-neutral-900">{t(title, locale)}</h1>
       </div>
       <button
@@ -62,6 +77,7 @@ export default function AppHeader({
         <span className="text-neutral-300">/</span>
         <span className={locale === "en" ? "font-bold text-[#2563eb]" : "text-neutral-400"}>EN</span>
       </button>
+      <SideDrawer id={drawerId} isOpen={isDrawerOpen} onClose={closeDrawer} />
     </header>
   );
 }

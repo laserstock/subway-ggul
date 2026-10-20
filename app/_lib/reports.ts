@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import type { Localized, StationOption } from "./stations";
+import { STATIONS, type Localized, type StationOption } from "./stations";
 
 export type Report = {
   id: string;
@@ -11,7 +11,20 @@ export type Report = {
   createdAt: number;
 };
 
-type StoredReport = { id: string; stationKey: string; text: Localized; createdAt: number };
+export type MyReport = {
+  id: string;
+  stationName: Localized;
+  text: Localized;
+  createdAt: number;
+};
+
+type StoredReport = {
+  id: string;
+  stationKey: string;
+  stationName?: Localized;
+  text: Localized;
+  createdAt: number;
+};
 type Stored = { reports: StoredReport[]; liked: string[] };
 
 const STORAGE_KEY = "subway-ggul:reports";
@@ -132,11 +145,38 @@ export function useStationReports(station: StationOption | null): Report[] {
   }, [raw, station]);
 }
 
+function stationNameFromKey(key: string): Localized {
+  const curated = STATIONS.find((station) => station.id === key);
+  if (curated) return curated.name;
+  const name = key.replace(/^kakao:/, "");
+  return { ko: name, en: name };
+}
+
+export function useMyReports(): MyReport[] {
+  const raw = useSyncExternalStore(subscribe, readRaw, () => null);
+  return useMemo(() => {
+    return parse(raw)
+      .reports.map((report) => ({
+        id: report.id,
+        stationName: report.stationName ?? stationNameFromKey(report.stationKey),
+        text: report.text,
+        createdAt: report.createdAt,
+      }))
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }, [raw]);
+}
+
+export function deleteReport(id: string) {
+  const stored = parse(readRaw());
+  write({ ...stored, reports: stored.reports.filter((report) => report.id !== id) });
+}
+
 export function addReport(station: StationOption, text: Localized) {
   const stored = parse(readRaw());
   const report: StoredReport = {
     id: `user:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
     stationKey: station.key,
+    stationName: station.name,
     text,
     createdAt: Date.now(),
   };
