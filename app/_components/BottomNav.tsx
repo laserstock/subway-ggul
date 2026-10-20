@@ -1,16 +1,10 @@
 "use client";
 
-import { useLocale } from "../_lib/locale";
-import { t, type Localized } from "../_lib/stations";
+import { useMessages } from "../_lib/locale";
 
 export type NavTab = "home" | "search" | "station" | "report";
 
-const NAV_TABS: { id: NavTab; label: Localized }[] = [
-  { id: "home", label: { ko: "홈", en: "Home" } },
-  { id: "search", label: { ko: "검색", en: "Search" } },
-  { id: "station", label: { ko: "내 역", en: "My Stn" } },
-  { id: "report", label: { ko: "제보", en: "Report" } },
-];
+const NAV_TABS: NavTab[] = ["home", "search", "station", "report"];
 
 function NavIcon({ name }: { name: NavTab }) {
   const common = {
@@ -54,21 +48,21 @@ export default function BottomNav({
   active?: NavTab;
   onTab: (tab: NavTab) => void;
 }) {
-  const locale = useLocale();
+  const m = useMessages();
   return (
     <nav className="grid shrink-0 grid-cols-4 border-t border-neutral-200 bg-white pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5">
       {NAV_TABS.map((tab) => (
         <button
-          key={tab.id}
+          key={tab}
           type="button"
-          onClick={() => onTab(tab.id)}
-          aria-current={tab.id === active ? "page" : undefined}
+          onClick={() => onTab(tab)}
+          aria-current={tab === active ? "page" : undefined}
           className={`flex flex-col items-center gap-0.5 py-1 text-[11px] font-semibold ${
-            tab.id === active ? "text-neutral-900" : "text-neutral-400"
+            tab === active ? "text-neutral-900" : "text-neutral-400"
           }`}
         >
-          <NavIcon name={tab.id} />
-          {t(tab.label, locale)}
+          <NavIcon name={tab} />
+          {m.nav[tab]}
         </button>
       ))}
     </nav>

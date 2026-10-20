@@ -1,19 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useId, useState, type ReactNode } from "react";
-import { setLocale, useLocale } from "../_lib/locale";
-import { t, type Locale, type Localized } from "../_lib/stations";
+import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import { LANGUAGES, t, type Locale, type Localized } from "../_lib/i18n";
+import { setLocale, useLocale, useMessages } from "../_lib/locale";
 import { GlobeIcon, TrainLogo } from "./icons";
+import LanguageSheet from "./LanguageSheet";
 import SideDrawer from "./SideDrawer";
-
-const TITLE = { ko: "지하철꿀정보", en: "Subway Tips" };
-const BACK = { ko: "홈으로", en: "Home" };
-const OPEN_MENU = { ko: "메뉴 열기", en: "Open menu" };
 
 export default function AppHeader({
   backHref,
-  title = TITLE,
+  title,
   icon = <TrainLogo />,
   onLocaleChange,
 }: {
@@ -23,12 +20,19 @@ export default function AppHeader({
   onLocaleChange?: (next: Locale, previous: Locale) => void;
 }) {
   const locale = useLocale();
+  const m = useMessages();
   const drawerId = useId();
+  const languageSheetId = useId();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isLanguageSheetOpen, setIsLanguageSheetOpen] = useState(false);
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
+  const closeLanguageSheet = useCallback(() => setIsLanguageSheetOpen(false), []);
 
-  function toggleLocale() {
-    const next: Locale = locale === "ko" ? "en" : "ko";
+  useEffect(() => {
+    document.documentElement.lang = LANGUAGES[locale].htmlLang;
+  }, [locale]);
+
+  function changeLocale(next: Locale) {
     onLocaleChange?.(next, locale);
     setLocale(next);
   }
@@ -39,7 +43,7 @@ export default function AppHeader({
         {backHref ? (
           <Link
             href={backHref}
-            aria-label={t(BACK, locale)}
+            aria-label={m.header.home}
             className="-ml-1 flex h-9 w-7 items-center justify-center text-neutral-700"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -56,7 +60,7 @@ export default function AppHeader({
         <button
           type="button"
           onClick={() => setIsDrawerOpen(true)}
-          aria-label={t(OPEN_MENU, locale)}
+          aria-label={m.header.openMenu}
           aria-haspopup="dialog"
           aria-expanded={isDrawerOpen}
           aria-controls={drawerId}
@@ -64,20 +68,32 @@ export default function AppHeader({
         >
           {icon}
         </button>
-        <h1 className="truncate text-[18px] font-bold tracking-tight text-neutral-900">{t(title, locale)}</h1>
+        <h1 className="truncate text-[18px] font-bold tracking-tight text-neutral-900">
+          {title ? t(title, locale) : m.app.name}
+        </h1>
       </div>
       <button
         type="button"
-        onClick={toggleLocale}
-        className="flex shrink-0 items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[13px] font-medium"
-        aria-label="Change language"
+        onClick={() => setIsLanguageSheetOpen(true)}
+        aria-label={`${m.header.changeLanguage} (${LANGUAGES[locale].native})`}
+        aria-haspopup="dialog"
+        aria-expanded={isLanguageSheetOpen}
+        aria-controls={languageSheetId}
+        className="flex shrink-0 items-center gap-1 rounded-full border border-neutral-200 bg-white py-1.5 pl-2.5 pr-2 text-[13px] font-bold text-[#2563eb] transition-transform active:scale-95"
       >
         <GlobeIcon />
-        <span className={locale === "ko" ? "font-bold text-[#2563eb]" : "text-neutral-400"}>KO</span>
-        <span className="text-neutral-300">/</span>
-        <span className={locale === "en" ? "font-bold text-[#2563eb]" : "text-neutral-400"}>EN</span>
+        <span className="min-w-[20px] text-center">{LANGUAGES[locale].short}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-neutral-400" aria-hidden>
+          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       <SideDrawer id={drawerId} isOpen={isDrawerOpen} onClose={closeDrawer} />
+      <LanguageSheet
+        id={languageSheetId}
+        isOpen={isLanguageSheetOpen}
+        onClose={closeLanguageSheet}
+        onSelect={changeLocale}
+      />
     </header>
   );
 }

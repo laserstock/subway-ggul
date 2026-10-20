@@ -1,16 +1,17 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { Locale } from "./stations";
+import { DEFAULT_LOCALE, LANGUAGES, isLocale, type Locale } from "./i18n";
+import { getMessages, type Messages } from "./messages";
 
 const STORAGE_KEY = "subway-ggul:locale";
 const listeners = new Set<() => void>();
-let fallback: Locale = "ko";
+let fallback: Locale = DEFAULT_LOCALE;
 
 function readLocale(): Locale {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    return stored === "en" || stored === "ko" ? stored : fallback;
+    return isLocale(stored) ? stored : fallback;
   } catch {
     return fallback;
   }
@@ -30,9 +31,14 @@ export function setLocale(next: Locale) {
   try {
     window.localStorage.setItem(STORAGE_KEY, next);
   } catch {}
+  document.documentElement.lang = LANGUAGES[next].htmlLang;
   listeners.forEach((listener) => listener());
 }
 
 export function useLocale(): Locale {
-  return useSyncExternalStore(subscribe, readLocale, () => "ko");
+  return useSyncExternalStore(subscribe, readLocale, () => DEFAULT_LOCALE);
+}
+
+export function useMessages(): Messages {
+  return getMessages(useLocale());
 }

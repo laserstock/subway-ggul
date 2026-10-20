@@ -6,28 +6,70 @@ import { addReport } from "../_lib/reports";
 import { t, type Localized, type StationOption } from "../_lib/stations";
 
 const COPY = {
-  title: { ko: "에서 지금 무슨 일이 있나요?", en: ": what's happening now?" },
-  hint: { ko: "누르면 바로 등록돼요", en: "Tap to post instantly" },
-  placeholder: { ko: "직접 입력 (최대 60자)", en: "Write your own (max 60 chars)" },
-  submit: { ko: "등록", en: "Post" },
+  title: {
+    ko: "에서 지금 무슨 일이 있나요?",
+    en: ": what's happening now?",
+    zh: "：现在有什么情况？",
+    ja: "で今何が起きていますか？",
+  },
+  hint: { ko: "누르면 바로 등록돼요", en: "Tap to post instantly", zh: "点击即可发布", ja: "タップですぐ投稿" },
+  placeholder: {
+    ko: "직접 입력 (최대 60자)",
+    en: "Write your own (max 60 chars)",
+    zh: "直接输入（最多60字）",
+    ja: "直接入力（最大60文字）",
+  },
+  submit: { ko: "등록", en: "Post", zh: "发布", ja: "投稿" },
   needStation: {
     ko: "위치를 허용하거나 역을 검색하면 제보할 수 있어요",
     en: "Allow location or search a station to report",
+    zh: "允许定位或搜索车站后即可上报",
+    ja: "位置情報を許可するか駅を検索すると投稿できます",
   },
   localNote: {
     ko: "베타: 제보는 이 기기에만 저장돼요",
     en: "Beta: reports are saved on this device only",
+    zh: "测试版：上报仅保存在本设备",
+    ja: "ベータ版：投稿はこの端末にのみ保存されます",
   },
-  close: { ko: "닫기", en: "Close" },
+  close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
 };
 
 const QUICK_REPORTS: { emoji: string; text: Localized }[] = [
-  { emoji: "🧻", text: { ko: "화장실 휴지 있어요", en: "Restroom has tissue" } },
-  { emoji: "🚧", text: { ko: "화장실 청소·고장 중", en: "Restroom closed for cleaning/repair" } },
-  { emoji: "🛗", text: { ko: "엘리베이터 정상 운행", en: "Elevator is working" } },
-  { emoji: "⚠️", text: { ko: "에스컬레이터 고장", en: "Escalator out of order" } },
-  { emoji: "👥", text: { ko: "지금 많이 붐벼요", en: "Very crowded right now" } },
-  { emoji: "🧳", text: { ko: "T-Locker 빈자리 있어요", en: "T-Locker has free space" } },
+  {
+    emoji: "🧻",
+    text: { ko: "화장실 휴지 있어요", en: "Restroom has tissue", zh: "卫生间有纸巾", ja: "トイレにティッシュあり" },
+  },
+  {
+    emoji: "🚧",
+    text: {
+      ko: "화장실 청소·고장 중",
+      en: "Restroom closed for cleaning/repair",
+      zh: "卫生间清洁·维修中",
+      ja: "トイレ清掃・故障中",
+    },
+  },
+  {
+    emoji: "🛗",
+    text: { ko: "엘리베이터 정상 운행", en: "Elevator is working", zh: "电梯运行正常", ja: "エレベーター正常運転" },
+  },
+  {
+    emoji: "⚠️",
+    text: { ko: "에스컬레이터 고장", en: "Escalator out of order", zh: "扶梯故障", ja: "エスカレーター故障" },
+  },
+  {
+    emoji: "👥",
+    text: { ko: "지금 많이 붐벼요", en: "Very crowded right now", zh: "现在非常拥挤", ja: "今とても混雑しています" },
+  },
+  {
+    emoji: "🧳",
+    text: {
+      ko: "T-Locker 빈자리 있어요",
+      en: "T-Locker has free space",
+      zh: "T-Locker 有空位",
+      ja: "T-Lockerに空きあり",
+    },
+  },
 ];
 
 export default function ReportSheet({

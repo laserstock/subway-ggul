@@ -23,8 +23,13 @@ import {
 import { SearchIcon } from "./icons";
 
 const COPY = {
-  noStation: { ko: "일치하는 역이 없어요", en: "No matching stations" },
-  searching: { ko: "역을 찾는 중…", en: "Searching stations…" },
+  noStation: {
+    ko: "일치하는 역이 없어요",
+    en: "No matching stations",
+    zh: "没有匹配的车站",
+    ja: "一致する駅がありません",
+  },
+  searching: { ko: "역을 찾는 중…", en: "Searching stations…", zh: "正在搜索车站…", ja: "駅を検索中…" },
 };
 
 export default function StationSearch({

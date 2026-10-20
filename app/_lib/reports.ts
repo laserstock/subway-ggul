@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import { t, type Locale } from "./i18n";
 import { STATIONS, type Localized, type StationOption } from "./stations";
 
 export type Report = {
@@ -93,16 +94,18 @@ export function useNow(): number | null {
 
 function seedsFor(station: StationOption): StoredReport[] {
   seedBase ??= readClock();
-  const lineKo = station.lines.ko.split(" · ")[0] ?? "";
-  const lineEn = station.lines.en.split(" · ")[0] ?? "";
+  const prefix = (locale: Locale) =>
+    `${t(station.name, locale)} ${t(station.lines, locale).split(" · ")[0] ?? ""}`;
   const exit = ([...station.name.ko].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 9) + 1;
   return [
     {
       id: `seed:${station.key}:restroom`,
       stationKey: station.key,
       text: {
-        ko: `${station.name.ko} ${lineKo} 승강장 화장실 휴지 있어요!`.replace(/\s+/g, " "),
-        en: `${station.name.en} ${lineEn} platform restroom has tissue!`.replace(/\s+/g, " "),
+        ko: `${prefix("ko")} 승강장 화장실 휴지 있어요!`.replace(/\s+/g, " "),
+        en: `${prefix("en")} platform restroom has tissue!`.replace(/\s+/g, " "),
+        zh: `${prefix("zh")} 站台卫生间有纸巾！`.replace(/\s+/g, " "),
+        ja: `${prefix("ja")} ホームのトイレにティッシュあり！`.replace(/\s+/g, " "),
       },
       createdAt: seedBase - 3 * 60_000,
     },
@@ -112,6 +115,8 @@ function seedsFor(station: StationOption): StoredReport[] {
       text: {
         ko: `${exit}번 출구 에스컬레이터 정상 가동`,
         en: `Exit ${exit} escalator is running normally`,
+        zh: `${exit}号出口扶梯运行正常`,
+        ja: `${exit}番出口のエスカレーター正常稼働`,
       },
       createdAt: seedBase - 10 * 60_000,
     },
@@ -191,12 +196,19 @@ export function toggleLike(id: string) {
   write({ ...stored, liked });
 }
 
-export function formatAgo(createdAt: number, now: number, locale: "ko" | "en") {
+const AGO: Record<Locale, { now: string; minutes: string; hours: string; days: string }> = {
+  ko: { now: "방금 전", minutes: "{n}분 전", hours: "{n}시간 전", days: "{n}일 전" },
+  en: { now: "just now", minutes: "{n} min ago", hours: "{n} h ago", days: "{n} d ago" },
+  zh: { now: "刚刚", minutes: "{n}分钟前", hours: "{n}小时前", days: "{n}天前" },
+  ja: { now: "たった今", minutes: "{n}分前", hours: "{n}時間前", days: "{n}日前" },
+};
+
+export function formatAgo(createdAt: number, now: number, locale: Locale) {
+  const copy = AGO[locale];
   const minutes = Math.max(0, Math.floor((now - createdAt) / 60_000));
-  if (minutes < 1) return locale === "ko" ? "방금 전" : "just now";
-  if (minutes < 60) return locale === "ko" ? `${minutes}분 전` : `${minutes} min ago`;
+  if (minutes < 1) return copy.now;
+  if (minutes < 60) return copy.minutes.replace("{n}", String(minutes));
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return locale === "ko" ? `${hours}시간 전` : `${hours} h ago`;
-  const days = Math.floor(hours / 24);
-  return locale === "ko" ? `${days}일 전` : `${days} d ago`;
+  if (hours < 24) return copy.hours.replace("{n}", String(hours));
+  return copy.days.replace("{n}", String(Math.floor(hours / 24)));
 }

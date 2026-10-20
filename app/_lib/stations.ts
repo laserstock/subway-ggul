@@ -1,8 +1,8 @@
 import type { LatLng } from "../KakaoMap";
 import { lineColor, type KakaoStation } from "../kakao-places";
+import type { Localized } from "./i18n";
 
-export type Locale = "ko" | "en";
-export type Localized = { ko: string; en: string };
+export { t, type Locale, type Localized } from "./i18n";
 export type CategoryId =
   | "pharmacy"
   | "oliveyoung"
@@ -56,9 +56,14 @@ export type StationOption = {
 export const STATIONS: Station[] = [
   {
     id: "hongdae",
-    name: { ko: "홍대입구역", en: "Hongik Univ." },
-    aliases: ["홍대", "홍대입구", "홍대입구역", "hongdae", "hongik"],
-    lines: { ko: "2호선 · 경의·중앙선", en: "Line 2 · Gyeongui–Jungang" },
+    name: { ko: "홍대입구역", en: "Hongik Univ.", zh: "弘大入口站", ja: "弘大入口駅" },
+    aliases: ["홍대", "홍대입구", "홍대입구역", "hongdae", "hongik", "弘大"],
+    lines: {
+      ko: "2호선 · 경의·중앙선",
+      en: "Line 2 · Gyeongui–Jungang",
+      zh: "2号线 · 京义·中央线",
+      ja: "2号線 · 京義·中央線",
+    },
     insidePaid: {
       ko: "홍대입구역 역사 내(개찰구 안)",
       en: "Inside station (paid area)",
@@ -268,9 +273,14 @@ export const STATIONS: Station[] = [
   },
   {
     id: "gangnam",
-    name: { ko: "강남역", en: "Gangnam" },
+    name: { ko: "강남역", en: "Gangnam", zh: "江南站", ja: "江南駅" },
     aliases: ["강남", "강남역", "gangnam"],
-    lines: { ko: "2호선 · 신분당선", en: "Line 2 · Shinbundang" },
+    lines: {
+      ko: "2호선 · 신분당선",
+      en: "Line 2 · Shinbundang",
+      zh: "2号线 · 新盆唐线",
+      ja: "2号線 · 新盆唐線",
+    },
     insidePaid: {
       ko: "강남역 역사 내(개찰구 안)",
       en: "Inside Gangnam station (paid area)",
@@ -478,11 +488,13 @@ export const STATIONS: Station[] = [
   },
   {
     id: "seoul",
-    name: { ko: "서울역", en: "Seoul Station" },
-    aliases: ["서울", "서울역", "seoul", "seoul station"],
+    name: { ko: "서울역", en: "Seoul Station", zh: "首尔站", ja: "ソウル駅" },
+    aliases: ["서울", "서울역", "seoul", "seoul station", "首尔", "ソウル"],
     lines: {
       ko: "1호선 · 4호선 · 경의·중앙선",
       en: "Line 1 · Line 4 · Gyeongui–Jungang",
+      zh: "1号线 · 4号线 · 京义·中央线",
+      ja: "1号線 · 4号線 · 京義·中央線",
     },
     insidePaid: {
       ko: "서울역 역사 내(개찰구 안)",
@@ -691,9 +703,9 @@ export const STATIONS: Station[] = [
   },
   {
     id: "irwon",
-    name: { ko: "일원역", en: "Irwon" },
+    name: { ko: "일원역", en: "Irwon", zh: "逸院站", ja: "逸院駅" },
     aliases: ["일원", "일원역", "irwon"],
-    lines: { ko: "3호선", en: "Line 3" },
+    lines: { ko: "3호선", en: "Line 3", zh: "3号线", ja: "3号線" },
     insidePaid: {
       ko: "일원역 역사 내(개찰구 안)",
       en: "Inside Irwon station (paid area)",
@@ -899,9 +911,9 @@ export const STATIONS: Station[] = [
   },
   {
     id: "dapsimni",
-    name: { ko: "답십리역", en: "Dapsimni" },
+    name: { ko: "답십리역", en: "Dapsimni", zh: "踏十里站", ja: "踏十里駅" },
     aliases: ["답십리", "답십리역", "dapsimni", "dapsipri"],
-    lines: { ko: "5호선", en: "Line 5" },
+    lines: { ko: "5호선", en: "Line 5", zh: "5号线", ja: "5号線" },
     insidePaid: {
       ko: "답십리역 역사 내(개찰구 안)",
       en: "Inside Dapsimni station (paid area)",
@@ -1070,10 +1082,6 @@ export function formatDistance(meters: number) {
   return meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`;
 }
 
-export function t(value: Localized, locale: Locale) {
-  return value[locale];
-}
-
 export function normalize(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
 }
@@ -1082,10 +1090,8 @@ export function stationMatches(station: Station, query: string) {
   const q = normalize(query);
   if (!q) return true;
   const haystack = [
-    station.name.ko,
-    station.name.en,
-    station.lines.ko,
-    station.lines.en,
+    ...Object.values(station.name),
+    ...Object.values(station.lines),
     ...station.aliases,
   ]
     .map(normalize)
@@ -1113,6 +1119,8 @@ export function kakaoOption(found: KakaoStation): StationOption {
     lines: {
       ko: found.lines.join(" · "),
       en: found.lines.map((line) => line.replace(/^(\d+)호선$/, "Line $1")).join(" · "),
+      zh: found.lines.map((line) => line.replace(/^(\d+)호선$/, "$1号线")).join(" · "),
+      ja: found.lines.map((line) => line.replace(/^(\d+)호선$/, "$1号線")).join(" · "),
     },
     center: found.center,
     color: lineColor(found.lines),

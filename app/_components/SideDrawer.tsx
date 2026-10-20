@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { saveFeedback } from "../_lib/feedback";
 import { requestHomeReset } from "../_lib/homeReset";
-import { useLocale } from "../_lib/locale";
+import { t, type Localized } from "../_lib/i18n";
+import { useLocale, useMessages } from "../_lib/locale";
 import { deleteReport, formatAgo, useMyReports, useNow } from "../_lib/reports";
-import { t, type Localized } from "../_lib/stations";
 import { TrainLogo } from "./icons";
 
 export const APP_VERSION = "1.0.0";
@@ -14,80 +14,81 @@ export const APP_VERSION = "1.0.0";
 type DrawerView = "menu" | "notices" | "myReports" | "feedback";
 type ShareStatus = "copied" | "failed" | null;
 
-const COPY = {
-  appName: { ko: "지하철꿀정보", en: "Subway Tips" },
-  tagline: {
-    ko: "지하철 탈 때 필요한 꿀정보를 한 번에",
-    en: "Everything you need on the subway",
-  },
-  close: { ko: "메뉴 닫기", en: "Close menu" },
-  back: { ko: "뒤로", en: "Back" },
-  notices: { ko: "공지사항 & 업데이트", en: "Notices & updates" },
-  myReports: { ko: "내가 남긴 제보 내역", en: "My reports" },
-  feedback: { ko: "고객센터 / 피드백 보내기", en: "Help / Send feedback" },
-  share: { ko: "앱 친구에게 공유하기", en: "Share with friends" },
-  shareCopied: { ko: "링크를 복사했어요", en: "Link copied" },
-  shareFailed: { ko: "공유하지 못했어요. 주소창의 링크를 복사해 주세요", en: "Couldn't share. Copy the link from the address bar" },
-  shareText: {
-    ko: "지하철 탈 때 화장실·약국·출구 매장을 3초 만에 찾는 앱, 지하철꿀정보",
-    en: "Find restrooms, pharmacies and exit shops in 3 seconds on the subway",
-  },
-  reset: { ko: "메인 화면으로 리셋 (홈으로 이동)", en: "Reset to home screen" },
-  myReportsEmpty: {
-    ko: "아직 남긴 제보가 없어요. 역에서 1초 제보를 남겨 보세요!",
-    en: "No reports yet. Post one from a station!",
-  },
-  myReportsNote: {
-    ko: "베타: 제보는 이 기기에만 저장돼요",
-    en: "Beta: reports are saved on this device only",
-  },
-  delete: { ko: "삭제", en: "Delete" },
-  feedbackIntro: {
-    ko: "불편한 점이나 바라는 기능을 알려 주세요. 꼼꼼히 읽고 반영할게요.",
-    en: "Tell us what's inconvenient or what you'd like. We read everything.",
-  },
-  feedbackPlaceholder: { ko: "예: 2호선 환승 경로도 알려 주세요", en: "e.g. Please add Line 2 transfer tips" },
-  feedbackSend: { ko: "보내기", en: "Send" },
-  feedbackDone: { ko: "소중한 의견 고마워요!", en: "Thanks for your feedback!" },
-  feedbackNote: {
-    ko: "베타: 피드백은 현재 이 기기에 저장되며, 정식 버전에서 서버로 전송돼요",
-    en: "Beta: feedback is stored on this device until the server is ready",
-  },
-};
+type MenuId = Exclude<DrawerView, "menu"> | "share";
 
-const MENU: { id: Exclude<DrawerView, "menu"> | "share"; emoji: string; label: Localized; tint: string }[] = [
-  { id: "notices", emoji: "📢", label: COPY.notices, tint: "#fff1d6" },
-  { id: "myReports", emoji: "✏️", label: COPY.myReports, tint: "#e5efff" },
-  { id: "feedback", emoji: "💬", label: COPY.feedback, tint: "#e6f5e9" },
-  { id: "share", emoji: "🔗", label: COPY.share, tint: "#f3e8ff" },
+const MENU: { id: MenuId; emoji: string; tint: string }[] = [
+  { id: "notices", emoji: "📢", tint: "#fff1d6" },
+  { id: "myReports", emoji: "✏️", tint: "#e5efff" },
+  { id: "feedback", emoji: "💬", tint: "#e6f5e9" },
+  { id: "share", emoji: "🔗", tint: "#f3e8ff" },
 ];
+
+const UPDATE_TAG: Localized = { ko: "업데이트", en: "Update", zh: "更新", ja: "アップデート" };
+const NEW_TAG: Localized = { ko: "신규", en: "New", zh: "新功能", ja: "新機能" };
 
 const NOTICES: { date: string; tag: Localized; title: Localized; body: Localized }[] = [
   {
     date: "2026.10.20",
-    tag: { ko: "업데이트", en: "Update" },
-    title: { ko: "출구 매장에 '스마트 점핑 안내' 추가", en: "Smart station jump for exit shops" },
+    tag: NEW_TAG,
+    title: {
+      ko: "한국어 · English · 中文 · 日本語 지원",
+      en: "Now in Korean · English · Chinese · Japanese",
+      zh: "支持韩语 · 英语 · 中文 · 日语",
+      ja: "韓国語 · 英語 · 中国語 · 日本語に対応",
+    },
+    body: {
+      ko: "상단 🌐 버튼에서 언어를 바꿀 수 있어요. 일부 화면은 순차적으로 번역 중이에요.",
+      en: "Switch languages with the 🌐 button. Some screens are still being translated.",
+      zh: "点击顶部 🌐 按钮即可切换语言。部分页面正在陆续翻译中。",
+      ja: "上部の 🌐 ボタンで言語を切り替えられます。一部の画面は順次翻訳中です。",
+    },
+  },
+  {
+    date: "2026.10.20",
+    tag: UPDATE_TAG,
+    title: {
+      ko: "출구 매장에 '스마트 점핑 안내' 추가",
+      en: "Smart station jump for exit shops",
+      zh: "出口商店新增“智能跳站提示”",
+      ja: "出口ショップに「スマート駅ジャンプ案内」を追加",
+    },
     body: {
       ko: "현재 역에 원하는 매장이 없으면 같은 노선 앞뒤 역의 매장을 추천해 드려요.",
       en: "If your station lacks the store you want, we suggest one on a nearby stop.",
+      zh: "当前车站没有想要的商店时，为您推荐同一线路前后站的商店。",
+      ja: "今いる駅に目的の店舗がない場合、同じ路線の前後の駅の店舗をおすすめします。",
     },
   },
   {
     date: "2026.10.20",
-    tag: { ko: "신규", en: "New" },
-    title: { ko: "긴급 화장실 · 약국 · 병원 3초 비교", en: "Urgent restroom · pharmacy · clinic compare" },
+    tag: NEW_TAG,
+    title: {
+      ko: "긴급 화장실 · 약국 · 병원 3초 비교",
+      en: "Urgent restroom · pharmacy · clinic compare",
+      zh: "紧急卫生间 · 药店 · 医院 3秒比较",
+      ja: "緊急トイレ · 薬局 · 病院を3秒比較",
+    },
     body: {
       ko: "지금 지나는 역과 다음 역의 개찰구 안/밖 시설을 한눈에 비교해요.",
       en: "Compare facilities inside/outside the gate at this stop and the next.",
+      zh: "一眼比较当前车站和下一站闸机内/外的设施。",
+      ja: "今の駅と次の駅の改札内・外の施設をひと目で比較します。",
     },
   },
   {
     date: "2026.10.20",
-    tag: { ko: "신규", en: "New" },
-    title: { ko: "새 홈 화면 & 실시간 현장 제보", en: "New home & live station reports" },
+    tag: NEW_TAG,
+    title: {
+      ko: "새 홈 화면 & 실시간 현장 제보",
+      en: "New home & live station reports",
+      zh: "全新首页 & 实时现场上报",
+      ja: "新しいホーム画面 & リアルタイム現場投稿",
+    },
     body: {
       ko: "가장 가까운 역을 자동으로 찾고, 역 소식을 1초 만에 제보할 수 있어요.",
       en: "We find your nearest station automatically and you can report in a second.",
+      zh: "自动查找最近的车站，1秒即可上报车站消息。",
+      ja: "最寄り駅を自動で探し、駅の情報を1秒で投稿できます。",
     },
   },
 ];
@@ -136,6 +137,7 @@ export default function SideDrawer({
   onClose: () => void;
 }) {
   const locale = useLocale();
+  const m = useMessages();
   const router = useRouter();
   const myReports = useMyReports();
   const now = useNow();
@@ -163,7 +165,7 @@ export default function SideDrawer({
 
   async function share() {
     const url = window.location.origin;
-    const data = { title: t(COPY.appName, locale), text: t(COPY.shareText, locale), url };
+    const data = { title: m.app.name, text: m.drawer.shareText, url };
     try {
       if (typeof navigator.share === "function") {
         await navigator.share(data);
@@ -178,7 +180,7 @@ export default function SideDrawer({
     }
   }
 
-  function selectMenu(item: (typeof MENU)[number]["id"]) {
+  function selectMenu(item: MenuId) {
     if (item === "share") {
       void share();
       return;
@@ -211,7 +213,7 @@ export default function SideDrawer({
       <button
         type="button"
         tabIndex={-1}
-        aria-label={t(COPY.close, locale)}
+        aria-label={m.drawer.close}
         onClick={onClose}
         className={`absolute inset-0 bg-black/40 backdrop-blur-[3px] transition-opacity duration-300 ease-out ${
           isOpen ? "opacity-100" : "opacity-0"
@@ -220,7 +222,7 @@ export default function SideDrawer({
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label={t(COPY.appName, locale)}
+        aria-label={m.app.name}
         onTransitionEnd={(event) => {
           if (event.target === event.currentTarget && !isOpen) resetInnerState();
         }}
@@ -232,21 +234,21 @@ export default function SideDrawer({
           <div className="flex min-w-0 items-center gap-3">
             <TrainLogo />
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-[17px] font-extrabold tracking-tight text-neutral-900">
-                {t(COPY.appName, locale)}
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[17px] font-extrabold tracking-tight text-neutral-900">
+                {m.app.name}
                 <span aria-hidden>🚇</span>
                 <span className="rounded-full bg-neutral-100 px-2 py-[2px] text-[11px] font-bold text-neutral-500">
                   v{APP_VERSION}
                 </span>
               </p>
-              <p className="mt-0.5 truncate text-[12px] text-neutral-500">{t(COPY.tagline, locale)}</p>
+              <p className="mt-0.5 truncate text-[12px] text-neutral-500">{m.app.tagline}</p>
             </div>
           </div>
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            aria-label={t(COPY.close, locale)}
+            aria-label={m.drawer.close}
             className="-mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-500 transition-colors active:bg-neutral-100"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -274,7 +276,7 @@ export default function SideDrawer({
                       {item.emoji}
                     </span>
                     <span className="min-w-0 flex-1 text-[15px] font-bold text-neutral-900">
-                      {t(item.label, locale)}
+                      {m.drawer[item.id]}
                       {item.id === "myReports" && myReports.length > 0 ? (
                         <span className="ml-1.5 rounded-full bg-[#2563eb] px-1.5 py-[1px] text-[11px] font-bold text-white">
                           {myReports.length}
@@ -292,7 +294,7 @@ export default function SideDrawer({
                         shareStatus === "copied" ? "text-[#16a34a]" : "text-amber-700"
                       }`}
                     >
-                      {t(shareStatus === "copied" ? COPY.shareCopied : COPY.shareFailed, locale)}
+                      {shareStatus === "copied" ? m.drawer.shareCopied : m.drawer.shareFailed}
                     </p>
                   ) : null}
                 </li>
@@ -303,7 +305,7 @@ export default function SideDrawer({
 
         {view === "notices" ? (
           <>
-            <SubHeader title={t(COPY.notices, locale)} onBack={() => setView("menu")} backLabel={t(COPY.back, locale)} />
+            <SubHeader title={m.drawer.notices} onBack={() => setView("menu")} backLabel={m.drawer.back} />
             <Panel>
               <ul className="flex flex-col gap-2.5">
                 {NOTICES.map((notice) => (
@@ -325,11 +327,11 @@ export default function SideDrawer({
 
         {view === "myReports" ? (
           <>
-            <SubHeader title={t(COPY.myReports, locale)} onBack={() => setView("menu")} backLabel={t(COPY.back, locale)} />
+            <SubHeader title={m.drawer.myReports} onBack={() => setView("menu")} backLabel={m.drawer.back} />
             <Panel>
               {myReports.length === 0 ? (
                 <p className="rounded-2xl bg-[#f7f8fa] px-4 py-8 text-center text-[13px] text-neutral-500">
-                  {t(COPY.myReportsEmpty, locale)}
+                  {m.drawer.myReportsEmpty}
                 </p>
               ) : (
                 <ul className="flex flex-col gap-2">
@@ -351,27 +353,27 @@ export default function SideDrawer({
                         onClick={() => deleteReport(report.id)}
                         className="shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold text-neutral-400 active:bg-neutral-200"
                       >
-                        {t(COPY.delete, locale)}
+                        {m.drawer.delete}
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
-              <p className="mt-3 text-[11px] text-neutral-400">{t(COPY.myReportsNote, locale)}</p>
+              <p className="mt-3 text-[11px] text-neutral-400">{m.drawer.myReportsNote}</p>
             </Panel>
           </>
         ) : null}
 
         {view === "feedback" ? (
           <>
-            <SubHeader title={t(COPY.feedback, locale)} onBack={() => setView("menu")} backLabel={t(COPY.back, locale)} />
+            <SubHeader title={m.drawer.feedback} onBack={() => setView("menu")} backLabel={m.drawer.back} />
             <Panel>
               {feedbackSent ? (
                 <div className="rounded-2xl bg-[#e6f5e9] px-4 py-8 text-center">
                   <p className="text-[28px]" aria-hidden>
                     💌
                   </p>
-                  <p className="mt-2 text-[14px] font-bold text-[#15803d]">{t(COPY.feedbackDone, locale)}</p>
+                  <p className="mt-2 text-[14px] font-bold text-[#15803d]">{m.drawer.feedbackDone}</p>
                 </div>
               ) : (
                 <form
@@ -380,11 +382,11 @@ export default function SideDrawer({
                     sendFeedback();
                   }}
                 >
-                  <p className="text-[13px] leading-relaxed text-neutral-600">{t(COPY.feedbackIntro, locale)}</p>
+                  <p className="text-[13px] leading-relaxed text-neutral-600">{m.drawer.feedbackIntro}</p>
                   <textarea
                     value={feedback}
                     onChange={(event) => setFeedback(event.target.value.slice(0, 500))}
-                    placeholder={t(COPY.feedbackPlaceholder, locale)}
+                    placeholder={m.drawer.feedbackPlaceholder}
                     rows={5}
                     className="mt-3 w-full resize-none rounded-2xl bg-[#f3f4f6] px-4 py-3 text-[14px] outline-none placeholder:text-neutral-400 focus:ring-2 focus:ring-[#2563eb]/30"
                   />
@@ -396,11 +398,11 @@ export default function SideDrawer({
                     disabled={!feedback.trim()}
                     className="mt-3 w-full rounded-2xl bg-[#2563eb] py-3.5 text-[15px] font-bold text-white transition-colors disabled:bg-neutral-300"
                   >
-                    {t(COPY.feedbackSend, locale)}
+                    {m.drawer.feedbackSend}
                   </button>
                 </form>
               )}
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-400">{t(COPY.feedbackNote, locale)}</p>
+              <p className="mt-3 text-[11px] leading-relaxed text-neutral-400">{m.drawer.feedbackNote}</p>
             </Panel>
           </>
         ) : null}
@@ -412,7 +414,7 @@ export default function SideDrawer({
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1e3a8a] py-4 text-[15px] font-bold text-white shadow-[0_6px_16px_rgba(30,58,138,0.25)] transition-transform active:scale-[0.98]"
           >
             <span aria-hidden>🏠</span>
-            {t(COPY.reset, locale)}
+            {m.drawer.reset}
           </button>
         </div>
       </aside>
