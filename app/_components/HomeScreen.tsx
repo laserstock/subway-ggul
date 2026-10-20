@@ -9,6 +9,7 @@ import ReportSheet from "./ReportSheet";
 import StationSearch from "./StationSearch";
 import { Toast, useToast } from "./Toast";
 import { useHomeResetToken } from "../_lib/homeReset";
+import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import { formatAgo, toggleLike, useNow, useStationReports } from "../_lib/reports";
 import {
@@ -105,6 +106,7 @@ const COPY = {
     ja: "投稿しました。ありがとうございます！",
   },
   manualBadge: { ko: "직접 선택", en: "Picked", zh: "手动选择", ja: "手動選択" },
+  confirming: { ko: "위치 확인 중", en: "Checking", zh: "确认中", ja: "確認中" },
   correctLocation: {
     ko: "위치 교정하기",
     en: "Correct my station",
@@ -215,7 +217,8 @@ function Card({ children, className = "" }: { children: ReactNode; className?: s
 
 export default function HomeScreen() {
   const locale = useLocale();
-  const tracker = useStationTracker({ autoStart: true });
+  const tracker = useStationTracker({ autoStart: true, quickStart: true });
+  const lastStation = useLastStation();
   const [destination, setDestination] = useState<StationOption | null>(null);
   const [query, setQuery] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -236,7 +239,12 @@ export default function HomeScreen() {
     setLocationOpen(false);
   }
 
-  const selected = useSelectedStation(tracker.nearest);
+  const confirming =
+    tracker.nearest === null &&
+    lastStation !== null &&
+    tracker.issue !== "denied" &&
+    tracker.issue !== "unsupported";
+  const selected = useSelectedStation(tracker.nearest ?? (confirming ? lastStation : null));
   const current = selected?.station ?? null;
   const isManual = selected !== null && selected.source !== "gps";
   const station = destination ?? current;
@@ -409,6 +417,11 @@ export default function HomeScreen() {
               ) : isManual ? (
                 <span className="shrink-0 rounded-full bg-[#eff5ff] px-2 py-1 text-[11px] font-semibold text-[#2563eb]">
                   ✋ {t(COPY.manualBadge, locale)}
+                </span>
+              ) : confirming ? (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-neutral-500 shadow-sm">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+                  {t(COPY.confirming, locale)}
                 </span>
               ) : distance !== null ? (
                 <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-[#16a34a] shadow-sm">

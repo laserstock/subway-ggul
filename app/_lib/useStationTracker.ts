@@ -2,10 +2,15 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { LatLng } from "../KakaoMap";
+import { saveLastStation } from "./lastStation";
 import { loadNearbyStations } from "./nearbyStations";
 import { distanceMeters, type Localized, type StationOption } from "./stations";
 
 const NEAREST_LOOKUP_METERS = 150;
+/** Re-resolve when the previous fix was this vague and a new one is at least twice as precise. */
+const SHARPER_FIX_METERS = 100;
+/** A cached fix this recent is still the same station for a subway rider. */
+const QUICK_FIX_MAX_AGE_MS = 60_000;
 
 export type LocationIssue = "denied" | "unavailable" | "unsupported" | "noStation" | "lookupFailed";
 
@@ -46,9 +51,15 @@ export type NearestUpdate = { station: StationOption; position: LatLng; seq: num
 
 export function useStationTracker({
   autoStart = false,
+  quickStart = false,
   onNearest,
 }: {
   autoStart?: boolean;
+  /**
+   * Also asks for a fast network-based fix and re-resolves once GPS gets much sharper.
+   * Off where consecutive fixes feed heading detection, since a coarse fix would fake movement.
+   */
+  quickStart?: boolean;
   onNearest?: (update: NearestUpdate) => void;
 } = {}) {
   const [tracking, setTracking] = useState(autoStart);
@@ -58,6 +69,7 @@ export function useStationTracker({
   const [issue, setIssue] = useState<LocationIssue | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const lastLookupRef = useRef<LatLng | null>(null);
+  const lookupAccuracyRef = useRef(Infinity);
   const lookupSeqRef = useRef(0);
   const positionRef = useRef<LatLng | null>(null);
   const onNearestRef = useRef(onNearest);
@@ -79,6 +91,7 @@ export function useStationTracker({
         setIssue(null);
         setNearest(station);
         setLookupPosition(here);
+        saveLastStation(station);
         onNearestRef.current?.({ station, position: here, seq });
         return station;
       })
@@ -96,7 +109,22 @@ export function useStationTracker({
     watchIdRef.current = null;
     lookupSeqRef.current += 1;
     lastLookupRef.current = null;
+    lookupAccuracyRef.current = Infinity;
     positionRef.current = null;
+  }
+
+  function handleFix(result: GeolocationPosition) {
+    const here = { lat: result.coords.latitude, lng: result.coords.longitude };
+    const accuracy = result.coords.accuracy;
+    positionRef.current = here;
+    setPosition(here);
+    setIssue((current) => (current === "unavailable" ? null : current));
+    const last = lastLookupRef.current;
+    const sharper =
+      quickStart && lookupAccuracyRef.current > SHARPER_FIX_METERS && accuracy < lookupAccuracyRef.current / 2;
+    if (last && distanceMeters(last, here) < NEAREST_LOOKUP_METERS && !sharper) return;
+    lookupAccuracyRef.current = accuracy;
+    lookupNearest(here);
   }
 
   function beginWatch() {
@@ -107,16 +135,17 @@ export function useStationTracker({
       });
       return;
     }
+    if (quickStart) {
+      navigator.geolocation.getCurrentPosition(
+        (result) => {
+          if (watchIdRef.current !== null && !positionRef.current) handleFix(result);
+        },
+        () => {},
+        { enableHighAccuracy: false, maximumAge: QUICK_FIX_MAX_AGE_MS, timeout: 8000 },
+      );
+    }
     watchIdRef.current = navigator.geolocation.watchPosition(
-      (result) => {
-        const here = { lat: result.coords.latitude, lng: result.coords.longitude };
-        positionRef.current = here;
-        setPosition(here);
-        setIssue((current) => (current === "unavailable" ? null : current));
-        const last = lastLookupRef.current;
-        if (last && distanceMeters(last, here) < NEAREST_LOOKUP_METERS) return;
-        lookupNearest(here);
-      },
+      handleFix,
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {
           clearWatch();
@@ -158,6 +187,7 @@ export function useStationTracker({
             setTracking(true);
             beginWatch();
           }
+          lookupAccuracyRef.current = result.coords.accuracy;
           resolve(lookupNearest(here));
         },
         (error) => {
