@@ -21,6 +21,8 @@ export const MANUAL_RELEASE_METERS = 1000;
 
 const listeners = new Set<() => void>();
 let manual: ManualStation | null = null;
+/** The station the user searched for and is viewing (not necessarily where they are). */
+let destination: StationOption | null = null;
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -59,6 +61,20 @@ export function useManualStation(): ManualStation | null {
   return useSyncExternalStore(
     subscribe,
     () => manual,
+    () => null,
+  );
+}
+
+export function setDestinationStation(station: StationOption | null) {
+  if (destination?.key === station?.key) return;
+  destination = station;
+  emit();
+}
+
+export function useDestinationStation(): StationOption | null {
+  return useSyncExternalStore(
+    subscribe,
+    () => destination,
     () => null,
   );
 }

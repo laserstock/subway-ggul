@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import AppHeader from "./AppHeader";
 import BottomNav, { type NavTab } from "./BottomNav";
+import { SearchIcon } from "./icons";
 import LocationSheet from "./LocationSheet";
 import ReportSheet from "./ReportSheet";
-import StationSearch from "./StationSearch";
+import SearchOverlay from "./SearchOverlay";
 import { Toast, useToast } from "./Toast";
 import { useHomeResetToken } from "../_lib/homeReset";
 import { useLastStation } from "../_lib/lastStation";
@@ -15,7 +18,9 @@ import { formatAgo, toggleLike, useNow, useStationReports } from "../_lib/report
 import {
   clearSelectedStation,
   selectStation,
+  setDestinationStation,
   syncSelectedStation,
+  useDestinationStation,
   useSelectedStation,
 } from "../_lib/selectedStation";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
@@ -219,11 +224,13 @@ export default function HomeScreen() {
   const locale = useLocale();
   const tracker = useStationTracker({ autoStart: true, quickStart: true });
   const lastStation = useLastStation();
-  const [destination, setDestination] = useState<StationOption | null>(null);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const destination = useDestinationStation();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const closeLocation = useCallback(() => setLocationOpen(false), []);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
   const { toast, showToast } = useToast();
   const now = useNow();
   const mainRef = useRef<HTMLElement>(null);
@@ -233,10 +240,9 @@ export default function HomeScreen() {
 
   if (handledReset !== resetToken) {
     setHandledReset(resetToken);
-    setDestination(null);
-    setQuery("");
     setSheetOpen(false);
     setLocationOpen(false);
+    setSearchOpen(false);
   }
 
   const confirming =
@@ -257,7 +263,11 @@ export default function HomeScreen() {
   useEffect(() => {
     if (window.location.hash !== "#search") return;
     window.history.replaceState(null, "", window.location.pathname);
-    searchInputRef.current?.focus();
+    const frame = requestAnimationFrame(() => {
+      setSearchOpen(true);
+      searchInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const onHomeReset = useEffectEvent(() => {
@@ -270,21 +280,24 @@ export default function HomeScreen() {
     if (resetToken > 0) onHomeReset();
   }, [resetToken]);
 
-  function selectDestination(next: StationOption) {
-    setDestination(next);
-    setQuery(t(next.name, locale));
+  useEffect(() => {
+    router.prefetch("/station");
+  }, [router]);
+
+  function openSearch() {
+    flushSync(() => setSearchOpen(true));
+    searchInputRef.current?.focus();
+  }
+
+  function openDashboard(next: StationOption) {
+    setDestinationStation(next);
+    setSearchOpen(false);
+    router.push(`/station?${stationParams(next)}`);
   }
 
   function backToMyStation() {
-    setDestination(null);
-    setQuery("");
+    setDestinationStation(null);
     if (!tracker.tracking) tracker.start();
-  }
-
-  function onLocaleChange(next: Locale, previous: Locale) {
-    if (destination && query === t(destination.name, previous)) {
-      setQuery(t(destination.name, next));
-    }
   }
 
   function actionHref(href: string) {
@@ -296,8 +309,7 @@ export default function HomeScreen() {
   function pickCurrentStation(next: StationOption, source: "chip" | "search") {
     if (next.key === tracker.nearest?.key) clearSelectedStation();
     else selectStation(next, source, tracker.position);
-    setDestination(null);
-    setQuery("");
+    setDestinationStation(null);
     setLocationOpen(false);
     showToast(t(COPY.switched, locale).replace("{station}", t(next.name, locale)));
   }
@@ -306,8 +318,7 @@ export default function HomeScreen() {
     const found = await tracker.relocate();
     if (found) {
       clearSelectedStation();
-      setDestination(null);
-      setQuery("");
+      setDestinationStation(null);
     }
     return found;
   }
@@ -318,10 +329,8 @@ export default function HomeScreen() {
   }
 
   function onTab(tab: NavTab) {
-    if (tab === "home" || tab === "search") {
-      mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    }
-    if (tab === "search") searchInputRef.current?.focus();
+    if (tab === "home") mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    if (tab === "search") openSearch();
     if (tab === "station") backToMyStation();
     if (tab === "report") setSheetOpen(true);
   }
@@ -373,7 +382,7 @@ export default function HomeScreen() {
   return (
     <div className="flex min-h-dvh justify-center bg-[#e8eaed]">
       <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-[#fbf8f2] shadow-[0_0_40px_rgba(15,23,42,0.12)]">
-        <AppHeader onLocaleChange={onLocaleChange} />
+        <AppHeader />
 
         <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-5">
           <Card className="bg-gradient-to-br from-[#fff7e6] to-[#fffdf8] px-4 py-3.5">
@@ -443,17 +452,16 @@ export default function HomeScreen() {
             </div>
           </Card>
 
-          <StationSearch
-            className="mt-3"
-            inputClassName="rounded-2xl border border-[#ece6da] bg-white px-3.5 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
-            locale={locale}
-            query={query}
-            onQueryChange={setQuery}
-            onSelect={selectDestination}
-            currentKey={destination?.key}
-            placeholder={t(COPY.search, locale)}
-            inputRef={searchInputRef}
-          />
+          <button
+            type="button"
+            onClick={openSearch}
+            aria-haspopup="dialog"
+            aria-expanded={searchOpen}
+            className="mt-3 flex w-full items-center gap-2 rounded-2xl border border-[#ece6da] bg-white px-3.5 py-3 text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition active:scale-[0.99]"
+          >
+            <SearchIcon />
+            <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-400">{t(COPY.search, locale)}</span>
+          </button>
 
           <h2 className="mb-2.5 mt-5 text-[16px] font-extrabold tracking-tight text-neutral-900">
             {t(COPY.mainTitle, locale)}
@@ -577,6 +585,14 @@ export default function HomeScreen() {
           issue={tracker.issue}
           onRelocate={relocate}
           onPick={pickCurrentStation}
+        />
+
+        <SearchOverlay
+          isOpen={searchOpen}
+          onClose={closeSearch}
+          onSelect={openDashboard}
+          inputRef={searchInputRef}
+          near={tracker.position ?? current?.center ?? null}
         />
       </div>
     </div>

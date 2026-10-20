@@ -83,14 +83,22 @@ function groupStations(result: kakao.maps.services.PlacesSearchResult) {
   return [...grouped.values()];
 }
 
-export function searchStations(query: string): Promise<KakaoStation[]> {
+export function searchStations(
+  query: string,
+  near?: { center: LatLng; radius: number },
+): Promise<KakaoStation[]> {
   return new Promise((resolve) => {
+    const options: kakao.maps.services.PlacesSearchOptions = { category_group_code: "SW8", size: 15 };
+    if (near) {
+      options.location = new kakao.maps.LatLng(near.center.lat, near.center.lng);
+      options.radius = near.radius;
+    }
     places().keywordSearch(
       query,
       (result, status) => {
         resolve(status === kakao.maps.services.Status.OK ? groupStations(result) : []);
       },
-      { category_group_code: "SW8", size: 15 },
+      options,
     );
   });
 }

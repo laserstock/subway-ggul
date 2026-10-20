@@ -1,26 +1,13 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type RefObject,
-} from "react";
-import { useKakaoMaps } from "../kakao-sdk";
-import { searchStations } from "../kakao-places";
-import {
-  STATIONS,
-  curatedOption,
-  kakaoOption,
-  stationMatches,
-  t,
-  type Locale,
-  type StationOption,
-} from "../_lib/stations";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import type { LatLng } from "../KakaoMap";
+import { useRecentStations } from "../_lib/recentStations";
+import { useStationSuggestions } from "../_lib/stationSearch";
+import { POPULAR_STATIONS, t, type Locale, type StationOption } from "../_lib/stations";
 import { SearchIcon } from "./icons";
+
+const MAX_SHORTCUTS = 8;
 
 const COPY = {
   noStation: {
@@ -43,6 +30,7 @@ export default function StationSearch({
   className = "",
   inputClassName = "rounded-full bg-[#f3f4f6] px-3.5 py-[11px]",
   placement = "below",
+  near = null,
 }: {
   locale: Locale;
   query: string;
@@ -54,41 +42,22 @@ export default function StationSearch({
   className?: string;
   inputClassName?: string;
   placement?: "below" | "above";
+  /** Biases short queries and ranks equally good matches by distance. */
+  near?: LatLng | null;
 }) {
   const listId = useId();
-  const kakaoStatus = useKakaoMaps();
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
-  const [remote, setRemote] = useState<{ query: string; stations: StationOption[] }>({
-    query: "",
-    stations: [],
-  });
+  const recent = useRecentStations();
+  const { stations: matched, pending: searchPending } = useStationSuggestions(open ? query : "", near);
 
-  const trimmedQuery = query.trim();
-  const searchPending =
-    kakaoStatus === "ready" && trimmedQuery !== "" && remote.query !== trimmedQuery;
-
-  const suggestions = useMemo(() => {
-    const local = STATIONS.filter((item) => stationMatches(item, query)).map(curatedOption);
-    if (remote.query !== query.trim()) return local;
-    const localKeys = new Set(local.map((item) => item.key));
-    return [...local, ...remote.stations.filter((item) => !localKeys.has(item.key))].slice(0, 8);
-  }, [query, remote]);
-
-  useEffect(() => {
-    if (kakaoStatus !== "ready" || !open || !trimmedQuery) return;
-    let alive = true;
-    const timer = window.setTimeout(() => {
-      searchStations(trimmedQuery).then((found) => {
-        if (alive) setRemote({ query: trimmedQuery, stations: found.map(kakaoOption) });
-      });
-    }, 250);
-    return () => {
-      alive = false;
-      window.clearTimeout(timer);
-    };
-  }, [kakaoStatus, open, trimmedQuery]);
+  const suggestions = query.trim()
+    ? matched
+    : [...recent, ...POPULAR_STATIONS.filter((item) => !recent.some((r) => r.key === item.key))].slice(
+        0,
+        MAX_SHORTCUTS,
+      );
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {

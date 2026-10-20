@@ -1125,9 +1125,47 @@ export function curatedOption(station: Station): StationOption {
   };
 }
 
+/** JSON-safe station snapshot for localStorage (curated data is re-attached on restore). */
+export type SavedStation = Pick<StationOption, "key" | "name" | "lines" | "center" | "color">;
+
+export function serializeStation({ key, name, lines, center, color }: StationOption): SavedStation {
+  return { key, name, lines, center, color };
+}
+
+export function restoreStation(saved: SavedStation): StationOption {
+  const curated = STATIONS.find((station) => station.id === saved.key);
+  return curated ? curatedOption(curated) : serializeStation(saved);
+}
+
+function popularOption(id: StationId): StationOption {
+  return curatedOption(STATIONS.find((station) => station.id === id)!);
+}
+
+export const POPULAR_STATIONS: StationOption[] = [
+  popularOption("gangnam"),
+  popularOption("hongdae"),
+  popularOption("seoul"),
+  {
+    key: "kakao:잠실역",
+    name: { ko: "잠실역", en: "Jamsil", zh: "蚕室站", ja: "蚕室駅" },
+    lines: { ko: "2호선 · 8호선", en: "Line 2 · Line 8", zh: "2号线 · 8号线", ja: "2号線 · 8号線" },
+    center: { lat: 37.513294, lng: 127.10014 },
+    color: "#00a84d",
+  },
+  {
+    key: "kakao:광화문역",
+    name: { ko: "광화문역", en: "Gwanghwamun", zh: "光化门站", ja: "光化門駅" },
+    lines: { ko: "5호선", en: "Line 5", zh: "5号线", ja: "5号線" },
+    center: { lat: 37.571026, lng: 126.976669 },
+    color: "#996cac",
+  },
+];
+
 export function kakaoOption(found: KakaoStation): StationOption {
   const curated = STATIONS.find((station) => station.name.ko === found.name);
   if (curated) return curatedOption(curated);
+  const popular = POPULAR_STATIONS.find((station) => station.name.ko === found.name);
+  if (popular) return popular;
   return {
     key: `kakao:${found.name}`,
     name: { ko: found.name, en: found.name },
@@ -1163,6 +1201,8 @@ export function stationFromParams(params: SearchParams): StationOption | null {
   if (!name) return null;
   const curated = STATIONS.find((station) => station.name.ko === name);
   if (curated) return curatedOption(curated);
+  const popular = POPULAR_STATIONS.find((station) => station.name.ko === name);
+  if (popular) return popular;
   const lat = Number(firstParam(params, "lat") || NaN);
   const lng = Number(firstParam(params, "lng") || NaN);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
