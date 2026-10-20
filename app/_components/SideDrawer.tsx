@@ -7,6 +7,7 @@ import { requestHomeReset } from "../_lib/homeReset";
 import { t, type Localized } from "../_lib/i18n";
 import { useLocale, useMessages } from "../_lib/locale";
 import { deleteReport, formatAgo, useMyReports, useNow } from "../_lib/reports";
+import { clearSelectedStation } from "../_lib/selectedStation";
 import { TrainLogo } from "./icons";
 
 export const APP_VERSION = "1.0.0";
@@ -198,6 +199,7 @@ export default function SideDrawer({
   }
 
   function resetToHome() {
+    clearSelectedStation();
     requestHomeReset();
     onClose();
     router.push("/");

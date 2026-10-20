@@ -42,6 +42,7 @@ export default function StationSearch({
   inputRef,
   className = "",
   inputClassName = "rounded-full bg-[#f3f4f6] px-3.5 py-[11px]",
+  placement = "below",
 }: {
   locale: Locale;
   query: string;
@@ -52,6 +53,7 @@ export default function StationSearch({
   inputRef?: RefObject<HTMLInputElement | null>;
   className?: string;
   inputClassName?: string;
+  placement?: "below" | "above";
 }) {
   const listId = useId();
   const kakaoStatus = useKakaoMaps();
@@ -153,7 +155,11 @@ export default function StationSearch({
 
       {open ? (
         <div
-          className="absolute inset-x-0 top-[calc(100%+8px)] overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.14)]"
+          className={`absolute inset-x-0 overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.14)] ${
+            placement === "above"
+              ? "no-scrollbar bottom-[calc(100%+8px)] max-h-[280px] overflow-y-auto"
+              : "top-[calc(100%+8px)]"
+          }`}
           id={listId}
           role="listbox"
         >

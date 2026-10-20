@@ -1,17 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import AppHeader from "./AppHeader";
 import BottomNav, { type NavTab } from "./BottomNav";
+import LocationSheet from "./LocationSheet";
 import ReportSheet from "./ReportSheet";
 import StationSearch from "./StationSearch";
 import { Toast, useToast } from "./Toast";
 import { useHomeResetToken } from "../_lib/homeReset";
 import { useLocale } from "../_lib/locale";
 import { formatAgo, toggleLike, useNow, useStationReports } from "../_lib/reports";
+import {
+  clearSelectedStation,
+  selectStation,
+  syncSelectedStation,
+  useSelectedStation,
+} from "../_lib/selectedStation";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
 import {
+  compactLines,
   distanceMeters,
   formatDistance,
   stationParams,
@@ -96,6 +104,19 @@ const COPY = {
     zh: "上报成功，谢谢！",
     ja: "投稿しました。ありがとうございます！",
   },
+  manualBadge: { ko: "직접 선택", en: "Picked", zh: "手动选择", ja: "手動選択" },
+  correctLocation: {
+    ko: "위치 교정하기",
+    en: "Correct my station",
+    zh: "校正我的车站",
+    ja: "現在の駅を修正",
+  },
+  switched: {
+    ko: "📍 지금 역 변경 완료: {station}",
+    en: "📍 Now at {station}",
+    zh: "📍 已切换到{station}",
+    ja: "📍 {station}に切り替えました",
+  },
 };
 
 type MainAction = {
@@ -178,7 +199,7 @@ const MAIN_ACTIONS: MainAction[] = [
 ];
 
 function stationLabel(station: StationOption, locale: Locale) {
-  const lines = t(station.lines, locale);
+  const lines = compactLines(station, locale);
   return lines ? `${t(station.name, locale)} (${lines})` : t(station.name, locale);
 }
 
@@ -198,6 +219,8 @@ export default function HomeScreen() {
   const [destination, setDestination] = useState<StationOption | null>(null);
   const [query, setQuery] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const closeLocation = useCallback(() => setLocationOpen(false), []);
   const { toast, showToast } = useToast();
   const now = useNow();
   const mainRef = useRef<HTMLElement>(null);
@@ -210,10 +233,18 @@ export default function HomeScreen() {
     setDestination(null);
     setQuery("");
     setSheetOpen(false);
+    setLocationOpen(false);
   }
 
-  const station = destination ?? tracker.nearest;
+  const selected = useSelectedStation(tracker.nearest);
+  const current = selected?.station ?? null;
+  const isManual = selected !== null && selected.source !== "gps";
+  const station = destination ?? current;
   const reports = useStationReports(station);
+
+  useEffect(() => {
+    syncSelectedStation(tracker.position);
+  }, [tracker.position]);
 
   useEffect(() => {
     if (window.location.hash !== "#search") return;
@@ -250,8 +281,27 @@ export default function HomeScreen() {
 
   function actionHref(href: string) {
     const params = station ? stationParams(station) : new URLSearchParams();
-    if (!destination) params.set("near", "1");
+    if (!destination && !isManual) params.set("near", "1");
     return `${href}?${params.toString()}`;
+  }
+
+  function pickCurrentStation(next: StationOption, source: "chip" | "search") {
+    if (next.key === tracker.nearest?.key) clearSelectedStation();
+    else selectStation(next, source, tracker.position);
+    setDestination(null);
+    setQuery("");
+    setLocationOpen(false);
+    showToast(t(COPY.switched, locale).replace("{station}", t(next.name, locale)));
+  }
+
+  async function relocate() {
+    const found = await tracker.relocate();
+    if (found) {
+      clearSelectedStation();
+      setDestination(null);
+      setQuery("");
+    }
+    return found;
   }
 
   function onReportPosted() {
@@ -269,7 +319,7 @@ export default function HomeScreen() {
   }
 
   const distance =
-    !destination && tracker.position && tracker.nearest
+    !destination && !isManual && tracker.position && tracker.nearest
       ? distanceMeters(tracker.position, tracker.nearest.center)
       : null;
 
@@ -320,9 +370,34 @@ export default function HomeScreen() {
         <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-5">
           <Card className="bg-gradient-to-br from-[#fff7e6] to-[#fffdf8] px-4 py-3.5">
             <div className="flex items-start justify-between gap-2">
-              <p className="min-w-0 flex-1 truncate text-[18px] font-extrabold tracking-tight text-neutral-900">
-                {headline}
-              </p>
+              <button
+                type="button"
+                onClick={() => setLocationOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={locationOpen}
+                title={t(COPY.correctLocation, locale)}
+                className="min-w-0 flex-1 rounded-xl text-left transition active:scale-[0.99]"
+              >
+                <span className="flex items-center gap-1 text-[18px] font-extrabold tracking-tight text-neutral-900">
+                  <span className="min-w-0 truncate">{headline}</span>
+                  <span
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#b45309]/10 text-[#b45309]"
+                    aria-hidden
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span className="sr-only">{t(COPY.correctLocation, locale)}</span>
+                </span>
+                <span className="mt-1.5 block text-[12px] font-normal text-neutral-600">{detail}</span>
+              </button>
               {destination ? (
                 <button
                   type="button"
@@ -331,6 +406,10 @@ export default function HomeScreen() {
                 >
                   {t(COPY.backToMine, locale)}
                 </button>
+              ) : isManual ? (
+                <span className="shrink-0 rounded-full bg-[#eff5ff] px-2 py-1 text-[11px] font-semibold text-[#2563eb]">
+                  ✋ {t(COPY.manualBadge, locale)}
+                </span>
               ) : distance !== null ? (
                 <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-[#16a34a] shadow-sm">
                   <span className="relative flex h-2 w-2">
@@ -349,7 +428,6 @@ export default function HomeScreen() {
                 </button>
               ) : null}
             </div>
-            <p className="mt-1.5 text-[12px] text-neutral-600">{detail}</p>
           </Card>
 
           <StationSearch
@@ -475,6 +553,18 @@ export default function HomeScreen() {
         {sheetOpen ? (
           <ReportSheet station={station} onClose={() => setSheetOpen(false)} onPosted={onReportPosted} />
         ) : null}
+
+        <LocationSheet
+          isOpen={locationOpen}
+          onClose={closeLocation}
+          current={current}
+          source={selected?.source ?? null}
+          position={tracker.position}
+          searchCenter={tracker.lookupPosition}
+          issue={tracker.issue}
+          onRelocate={relocate}
+          onPick={pickCurrentStation}
+        />
       </div>
     </div>
   );

@@ -1,0 +1,54 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { LatLng } from "../KakaoMap";
+import { findNearbyStations } from "../kakao-places";
+import { loadKakaoMaps } from "../kakao-sdk";
+import { kakaoOption, type StationOption } from "./stations";
+
+const pending = new Map<string, Promise<StationOption[]>>();
+const resolved = new Map<string, StationOption[]>();
+
+function cacheKey(center: LatLng) {
+  return `${center.lat.toFixed(4)},${center.lng.toFixed(4)}`;
+}
+
+/** Stations within 5 km, nearest first. Cached per ~10 m grid cell. */
+export function loadNearbyStations(center: LatLng): Promise<StationOption[]> {
+  const key = cacheKey(center);
+  const cached = pending.get(key);
+  if (cached) return cached;
+  const request = loadKakaoMaps()
+    .then(() => findNearbyStations(center))
+    .then((found) => {
+      const stations = found.map(kakaoOption);
+      resolved.set(key, stations);
+      return stations;
+    });
+  request.catch(() => pending.delete(key));
+  pending.set(key, request);
+  return request;
+}
+
+export function useNearbyStations(center: LatLng | null): StationOption[] | null {
+  const key = center ? cacheKey(center) : null;
+  const [loaded, setLoaded] = useState<{ key: string; stations: StationOption[] } | null>(null);
+
+  useEffect(() => {
+    if (!center || !key || resolved.has(key)) return;
+    let alive = true;
+    loadNearbyStations(center)
+      .then((stations) => {
+        if (alive) setLoaded({ key, stations });
+      })
+      .catch(() => {
+        if (alive) setLoaded({ key, stations: [] });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [center, key]);
+
+  if (!key) return null;
+  return resolved.get(key) ?? (loaded?.key === key ? loaded.stations : null);
+}

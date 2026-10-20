@@ -1,6 +1,6 @@
 import type { LatLng } from "../KakaoMap";
 import { lineColor, type KakaoStation } from "../kakao-places";
-import type { Localized } from "./i18n";
+import { t, type Locale, type Localized } from "./i18n";
 
 export { t, type Locale, type Localized } from "./i18n";
 export type CategoryId =
@@ -1080,6 +1080,21 @@ export function distanceMeters(a: LatLng, b: LatLng) {
 
 export function formatDistance(meters: number) {
   return meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`;
+}
+
+const LINE_SUFFIX: Record<Locale, (joined: string) => string> = {
+  ko: (joined) => `${joined}호선`,
+  en: (joined) => `Line ${joined}`,
+  zh: (joined) => `${joined}号线`,
+  ja: (joined) => `${joined}号線`,
+};
+
+/** "5호선 · 7호선" → "5/7호선"; lines without a number are shown as-is. */
+export function compactLines(station: StationOption, locale: Locale) {
+  const lines = station.lines.ko.split(" · ").filter(Boolean);
+  const numbers = lines.map((line) => line.match(/^(\d+)호선$/)?.[1]);
+  if (lines.length > 0 && numbers.every(Boolean)) return LINE_SUFFIX[locale](numbers.join("/"));
+  return t(station.lines, locale);
 }
 
 export function normalize(value: string) {

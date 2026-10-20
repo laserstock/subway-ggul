@@ -95,9 +95,7 @@ export function searchStations(query: string): Promise<KakaoStation[]> {
   });
 }
 
-export function findNearestStation(
-  position: LatLng,
-): Promise<{ station: KakaoStation; distance: number } | null> {
+export function findNearbyStations(position: LatLng): Promise<(KakaoStation & { distance: number })[]> {
   return new Promise((resolve, reject) => {
     places().categorySearch(
       "SW8",
@@ -106,14 +104,13 @@ export function findNearestStation(
           reject(new Error("Kakao station search failed"));
           return;
         }
-        const [nearest] = status === kakao.maps.services.Status.OK ? groupStations(result) : [];
-        resolve(nearest ? { station: nearest, distance: nearest.distance } : null);
+        resolve(status === kakao.maps.services.Status.OK ? groupStations(result) : []);
       },
       {
         location: new kakao.maps.LatLng(position.lat, position.lng),
         radius: 5000,
         sort: kakao.maps.services.SortBy.DISTANCE,
-        size: 5,
+        size: 15,
       },
     );
   });

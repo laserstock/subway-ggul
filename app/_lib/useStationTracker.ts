@@ -2,9 +2,8 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { LatLng } from "../KakaoMap";
-import { loadKakaoMaps } from "../kakao-sdk";
-import { findNearestStation } from "../kakao-places";
-import { distanceMeters, kakaoOption, type Localized, type StationOption } from "./stations";
+import { loadNearbyStations } from "./nearbyStations";
+import { distanceMeters, type Localized, type StationOption } from "./stations";
 
 const NEAREST_LOOKUP_METERS = 150;
 
@@ -55,6 +54,7 @@ export function useStationTracker({
   const [tracking, setTracking] = useState(autoStart);
   const [position, setPosition] = useState<LatLng | null>(null);
   const [nearest, setNearest] = useState<StationOption | null>(null);
+  const [lookupPosition, setLookupPosition] = useState<LatLng | null>(null);
   const [issue, setIssue] = useState<LocationIssue | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const lastLookupRef = useRef<LatLng | null>(null);
@@ -66,26 +66,28 @@ export function useStationTracker({
     onNearestRef.current = onNearest;
   });
 
-  function lookupNearest(here: LatLng) {
+  function lookupNearest(here: LatLng): Promise<StationOption | null> {
     const seq = ++lookupSeqRef.current;
     lastLookupRef.current = here;
-    loadKakaoMaps()
-      .then(() => findNearestStation(here))
-      .then((found) => {
-        if (seq !== lookupSeqRef.current) return;
-        if (!found) {
+    return loadNearbyStations(here)
+      .then(([station]) => {
+        if (seq !== lookupSeqRef.current) return station ?? null;
+        if (!station) {
           setIssue("noStation");
-          return;
+          return null;
         }
-        const station = kakaoOption(found.station);
         setIssue(null);
         setNearest(station);
+        setLookupPosition(here);
         onNearestRef.current?.({ station, position: here, seq });
+        return station;
       })
       .catch(() => {
-        if (seq !== lookupSeqRef.current) return;
-        lastLookupRef.current = null;
-        setIssue("lookupFailed");
+        if (seq === lookupSeqRef.current) {
+          lastLookupRef.current = null;
+          setIssue("lookupFailed");
+        }
+        return null;
       });
   }
 
@@ -139,11 +141,47 @@ export function useStationTracker({
     beginWatch();
   }
 
+  /** Forces a fresh high-accuracy fix (ignores cached positions) and re-resolves the nearest station. */
+  function relocate(): Promise<StationOption | null> {
+    if (!("geolocation" in navigator)) {
+      setIssue("unsupported");
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (result) => {
+          const here = { lat: result.coords.latitude, lng: result.coords.longitude };
+          positionRef.current = here;
+          setPosition(here);
+          setIssue(null);
+          if (watchIdRef.current === null) {
+            setTracking(true);
+            beginWatch();
+          }
+          resolve(lookupNearest(here));
+        },
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            clearWatch();
+            setTracking(false);
+            setPosition(null);
+            setIssue("denied");
+          } else {
+            setIssue("unavailable");
+          }
+          resolve(null);
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
+      );
+    });
+  }
+
   function stop() {
     clearWatch();
     setTracking(false);
     setPosition(null);
     setNearest(null);
+    setLookupPosition(null);
     setIssue(null);
   }
 
@@ -160,5 +198,5 @@ export function useStationTracker({
     return () => unmountTracker();
   }, []);
 
-  return { tracking, position, nearest, issue, start, stop, dismissIssue };
+  return { tracking, position, nearest, lookupPosition, issue, start, stop, relocate, dismissIssue };
 }
