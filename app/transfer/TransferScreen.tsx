@@ -12,7 +12,6 @@ import { Toast, useToast } from "../_components/Toast";
 import { useFacilityVotes, voteFacility, type FacilityVote } from "../_lib/facilityVotes";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
-import { setDestinationStation } from "../_lib/selectedStation";
 import { compactLines, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { stationLines } from "../_lib/subwayLine";
 import {
@@ -710,10 +709,7 @@ export default function TransferScreen({
   function onNavTab(navTab: NavTab) {
     if (navTab === "home") router.push("/");
     if (navTab === "search") openSearch();
-    if (navTab === "station") {
-      setDestinationStation(null);
-      router.push("/");
-    }
+    if (navTab === "station") router.push("/my");
     if (navTab === "report") setSheetOpen(true);
   }
 

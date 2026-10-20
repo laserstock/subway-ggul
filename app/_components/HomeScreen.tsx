@@ -14,7 +14,8 @@ import SearchOverlay from "./SearchOverlay";
 import { Toast, useToast } from "./Toast";
 import { useHomeResetToken } from "../_lib/homeReset";
 import { useLastStation } from "../_lib/lastStation";
-import { useLocale } from "../_lib/locale";
+import { useLocale, useMessages } from "../_lib/locale";
+import { PLACE_PRESETS, useMyStations, type MyPlace } from "../_lib/myStations";
 import {
   clearSelectedStation,
   selectStation,
@@ -104,6 +105,7 @@ const COPY = {
     ja: "投稿しました。ありがとうございます！",
   },
   manualBadge: { ko: "직접 선택", en: "Picked", zh: "手动选择", ja: "手動選択" },
+  editMy: { ko: "편집", en: "Edit", zh: "编辑", ja: "編集" },
   confirming: { ko: "위치 확인 중", en: "Checking", zh: "确认中", ja: "確認中" },
   correctLocation: {
     ko: "위치 교정하기",
@@ -216,6 +218,8 @@ function Card({ children, className = "" }: { children: ReactNode; className?: s
 
 export default function HomeScreen() {
   const locale = useLocale();
+  const m = useMessages();
+  const { places: myPlaces } = useMyStations();
   const tracker = useStationTracker({ autoStart: true, quickStart: true });
   const lastStation = useLastStation();
   const router = useRouter();
@@ -292,6 +296,12 @@ export default function HomeScreen() {
     if (!tracker.tracking) tracker.start();
   }
 
+  function pickMyPlace(place: MyPlace) {
+    setDestinationStation(place.station.key === current?.key ? null : place.station);
+    mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    showToast(t(COPY.switched, locale).replace("{station}", t(place.station.name, locale)));
+  }
+
   function actionHref(href: string) {
     const params = station ? stationParams(station) : new URLSearchParams();
     if (!destination && !isManual) params.set("near", "1");
@@ -323,7 +333,7 @@ export default function HomeScreen() {
   function onTab(tab: NavTab) {
     if (tab === "home") mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     if (tab === "search") openSearch();
-    if (tab === "station") backToMyStation();
+    if (tab === "station") router.push("/my");
     if (tab === "report") setSheetOpen(true);
   }
 
@@ -454,6 +464,35 @@ export default function HomeScreen() {
             <SearchIcon />
             <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-400">{t(COPY.search, locale)}</span>
           </button>
+
+          {myPlaces.length > 0 ? (
+            <div className="no-scrollbar -mx-4 mt-2.5 flex items-center gap-1.5 overflow-x-auto px-4">
+              <span className="shrink-0 text-[12px] font-extrabold text-neutral-500">⭐ {m.nav.station}</span>
+              {myPlaces.map((place) => {
+                const preset = PLACE_PRESETS[place.preset];
+                const active = place.station.key === station?.key;
+                return (
+                  <button
+                    key={place.id}
+                    type="button"
+                    onClick={() => pickMyPlace(place)}
+                    aria-pressed={active}
+                    className="flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold text-neutral-800 transition active:scale-95"
+                    style={{
+                      backgroundColor: preset.bg,
+                      boxShadow: `inset 0 0 0 ${active ? 2 : 1}px ${active ? place.station.color : preset.ring}`,
+                    }}
+                  >
+                    <span aria-hidden>{preset.emoji}</span>
+                    {t(place.station.name, locale)}
+                  </button>
+                );
+              })}
+              <Link href="/my" className="shrink-0 px-1 text-[12px] font-bold text-neutral-400">
+                {t(COPY.editMy, locale)} ›
+              </Link>
+            </div>
+          ) : null}
 
           <header className="mb-3 mt-6 flex items-start gap-2.5">
             <span

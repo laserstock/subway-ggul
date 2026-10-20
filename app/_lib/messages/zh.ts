@@ -13,7 +13,7 @@ const zh: Messages = {
   nav: {
     home: "首页",
     search: "搜索",
-    station: "我的车站",
+    station: "My 车站",
     report: "上报",
   },
   language: {

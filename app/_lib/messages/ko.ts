@@ -11,7 +11,7 @@ const ko = {
   nav: {
     home: "홈",
     search: "검색",
-    station: "내 역",
+    station: "My 역",
     report: "제보",
   },
   language: {

@@ -464,7 +464,7 @@ export default function UrgentScreen({
   function onTab(navTab: NavTab) {
     if (navTab === "home") router.push("/");
     if (navTab === "search") router.push("/#search");
-    if (navTab === "station") backToMyStation();
+    if (navTab === "station") router.push("/my");
     if (navTab === "report") setSheetOpen(true);
   }
 

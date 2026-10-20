@@ -13,7 +13,7 @@ const en: Messages = {
   nav: {
     home: "Home",
     search: "Search",
-    station: "My Stn",
+    station: "My Station",
     report: "Report",
   },
   language: {

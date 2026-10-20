@@ -6,7 +6,7 @@ export type NavTab = "home" | "search" | "station" | "report";
 
 const NAV_TABS: NavTab[] = ["home", "search", "station", "report"];
 
-function NavIcon({ name }: { name: NavTab }) {
+function NavIcon({ name, active }: { name: NavTab; active: boolean }) {
   const common = {
     stroke: "currentColor",
     strokeWidth: 2,
@@ -25,10 +25,17 @@ function NavIcon({ name }: { name: NavTab }) {
       ) : null}
       {name === "station" ? (
         <>
-          <rect {...common} x="6" y="3.5" width="12" height="13" rx="3" />
-          <path {...common} d="M6 11h12M9.5 20.5l1.5-4M14.5 20.5l-1.5-4" />
-          <circle cx="9.5" cy="13.8" r="1" fill="currentColor" />
-          <circle cx="14.5" cy="13.8" r="1" fill="currentColor" />
+          <rect {...common} x="3.5" y="4.5" width="10.5" height="12" rx="2.5" />
+          <path {...common} d="M3.5 10.5h10.5M6.5 20.5l1.3-4M11 20.5l-1.3-4" />
+          <circle cx="6.6" cy="13.6" r="0.9" fill="currentColor" />
+          <circle cx="10.9" cy="13.6" r="0.9" fill="currentColor" />
+          <path
+            d="M18.6 2.2l.88 2.19 2.35.16-1.8 1.51.57 2.29-2-1.25-2 1.25.57-2.29-1.8-1.51 2.35-.16z"
+            fill={active ? "#f59e0b" : "currentColor"}
+            stroke={active ? "#f59e0b" : "currentColor"}
+            strokeWidth="0.8"
+            strokeLinejoin="round"
+          />
         </>
       ) : null}
       {name === "report" ? (
@@ -61,7 +68,7 @@ export default function BottomNav({
             tab === active ? "text-neutral-900" : "text-neutral-400"
           }`}
         >
-          <NavIcon name={tab} />
+          <NavIcon name={tab} active={tab === active} />
           {m.nav[tab]}
         </button>
       ))}

@@ -13,7 +13,7 @@ const ja: Messages = {
   nav: {
     home: "ホーム",
     search: "検索",
-    station: "マイ駅",
+    station: "My 駅",
     report: "投稿",
   },
   language: {

@@ -13,12 +13,15 @@ export default function AppHeader({
   title,
   subtitle,
   icon = <TrainLogo />,
+  action,
   onLocaleChange,
 }: {
   backHref?: string;
   title?: Localized;
   subtitle?: string;
   icon?: ReactNode;
+  /** Extra button shown left of the language switch. */
+  action?: ReactNode;
   onLocaleChange?: (next: Locale, previous: Locale) => void;
 }) {
   const locale = useLocale();
@@ -40,7 +43,7 @@ export default function AppHeader({
   }
 
   return (
-    <header className="flex items-center justify-between px-4 pb-2 pt-3">
+    <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
       <div className="flex min-w-0 items-center gap-2">
         {backHref ? (
           <Link
@@ -83,21 +86,24 @@ export default function AppHeader({
           ) : null}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => setIsLanguageSheetOpen(true)}
-        aria-label={`${m.header.changeLanguage} (${LANGUAGES[locale].native})`}
-        aria-haspopup="dialog"
-        aria-expanded={isLanguageSheetOpen}
-        aria-controls={languageSheetId}
-        className="flex shrink-0 items-center gap-1 rounded-full border border-neutral-200 bg-white py-1.5 pl-2.5 pr-2 text-[13px] font-bold text-[#2563eb] transition-transform active:scale-95"
-      >
-        <GlobeIcon />
-        <span className="min-w-[20px] text-center">{LANGUAGES[locale].short}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-neutral-400" aria-hidden>
-          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {action}
+        <button
+          type="button"
+          onClick={() => setIsLanguageSheetOpen(true)}
+          aria-label={`${m.header.changeLanguage} (${LANGUAGES[locale].native})`}
+          aria-haspopup="dialog"
+          aria-expanded={isLanguageSheetOpen}
+          aria-controls={languageSheetId}
+          className="flex shrink-0 items-center gap-1 rounded-full border border-neutral-200 bg-white py-1.5 pl-2.5 pr-2 text-[13px] font-bold text-[#2563eb] transition-transform active:scale-95"
+        >
+          <GlobeIcon />
+          <span className="min-w-[20px] text-center">{LANGUAGES[locale].short}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-neutral-400" aria-hidden>
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
       <SideDrawer id={drawerId} isOpen={isDrawerOpen} onClose={closeDrawer} />
       <LanguageSheet
         id={languageSheetId}

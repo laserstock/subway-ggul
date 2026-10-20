@@ -199,10 +199,7 @@ export default function StationDashboard({ station }: { station: StationOption |
   function onTab(tab: NavTab) {
     if (tab === "home") router.push("/");
     if (tab === "search") openSearch();
-    if (tab === "station") {
-      setDestinationStation(null);
-      router.push("/");
-    }
+    if (tab === "station") router.push("/my");
     if (tab === "report") setSheetOpen(true);
   }
 
