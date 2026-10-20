@@ -23,7 +23,7 @@ type CategoryId =
   | "daiso"
   | "cafe"
   | "convenience";
-type StationId = "hongdae" | "gangnam" | "seoul" | "irwon";
+type StationId = "hongdae" | "gangnam" | "seoul" | "irwon" | "dapsimni";
 type Zone = "inside" | "outside" | "unpaid";
 type Place = {
   id: string;
@@ -927,6 +927,163 @@ const STATIONS: Station[] = [
         },
         x: 66,
         y: 34,
+      },
+    ],
+  },
+  {
+    id: "dapsimni",
+    name: { ko: "답십리역", en: "Dapsimni" },
+    aliases: ["답십리", "답십리역", "dapsimni", "dapsipri"],
+    lines: { ko: "5호선", en: "Line 5" },
+    insidePaid: {
+      ko: "답십리역 역사 내(개찰구 안)",
+      en: "Inside Dapsimni station (paid area)",
+    },
+    center: { lat: 37.5667, lng: 127.0527 },
+    color: "#996cac",
+    exits: [
+      { id: "d1", label: { ko: "1번 출구", en: "Exit 1" }, x: 24, y: 28 },
+      { id: "d2", label: { ko: "2번 출구", en: "Exit 2" }, x: 72, y: 26 },
+      { id: "d3", label: { ko: "3번 출구", en: "Exit 3" }, x: 76, y: 52 },
+      { id: "d4", label: { ko: "4번 출구", en: "Exit 4" }, x: 22, y: 56 },
+    ],
+    places: [
+      {
+        id: "dapsimni-ph-1",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "1번 출구 앞 약국 (역외)",
+          en: "Pharmacy by Exit 1 (outside)",
+        },
+        walk: { ko: "도보 2분", en: "2 min on foot" },
+        walkMinutes: 2,
+        status: { ko: "영업중 (~21:00)", en: "Open (~21:00)" },
+        note: {
+          ko: "1번 출구로 나와 천호대로 쪽 바로 앞",
+          en: "Right outside Exit 1 on Cheonho-daero",
+        },
+        x: 26,
+        y: 24,
+        badge: 1,
+      },
+      {
+        id: "dapsimni-ph-2",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "3번 출구 인근 온누리약국",
+          en: "Onnuri Pharmacy near Exit 3",
+        },
+        walk: { ko: "도보 4분", en: "4 min on foot" },
+        walkMinutes: 4,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "3번 출구로 나와 답십리 사거리 방향",
+          en: "Out Exit 3 toward Dapsimni intersection",
+        },
+        x: 78,
+        y: 56,
+      },
+      {
+        id: "dapsimni-oy-1",
+        category: "oliveyoung",
+        zone: "outside",
+        name: { ko: "올리브영 답십리점", en: "Olive Young Dapsimni" },
+        walk: { ko: "도보 5분", en: "5 min on foot" },
+        walkMinutes: 5,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "2번 출구에서 큰길 따라 직진",
+          en: "Straight along the main road from Exit 2",
+        },
+        x: 74,
+        y: 20,
+        badge: 1,
+      },
+      {
+        id: "dapsimni-ds-1",
+        category: "daiso",
+        zone: "outside",
+        name: { ko: "다이소 답십리점", en: "Daiso Dapsimni" },
+        walk: { ko: "도보 6분", en: "6 min on foot" },
+        walkMinutes: 6,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "4번 출구로 나와 시장 골목 안쪽",
+          en: "Out Exit 4 into the market alley",
+        },
+        x: 18,
+        y: 60,
+        badge: 1,
+      },
+      {
+        id: "dapsimni-cf-1",
+        category: "cafe",
+        zone: "unpaid",
+        name: {
+          ko: "역사 내 카페 (개찰구 밖)",
+          en: "Concourse cafe (unpaid area)",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~21:00)", en: "Open (~21:00)" },
+        note: {
+          ko: "대합실 개찰구 바로 앞에 있어요",
+          en: "Just in front of the unpaid gates",
+        },
+        x: 50,
+        y: 32,
+        badge: 1,
+      },
+      {
+        id: "dapsimni-cf-2",
+        category: "cafe",
+        zone: "outside",
+        name: { ko: "2번 출구 앞 카페", en: "Cafe by Exit 2" },
+        walk: { ko: "도보 2분", en: "2 min on foot" },
+        walkMinutes: 2,
+        status: { ko: "영업중", en: "Open" },
+        note: {
+          ko: "출근 동선에서 테이크아웃하기 좋아요",
+          en: "Easy takeout stop on the commute path",
+        },
+        x: 68,
+        y: 30,
+      },
+      {
+        id: "dapsimni-cv-1",
+        category: "convenience",
+        zone: "inside",
+        name: {
+          ko: "답십리역 편의점 (개찰구 안)",
+          en: "Convenience store inside Dapsimni fare gates",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~24:00)", en: "Open (~24:00)" },
+        note: {
+          ko: "5호선 개찰구 안쪽에 있어요",
+          en: "Located inside the Line 5 fare gate",
+        },
+        x: 48,
+        y: 38,
+        badge: 1,
+      },
+      {
+        id: "dapsimni-cv-2",
+        category: "convenience",
+        zone: "outside",
+        name: { ko: "4번 출구 앞 편의점", en: "Store by Exit 4" },
+        walk: { ko: "도보 2분", en: "2 min on foot" },
+        walkMinutes: 2,
+        status: { ko: "영업중 (24시간)", en: "Open 24h" },
+        note: {
+          ko: "4번 출구 나와서 바로 왼쪽",
+          en: "Immediately left out of Exit 4",
+        },
+        x: 24,
+        y: 52,
       },
     ],
   },
