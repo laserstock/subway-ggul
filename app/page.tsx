@@ -1,6 +1,18 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+import Image, { type StaticImageData } from "next/image";
+import pharmacyIcon from "@/public/icons/pharmacy.png";
+import oliveyoungIcon from "@/public/icons/oliveyoung.png";
+import daisoIcon from "@/public/icons/daiso.png";
+import cafeIcon from "@/public/icons/cafe.png";
 
 type Locale = "ko" | "en";
 type Localized = { ko: string; en: string };
@@ -10,10 +22,12 @@ type CategoryId =
   | "daiso"
   | "cafe"
   | "convenience";
-
+type StationId = "hongdae" | "gangnam" | "seoul" | "irwon";
+type Zone = "inside" | "outside" | "unpaid";
 type Place = {
   id: string;
   category: CategoryId;
+  zone: Zone;
   name: Localized;
   walk: Localized;
   walkMinutes: number;
@@ -22,7 +36,37 @@ type Place = {
   x: number;
   y: number;
   badge?: number;
-  pin: "pharmacy" | "shop" | "cafe" | "store";
+};
+
+type Exit = {
+  id: string;
+  label: Localized;
+  x: number;
+  y: number;
+};
+
+type MapLabel = {
+  text: Localized;
+  x: number;
+  y: number;
+  size: number;
+};
+
+type Station = {
+  id: StationId;
+  name: Localized;
+  aliases: string[];
+  lines: Localized;
+  insidePaid: Localized;
+  extraLineBadge?: Localized;
+  map: {
+    primary: string;
+    secondary: string;
+    angle: number;
+  };
+  exits: Exit[];
+  labels: MapLabel[];
+  places: Place[];
 };
 
 const COPY = {
@@ -34,196 +78,897 @@ const COPY = {
   smartList: { ko: "스마트 추천 목록", en: "Smart picks" },
   sortHint: { ko: "현재 위치에서 가장 빠른 순", en: "Fastest from here" },
   empty: { ko: "조건에 맞는 장소가 없어요", en: "No matching places" },
-  station: { ko: "홍대입구역", en: "Hongik Univ." },
-  insidePaid: {
-    ko: "홍대입구역 역사 내(개찰구 안)",
-    en: "Inside station (paid area)",
-  },
-  gyeongui: { ko: "경의, 경의중앙선", en: "Gyeongui–Jungang" },
+  noStation: { ko: "일치하는 역이 없어요", en: "No matching stations" },
+  inside: { ko: "개찰구 안", en: "Inside fare gate" },
+  outside: { ko: "역외", en: "Outside station" },
+  unpaid: { ko: "개찰구 밖", en: "Unpaid area" },
 };
 
-const CATEGORIES: { id: CategoryId; name: Localized; emoji: string }[] = [
-  { id: "pharmacy", name: { ko: "약국", en: "Pharmacy" }, emoji: "💊" },
-  { id: "oliveyoung", name: { ko: "올리브영", en: "Olive Young" }, emoji: "💄" },
-  { id: "daiso", name: { ko: "다이소", en: "Daiso" }, emoji: "🛍️" },
-  { id: "cafe", name: { ko: "카페", en: "Cafe" }, emoji: "☕" },
+const CATEGORIES: {
+  id: CategoryId;
+  name: Localized;
+  emoji: string;
+  icon?: StaticImageData;
+}[] = [
+  { id: "pharmacy", name: { ko: "약국", en: "Pharmacy" }, emoji: "💊", icon: pharmacyIcon },
+  { id: "oliveyoung", name: { ko: "올리브영", en: "Olive Young" }, emoji: "💄", icon: oliveyoungIcon },
+  { id: "daiso", name: { ko: "다이소", en: "Daiso" }, emoji: "🛍️", icon: daisoIcon },
+  { id: "cafe", name: { ko: "카페", en: "Cafe" }, emoji: "☕", icon: cafeIcon },
   { id: "convenience", name: { ko: "편의점", en: "Store" }, emoji: "🏪" },
 ];
 
-const EXITS = [
-  { id: "e9a", label: { ko: "9번 출구", en: "Exit 9" }, x: 39, y: 24 },
-  { id: "e2", label: { ko: "2번 출구", en: "Exit 2" }, x: 18, y: 34 },
-  { id: "e1b", label: { ko: "1번 출구", en: "Exit 1" }, x: 78, y: 29 },
-  { id: "e3", label: { ko: "3번 출구", en: "Exit 3" }, x: 72, y: 43 },
-  { id: "e1a", label: { ko: "1번 출구", en: "Exit 1" }, x: 14, y: 52 },
-  { id: "e9b", label: { ko: "9번 출구", en: "Exit 9" }, x: 27, y: 58 },
-  { id: "e7", label: { ko: "7번 출구", en: "Exit 7" }, x: 43, y: 59 },
-  { id: "e4", label: { ko: "4번 출구", en: "Exit 4" }, x: 55, y: 54 },
-];
-
-const MAP_LABELS = [
-  { text: "동교동", x: 5, y: 16, size: 10 },
-  { text: "서교동", x: 6, y: 40, size: 10 },
-  { text: "서울의대", x: 84, y: 11, size: 10 },
-  { text: "체리점밀", x: 88, y: 22, size: 9 },
-  { text: "서울동능\n지역관리", x: 88, y: 40, size: 9 },
-  { text: "경창역사들과", x: 76, y: 52, size: 9 },
-  { text: "서울쥐아친구\n정의사", x: 60, y: 64, size: 9 },
-  { text: "서울지하철", x: 86, y: 62, size: 9 },
-  { text: "경의중앙선", x: 6, y: 66, size: 9 },
-];
-
-const PLACES: Place[] = [
+const STATIONS: Station[] = [
   {
-    id: "ph-inside",
-    category: "pharmacy",
-    name: {
-      ko: "홍대입구역 내 약국 (개찰구 안, 지하 1층)",
-      en: "In-station pharmacy (paid area, B1)",
+    id: "hongdae",
+    name: { ko: "홍대입구역", en: "Hongik Univ." },
+    aliases: ["홍대", "홍대입구", "홍대입구역", "hongdae", "hongik"],
+    lines: { ko: "2호선 · 경의·중앙선", en: "Line 2 · Gyeongui–Jungang" },
+    insidePaid: {
+      ko: "홍대입구역 역사 내(개찰구 안)",
+      en: "Inside station (paid area)",
     },
-    walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
-    walkMinutes: 1,
-    status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
-    note: { ko: "2호선 개찰구 안쪽에 있어요", en: "Inside the Line 2 fare gates" },
-    x: 46,
-    y: 36,
-    badge: 1,
-    pin: "pharmacy",
+    extraLineBadge: { ko: "경의, 경의중앙선", en: "Gyeongui–Jungang" },
+    map: { primary: "#2fba4e", secondary: "#77c4a3", angle: -16 },
+    exits: [
+      { id: "e9a", label: { ko: "9번 출구", en: "Exit 9" }, x: 39, y: 24 },
+      { id: "e2", label: { ko: "2번 출구", en: "Exit 2" }, x: 18, y: 34 },
+      { id: "e1b", label: { ko: "1번 출구", en: "Exit 1" }, x: 78, y: 29 },
+      { id: "e3", label: { ko: "3번 출구", en: "Exit 3" }, x: 72, y: 43 },
+      { id: "e1a", label: { ko: "1번 출구", en: "Exit 1" }, x: 14, y: 52 },
+      { id: "e9b", label: { ko: "9번 출구", en: "Exit 9" }, x: 27, y: 58 },
+      { id: "e7", label: { ko: "7번 출구", en: "Exit 7" }, x: 43, y: 59 },
+      { id: "e4", label: { ko: "4번 출구", en: "Exit 4" }, x: 55, y: 54 },
+    ],
+    labels: [
+      { text: { ko: "동교동", en: "Donggyo" }, x: 5, y: 16, size: 10 },
+      { text: { ko: "서교동", en: "Seogyo" }, x: 6, y: 40, size: 10 },
+      { text: { ko: "서울의대", en: "Med School" }, x: 84, y: 11, size: 10 },
+    ],
+    places: [
+      {
+        id: "hongdae-ph-1",
+        category: "pharmacy",
+        zone: "inside",
+        name: {
+          ko: "홍대입구역 내 약국 (개찰구 안, 지하 1층)",
+          en: "In-station pharmacy (paid area, B1)",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "2호선 개찰구 안쪽에 있어요",
+          en: "Located inside the Line 2 fare gate",
+        },
+        x: 46,
+        y: 36,
+        badge: 1,
+      },
+      {
+        id: "hongdae-ph-2",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "지하철역 9번 출구 앞 약국 (역외)",
+          en: "Pharmacy by Exit 9 (outside)",
+        },
+        walk: { ko: "도보 3분", en: "3 min on foot" },
+        walkMinutes: 3,
+        status: { ko: "영업중", en: "Open" },
+        note: {
+          ko: "9번 출구로 나가서 바로 앞",
+          en: "Right outside Exit 9",
+        },
+        x: 35,
+        y: 29,
+      },
+      {
+        id: "hongdae-ph-3",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "3번 출구 인근 온누리약국",
+          en: "Onnuri Pharmacy near Exit 3",
+        },
+        walk: { ko: "도보 4분", en: "4 min on foot" },
+        walkMinutes: 4,
+        status: { ko: "영업중 (~21:30)", en: "Open (~21:30)" },
+        note: {
+          ko: "3번 출구로 나와 횡단보도 건너편",
+          en: "Across the street from Exit 3",
+        },
+        x: 60,
+        y: 46,
+      },
+      {
+        id: "hongdae-oy-1",
+        category: "oliveyoung",
+        zone: "outside",
+        name: {
+          ko: "올리브영 홍대입구역점",
+          en: "Olive Young Hongik Univ. Station",
+        },
+        walk: { ko: "현재 역에서 도보 2분", en: "2 min on foot from here" },
+        walkMinutes: 2,
+        status: { ko: "영업중 (~23:00)", en: "Open (~23:00)" },
+        note: {
+          ko: "1번 출구 앞 대로변에 있어요",
+          en: "On the main street by Exit 1",
+        },
+        x: 75,
+        y: 33,
+        badge: 1,
+      },
+      {
+        id: "hongdae-oy-2",
+        category: "oliveyoung",
+        zone: "outside",
+        name: { ko: "올리브영 홍대거리점", en: "Olive Young Hongdae Street" },
+        walk: { ko: "도보 6분", en: "6 min on foot" },
+        walkMinutes: 6,
+        status: { ko: "영업중 (~24:00)", en: "Open (~24:00)" },
+        note: {
+          ko: "홍대 걷고싶은거리 초입",
+          en: "At the start of Hongdae walking street",
+        },
+        x: 24,
+        y: 48,
+      },
+      {
+        id: "hongdae-ds-1",
+        category: "daiso",
+        zone: "outside",
+        name: { ko: "다이소 홍대점", en: "Daiso Hongdae" },
+        walk: { ko: "도보 5분", en: "5 min on foot" },
+        walkMinutes: 5,
+        status: { ko: "영업중 (~23:00)", en: "Open (~23:00)" },
+        note: {
+          ko: "2번 출구에서 홍대거리 방향",
+          en: "From Exit 2 toward Hongdae street",
+        },
+        x: 20,
+        y: 42,
+        badge: 1,
+      },
+      {
+        id: "hongdae-ds-2",
+        category: "daiso",
+        zone: "outside",
+        name: { ko: "다이소 서교점", en: "Daiso Seogyo" },
+        walk: { ko: "도보 7분", en: "7 min on foot" },
+        walkMinutes: 7,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "9번 출구로 나와 와우산로 쪽",
+          en: "Out Exit 9, toward Wausan-ro",
+        },
+        x: 28,
+        y: 56,
+      },
+      {
+        id: "hongdae-cf-1",
+        category: "cafe",
+        zone: "unpaid",
+        name: {
+          ko: "역사 내 커피빈 (개찰구 밖)",
+          en: "Coffee Bean (unpaid concourse)",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "대합실 상가 쪽에 있어요",
+          en: "In the concourse shopping area",
+        },
+        x: 51,
+        y: 32,
+        badge: 1,
+      },
+      {
+        id: "hongdae-cf-2",
+        category: "cafe",
+        zone: "outside",
+        name: { ko: "9번 출구 앞 카페", en: "Cafe by Exit 9" },
+        walk: { ko: "도보 3분", en: "3 min on foot" },
+        walkMinutes: 3,
+        status: { ko: "영업중", en: "Open" },
+        note: {
+          ko: "테이크아웃 동선이 가장 짧아요",
+          en: "Shortest takeout detour from the gate",
+        },
+        x: 31,
+        y: 56,
+      },
+      {
+        id: "hongdae-cv-1",
+        category: "convenience",
+        zone: "inside",
+        name: {
+          ko: "GS25 홍대입구역점 (개찰구 안)",
+          en: "GS25 inside fare gates",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (24시간)", en: "Open 24h" },
+        note: {
+          ko: "2호선 승강장 연결 통로에 있어요",
+          en: "On the Line 2 platform corridor",
+        },
+        x: 48,
+        y: 38,
+        badge: 1,
+      },
+      {
+        id: "hongdae-cv-2",
+        category: "convenience",
+        zone: "outside",
+        name: { ko: "CU 홍대9번출구점", en: "CU Hongdae Exit 9" },
+        walk: { ko: "도보 2분", en: "2 min on foot" },
+        walkMinutes: 2,
+        status: { ko: "영업중 (24시간)", en: "Open 24h" },
+        note: {
+          ko: "9번 출구 나와서 좌측에 있어요",
+          en: "Turn left right after Exit 9",
+        },
+        x: 30,
+        y: 26,
+      },
+    ],
   },
   {
-    id: "ph-exit9",
-    category: "pharmacy",
-    name: {
-      ko: "지하철역 9번 출구 앞 약국 (역외)",
-      en: "Pharmacy by Exit 9 (outside)",
+    id: "gangnam",
+    name: { ko: "강남역", en: "Gangnam" },
+    aliases: ["강남", "강남역", "gangnam"],
+    lines: { ko: "2호선 · 신분당선", en: "Line 2 · Shinbundang" },
+    insidePaid: {
+      ko: "강남역 역사 내(개찰구 안)",
+      en: "Inside Gangnam station (paid area)",
     },
-    walk: { ko: "도보 3분", en: "3 min on foot" },
-    walkMinutes: 3,
-    status: { ko: "영업중", en: "Open" },
-    note: { ko: "9번 출구로 나가서 바로 앞", en: "Right outside Exit 9" },
-    x: 35,
-    y: 29,
-    pin: "pharmacy",
+    extraLineBadge: { ko: "신분당선", en: "Shinbundang" },
+    map: { primary: "#2fba4e", secondary: "#d31145", angle: 2 },
+    exits: [
+      { id: "g11", label: { ko: "11번 출구", en: "Exit 11" }, x: 18, y: 28 },
+      { id: "g10", label: { ko: "10번 출구", en: "Exit 10" }, x: 32, y: 22 },
+      { id: "g5", label: { ko: "5번 출구", en: "Exit 5" }, x: 72, y: 26 },
+      { id: "g2", label: { ko: "2번 출구", en: "Exit 2" }, x: 78, y: 44 },
+      { id: "g1", label: { ko: "1번 출구", en: "Exit 1" }, x: 16, y: 50 },
+      { id: "g4", label: { ko: "4번 출구", en: "Exit 4" }, x: 54, y: 56 },
+    ],
+    labels: [
+      { text: { ko: "강남대로", en: "Gangnam-daero" }, x: 8, y: 14, size: 10 },
+      { text: { ko: "역삼동", en: "Yeoksam" }, x: 78, y: 12, size: 10 },
+      { text: { ko: "서초동", en: "Seocho" }, x: 6, y: 58, size: 10 },
+    ],
+    places: [
+      {
+        id: "gangnam-ph-1",
+        category: "pharmacy",
+        zone: "inside",
+        name: {
+          ko: "강남역 지하상가 약국 (개찰구 안)",
+          en: "Gangnam underground pharmacy (paid area)",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "2호선 개찰구 안쪽 지하상가에 있어요",
+          en: "Located inside the Line 2 fare gate",
+        },
+        x: 48,
+        y: 36,
+        badge: 1,
+      },
+      {
+        id: "gangnam-ph-2",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "11번 출구 앞 온누리약국 (역외)",
+          en: "Onnuri Pharmacy by Exit 11 (outside)",
+        },
+        walk: { ko: "도보 2분", en: "2 min on foot" },
+        walkMinutes: 2,
+        status: { ko: "영업중 (~23:00)", en: "Open (~23:00)" },
+        note: {
+          ko: "11번 출구로 나가 강남대로 방향",
+          en: "Out Exit 11 toward Gangnam-daero",
+        },
+        x: 26,
+        y: 30,
+      },
+      {
+        id: "gangnam-ph-3",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "5번 출구 맞은편 약국",
+          en: "Pharmacy across from Exit 5",
+        },
+        walk: { ko: "도보 4분", en: "4 min on foot" },
+        walkMinutes: 4,
+        status: { ko: "영업중 (~21:30)", en: "Open (~21:30)" },
+        note: {
+          ko: "5번 출구 나와 횡단보도만 건너면 돼요",
+          en: "Cross one street after Exit 5",
+        },
+        x: 70,
+        y: 32,
+      },
+      {
+        id: "gangnam-oy-1",
+        category: "oliveyoung",
+        zone: "unpaid",
+        name: {
+          ko: "올리브영 강남역점 (개찰구 밖 대합실)",
+          en: "Olive Young Gangnam concourse",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~23:30)", en: "Open (~23:30)" },
+        note: {
+          ko: "신분당선 개찰구 밖 연결통로에 있어요",
+          en: "On the unpaid Shinbundang transfer corridor",
+        },
+        x: 52,
+        y: 30,
+        badge: 1,
+      },
+      {
+        id: "gangnam-oy-2",
+        category: "oliveyoung",
+        zone: "outside",
+        name: { ko: "올리브영 강남대로점", en: "Olive Young Gangnam-daero" },
+        walk: { ko: "도보 5분", en: "5 min on foot" },
+        walkMinutes: 5,
+        status: { ko: "영업중 (~24:00)", en: "Open (~24:00)" },
+        note: {
+          ko: "10번 출구로 나와 테헤란로 초입",
+          en: "Out Exit 10 at the start of Teheran-ro",
+        },
+        x: 34,
+        y: 48,
+      },
+      {
+        id: "gangnam-ds-1",
+        category: "daiso",
+        zone: "outside",
+        name: { ko: "다이소 강남역점", en: "Daiso Gangnam Station" },
+        walk: { ko: "도보 4분", en: "4 min on foot" },
+        walkMinutes: 4,
+        status: { ko: "영업중 (~23:00)", en: "Open (~23:00)" },
+        note: {
+          ko: "2번 출구에서 강남대로를 따라가요",
+          en: "Follow Gangnam-daero from Exit 2",
+        },
+        x: 76,
+        y: 50,
+        badge: 1,
+      },
+      {
+        id: "gangnam-ds-2",
+        category: "daiso",
+        zone: "outside",
+        name: { ko: "다이소 역삼점", en: "Daiso Yeoksam" },
+        walk: { ko: "도보 8분", en: "8 min on foot" },
+        walkMinutes: 8,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "5번 출구에서 역삼역 방향으로 조금 더",
+          en: "From Exit 5, a bit toward Yeoksam",
+        },
+        x: 82,
+        y: 28,
+      },
+      {
+        id: "gangnam-cf-1",
+        category: "cafe",
+        zone: "unpaid",
+        name: {
+          ko: "스타벅스 강남역점 (개찰구 밖)",
+          en: "Starbucks Gangnam (unpaid area)",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~22:30)", en: "Open (~22:30)" },
+        note: {
+          ko: "2호선 대합실에서 바로 보여요",
+          en: "Visible from the Line 2 concourse",
+        },
+        x: 44,
+        y: 40,
+        badge: 1,
+      },
+      {
+        id: "gangnam-cf-2",
+        category: "cafe",
+        zone: "outside",
+        name: { ko: "11번 출구 앞 카페", en: "Cafe by Exit 11" },
+        walk: { ko: "도보 3분", en: "3 min on foot" },
+        walkMinutes: 3,
+        status: { ko: "영업중", en: "Open" },
+        note: {
+          ko: "출근 동선에서 테이크아웃하기 좋아요",
+          en: "Easy takeout stop on the commute path",
+        },
+        x: 22,
+        y: 36,
+      },
+      {
+        id: "gangnam-cv-1",
+        category: "convenience",
+        zone: "inside",
+        name: {
+          ko: "세븐일레븐 강남역점 (개찰구 안)",
+          en: "7-Eleven inside fare gates",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (24시간)", en: "Open 24h" },
+        note: {
+          ko: "2호선 승강장 끝 연결 통로에 있어요",
+          en: "At the end of the Line 2 platform corridor",
+        },
+        x: 50,
+        y: 38,
+        badge: 1,
+      },
+      {
+        id: "gangnam-cv-2",
+        category: "convenience",
+        zone: "outside",
+        name: { ko: "GS25 강남10번출구점", en: "GS25 Gangnam Exit 10" },
+        walk: { ko: "도보 2분", en: "2 min on foot" },
+        walkMinutes: 2,
+        status: { ko: "영업중 (24시간)", en: "Open 24h" },
+        note: {
+          ko: "10번 출구 나와서 바로 우측",
+          en: "Immediately to the right of Exit 10",
+        },
+        x: 36,
+        y: 24,
+      },
+    ],
   },
   {
-    id: "ph-exit3",
-    category: "pharmacy",
-    name: {
-      ko: "3번 출구 인근 온누리약국",
-      en: "Onnuri Pharmacy near Exit 3",
+    id: "seoul",
+    name: { ko: "서울역", en: "Seoul Station" },
+    aliases: ["서울", "서울역", "seoul", "seoul station"],
+    lines: {
+      ko: "1호선 · 4호선 · 경의·중앙선",
+      en: "Line 1 · Line 4 · Gyeongui–Jungang",
     },
-    walk: { ko: "도보 4분", en: "4 min on foot" },
-    walkMinutes: 4,
-    status: { ko: "영업중 (~21:30)", en: "Open (~21:30)" },
-    note: { ko: "3번 출구로 나와 횡단보도 건너편", en: "Across the street from Exit 3" },
-    x: 60,
-    y: 46,
-    pin: "pharmacy",
-  },
-  {
-    id: "oy-station",
-    category: "oliveyoung",
-    name: {
-      ko: "올리브영 홍대입구역점",
-      en: "Olive Young Hongik Univ. Station",
+    insidePaid: {
+      ko: "서울역 역사 내(개찰구 안)",
+      en: "Inside Seoul Station (paid area)",
     },
-    walk: { ko: "현재 역에서 도보 2분", en: "2 min on foot from here" },
-    walkMinutes: 2,
-    status: { ko: "영업중 (~23:00)", en: "Open (~23:00)" },
-    note: { ko: "1번 출구 앞 대로변", en: "On the main street by Exit 1" },
-    x: 75,
-    y: 33,
-    badge: 1,
-    pin: "shop",
+    extraLineBadge: { ko: "1호선 · 4호선", en: "Line 1 · Line 4" },
+    map: { primary: "#0032a0", secondary: "#00a5de", angle: 10 },
+    exits: [
+      { id: "s1", label: { ko: "1번 출구", en: "Exit 1" }, x: 20, y: 30 },
+      { id: "s3", label: { ko: "3번 출구", en: "Exit 3" }, x: 38, y: 22 },
+      { id: "s4", label: { ko: "4번 출구", en: "Exit 4" }, x: 72, y: 28 },
+      { id: "s9", label: { ko: "9번 출구", en: "Exit 9" }, x: 78, y: 48 },
+      { id: "s15", label: { ko: "15번 출구", en: "Exit 15" }, x: 18, y: 54 },
+      { id: "s8", label: { ko: "8번 출구", en: "Exit 8" }, x: 50, y: 58 },
+    ],
+    labels: [
+      { text: { ko: "남대문", en: "Namdaemun" }, x: 8, y: 16, size: 10 },
+      { text: { ko: "회현동", en: "Hoehyeon" }, x: 80, y: 14, size: 10 },
+      { text: { ko: "서울로", en: "Seoullo" }, x: 76, y: 58, size: 10 },
+    ],
+    places: [
+      {
+        id: "seoul-ph-1",
+        category: "pharmacy",
+        zone: "inside",
+        name: {
+          ko: "서울역 내 약국 (개찰구 안, 1호선)",
+          en: "Seoul Station pharmacy (paid area, Line 1)",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~21:00)", en: "Open (~21:00)" },
+        note: {
+          ko: "1호선 개찰구 안쪽에 있어요",
+          en: "Located inside the Line 1 fare gate",
+        },
+        x: 46,
+        y: 36,
+        badge: 1,
+      },
+      {
+        id: "seoul-ph-2",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "3번 출구 앞 서울역약국 (역외)",
+          en: "Seoul Station Pharmacy by Exit 3",
+        },
+        walk: { ko: "도보 3분", en: "3 min on foot" },
+        walkMinutes: 3,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "3번 출구로 나와 남대문 방향",
+          en: "Out Exit 3 toward Namdaemun",
+        },
+        x: 34,
+        y: 26,
+      },
+      {
+        id: "seoul-ph-3",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "9번 출구 인근 온누리약국",
+          en: "Onnuri Pharmacy near Exit 9",
+        },
+        walk: { ko: "도보 5분", en: "5 min on foot" },
+        walkMinutes: 5,
+        status: { ko: "영업중 (~20:30)", en: "Open (~20:30)" },
+        note: {
+          ko: "4호선 쪽으로 빠져 나오면 가까워요",
+          en: "Closest if you exit toward Line 4",
+        },
+        x: 74,
+        y: 50,
+      },
+      {
+        id: "seoul-oy-1",
+        category: "oliveyoung",
+        zone: "unpaid",
+        name: {
+          ko: "올리브영 서울역점 (대합실)",
+          en: "Olive Young Seoul Station concourse",
+        },
+        walk: { ko: "현재 역에서 도보 2분", en: "2 min on foot from here" },
+        walkMinutes: 2,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "KTX 대합실 개찰구 밖에 있어요",
+          en: "In the unpaid KTX concourse",
+        },
+        x: 54,
+        y: 32,
+        badge: 1,
+      },
+      {
+        id: "seoul-oy-2",
+        category: "oliveyoung",
+        zone: "outside",
+        name: { ko: "올리브영 남대문점", en: "Olive Young Namdaemun" },
+        walk: { ko: "도보 7분", en: "7 min on foot" },
+        walkMinutes: 7,
+        status: { ko: "영업중 (~21:30)", en: "Open (~21:30)" },
+        note: {
+          ko: "1번 출구에서 남대문시장 방향",
+          en: "From Exit 1 toward Namdaemun Market",
+        },
+        x: 18,
+        y: 36,
+      },
+      {
+        id: "seoul-ds-1",
+        category: "daiso",
+        zone: "outside",
+        name: { ko: "다이소 서울역점", en: "Daiso Seoul Station" },
+        walk: { ko: "도보 4분", en: "4 min on foot" },
+        walkMinutes: 4,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "4번 출구로 나와 서울로7017 방향",
+          en: "Out Exit 4 toward Seoullo 7017",
+        },
+        x: 70,
+        y: 30,
+        badge: 1,
+      },
+      {
+        id: "seoul-ds-2",
+        category: "daiso",
+        zone: "outside",
+        name: { ko: "다이소 회현점", en: "Daiso Hoehyeon" },
+        walk: { ko: "도보 8분", en: "8 min on foot" },
+        walkMinutes: 8,
+        status: { ko: "영업중 (~21:00)", en: "Open (~21:00)" },
+        note: {
+          ko: "8번 출구에서 회현역 쪽으로 조금 더",
+          en: "From Exit 8, a bit toward Hoehyeon",
+        },
+        x: 56,
+        y: 56,
+      },
+      {
+        id: "seoul-cf-1",
+        category: "cafe",
+        zone: "unpaid",
+        name: {
+          ko: "역사 내 투썸플레이스 (개찰구 밖)",
+          en: "A Twosome Place (unpaid area)",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "1호선·4호선 환승 대합실에 있어요",
+          en: "In the Line 1–4 transfer concourse",
+        },
+        x: 48,
+        y: 40,
+        badge: 1,
+      },
+      {
+        id: "seoul-cf-2",
+        category: "cafe",
+        zone: "outside",
+        name: { ko: "15번 출구 앞 카페", en: "Cafe by Exit 15" },
+        walk: { ko: "도보 3분", en: "3 min on foot" },
+        walkMinutes: 3,
+        status: { ko: "영업중", en: "Open" },
+        note: {
+          ko: "공항철도 방면 출구에서 제일 가까워요",
+          en: "Closest if you exit toward AREX",
+        },
+        x: 22,
+        y: 52,
+      },
+      {
+        id: "seoul-cv-1",
+        category: "convenience",
+        zone: "inside",
+        name: {
+          ko: "CU 서울역점 (개찰구 안)",
+          en: "CU inside Seoul Station fare gates",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (24시간)", en: "Open 24h" },
+        note: {
+          ko: "1호선 승강장 연결 통로에 있어요",
+          en: "On the Line 1 platform corridor",
+        },
+        x: 50,
+        y: 38,
+        badge: 1,
+      },
+      {
+        id: "seoul-cv-2",
+        category: "convenience",
+        zone: "outside",
+        name: { ko: "GS25 서울역3번출구점", en: "GS25 Seoul Station Exit 3" },
+        walk: { ko: "도보 2분", en: "2 min on foot" },
+        walkMinutes: 2,
+        status: { ko: "영업중 (24시간)", en: "Open 24h" },
+        note: {
+          ko: "3번 출구 나와서 바로 앞",
+          en: "Right in front after Exit 3",
+        },
+        x: 40,
+        y: 24,
+      },
+    ],
   },
   {
-    id: "oy-street",
-    category: "oliveyoung",
-    name: { ko: "올리브영 홍대거리점", en: "Olive Young Hongdae Street" },
-    walk: { ko: "도보 6분", en: "6 min on foot" },
-    walkMinutes: 6,
-    status: { ko: "영업중 (~24:00)", en: "Open (~24:00)" },
-    note: { ko: "홍대 걷고싶은거리 초입", en: "At the start of Hongdae street" },
-    x: 24,
-    y: 48,
-    pin: "shop",
-  },
-  {
-    id: "ds-hongdae",
-    category: "daiso",
-    name: { ko: "다이소 홍대점", en: "Daiso Hongdae" },
-    walk: { ko: "도보 5분", en: "5 min on foot" },
-    walkMinutes: 5,
-    status: { ko: "영업중 (~23:00)", en: "Open (~23:00)" },
-    note: { ko: "2번 출구에서 홍대거리 방향", en: "From Exit 2 toward Hongdae" },
-    x: 20,
-    y: 42,
-    badge: 1,
-    pin: "shop",
-  },
-  {
-    id: "cafe-inside",
-    category: "cafe",
-    name: { ko: "역사 내 커피빈 (개찰구 밖)", en: "Coffee Bean (unpaid area)" },
-    walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
-    walkMinutes: 1,
-    status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
-    note: { ko: "대합실 상가 쪽", en: "In the concourse shops" },
-    x: 51,
-    y: 32,
-    badge: 1,
-    pin: "cafe",
-  },
-  {
-    id: "cafe-exit9",
-    category: "cafe",
-    name: { ko: "9번 출구 앞 카페", en: "Cafe by Exit 9" },
-    walk: { ko: "도보 3분", en: "3 min on foot" },
-    walkMinutes: 3,
-    status: { ko: "영업중", en: "Open" },
-    note: { ko: "테이크아웃 동선이 짧아요", en: "Quick takeout stop" },
-    x: 31,
-    y: 56,
-    pin: "cafe",
-  },
-  {
-    id: "cv-gs25",
-    category: "convenience",
-    name: {
-      ko: "GS25 홍대입구역점 (개찰구 안)",
-      en: "GS25 inside fare gates",
+    id: "irwon",
+    name: { ko: "일원역", en: "Irwon" },
+    aliases: ["일원", "일원역", "irwon"],
+    lines: { ko: "3호선", en: "Line 3" },
+    insidePaid: {
+      ko: "일원역 역사 내(개찰구 안)",
+      en: "Inside Irwon station (paid area)",
     },
-    walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
-    walkMinutes: 1,
-    status: { ko: "영업중 (24시간)", en: "Open 24h" },
-    note: { ko: "2호선 승강장 연결 통로", en: "On the Line 2 platform corridor" },
-    x: 48,
-    y: 38,
-    badge: 1,
-    pin: "store",
-  },
-  {
-    id: "cv-cu",
-    category: "convenience",
-    name: { ko: "CU 홍대9번출구점", en: "CU Hongdae Exit 9" },
-    walk: { ko: "도보 2분", en: "2 min on foot" },
-    walkMinutes: 2,
-    status: { ko: "영업중 (24시간)", en: "Open 24h" },
-    note: { ko: "9번 출구 나와서 좌측", en: "Left after Exit 9" },
-    x: 30,
-    y: 26,
-    pin: "store",
+    extraLineBadge: { ko: "3호선", en: "Line 3" },
+    map: { primary: "#ef7c1b", secondary: "#f4c790", angle: -8 },
+    exits: [
+      { id: "i1", label: { ko: "1번 출구", en: "Exit 1" }, x: 22, y: 32 },
+      { id: "i2", label: { ko: "2번 출구", en: "Exit 2" }, x: 70, y: 28 },
+      { id: "i3", label: { ko: "3번 출구", en: "Exit 3" }, x: 74, y: 50 },
+      { id: "i4", label: { ko: "4번 출구", en: "Exit 4" }, x: 28, y: 54 },
+    ],
+    labels: [
+      { text: { ko: "일원동", en: "Irwon-dong" }, x: 8, y: 16, size: 10 },
+      { text: { ko: "삼성서울병원", en: "Samsung Hospital" }, x: 68, y: 14, size: 10 },
+      { text: { ko: "대청동", en: "Daecheong" }, x: 8, y: 58, size: 10 },
+    ],
+    places: [
+      {
+        id: "irwon-ph-1",
+        category: "pharmacy",
+        zone: "inside",
+        name: {
+          ko: "일원역 내 약국 (개찰구 안)",
+          en: "Irwon in-station pharmacy (paid area)",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~21:00)", en: "Open (~21:00)" },
+        note: {
+          ko: "3호선 개찰구 안쪽에 있어요",
+          en: "Located inside the Line 3 fare gate",
+        },
+        x: 48,
+        y: 36,
+        badge: 1,
+      },
+      {
+        id: "irwon-ph-2",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "2번 출구 앞 병원 약국 (역외)",
+          en: "Hospital pharmacy by Exit 2 (outside)",
+        },
+        walk: { ko: "도보 3분", en: "3 min on foot" },
+        walkMinutes: 3,
+        status: { ko: "영업중 (~20:00)", en: "Open (~20:00)" },
+        note: {
+          ko: "2번 출구로 나와 삼성서울병원 방향",
+          en: "Out Exit 2 toward Samsung Medical Center",
+        },
+        x: 68,
+        y: 30,
+      },
+      {
+        id: "irwon-ph-3",
+        category: "pharmacy",
+        zone: "outside",
+        name: {
+          ko: "4번 출구 인근 온누리약국",
+          en: "Onnuri Pharmacy near Exit 4",
+        },
+        walk: { ko: "도보 4분", en: "4 min on foot" },
+        walkMinutes: 4,
+        status: { ko: "영업중 (~21:30)", en: "Open (~21:30)" },
+        note: {
+          ko: "4번 출구 나와 일원로를 따라가요",
+          en: "Follow Irwon-ro from Exit 4",
+        },
+        x: 30,
+        y: 52,
+      },
+      {
+        id: "irwon-oy-1",
+        category: "oliveyoung",
+        zone: "outside",
+        name: { ko: "올리브영 일원점", en: "Olive Young Irwon" },
+        walk: { ko: "도보 6분", en: "6 min on foot" },
+        walkMinutes: 6,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "1번 출구에서 일원본동 방면",
+          en: "From Exit 1 toward Irwonbon-dong",
+        },
+        x: 24,
+        y: 36,
+        badge: 1,
+      },
+      {
+        id: "irwon-oy-2",
+        category: "oliveyoung",
+        zone: "outside",
+        name: {
+          ko: "올리브영 삼성서울병원점",
+          en: "Olive Young Samsung Hospital",
+        },
+        walk: { ko: "도보 8분", en: "8 min on foot" },
+        walkMinutes: 8,
+        status: { ko: "영업중 (~21:00)", en: "Open (~21:00)" },
+        note: {
+          ko: "2번 출구에서 병원 단지 안쪽",
+          en: "Inside the hospital campus from Exit 2",
+        },
+        x: 78,
+        y: 24,
+      },
+      {
+        id: "irwon-ds-1",
+        category: "daiso",
+        zone: "outside",
+        name: { ko: "다이소 일원점", en: "Daiso Irwon" },
+        walk: { ko: "도보 7분", en: "7 min on foot" },
+        walkMinutes: 7,
+        status: { ko: "영업중 (~22:00)", en: "Open (~22:00)" },
+        note: {
+          ko: "3번 출구로 나와 상가 골목 안쪽",
+          en: "Out Exit 3 into the local shopping alley",
+        },
+        x: 72,
+        y: 52,
+        badge: 1,
+      },
+      {
+        id: "irwon-ds-2",
+        category: "daiso",
+        zone: "outside",
+        name: { ko: "다이소 대청점", en: "Daiso Daecheong" },
+        walk: { ko: "도보 10분", en: "10 min on foot" },
+        walkMinutes: 10,
+        status: { ko: "영업중 (~21:30)", en: "Open (~21:30)" },
+        note: {
+          ko: "4번 출구에서 대청역 방향으로 조금 더",
+          en: "From Exit 4, a bit toward Daecheong",
+        },
+        x: 18,
+        y: 56,
+      },
+      {
+        id: "irwon-cf-1",
+        category: "cafe",
+        zone: "unpaid",
+        name: {
+          ko: "역사 내 이디야 (개찰구 밖)",
+          en: "Ediya in concourse (unpaid area)",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (~21:00)", en: "Open (~21:00)" },
+        note: {
+          ko: "대합실 개찰구 바로 앞에 있어요",
+          en: "Just in front of the unpaid gates",
+        },
+        x: 50,
+        y: 32,
+        badge: 1,
+      },
+      {
+        id: "irwon-cf-2",
+        category: "cafe",
+        zone: "outside",
+        name: { ko: "1번 출구 앞 카페", en: "Cafe by Exit 1" },
+        walk: { ko: "도보 3분", en: "3 min on foot" },
+        walkMinutes: 3,
+        status: { ko: "영업중", en: "Open" },
+        note: {
+          ko: "병원 가는 동선에서 테이크아웃하기 좋아요",
+          en: "Handy takeout stop on the hospital route",
+        },
+        x: 26,
+        y: 28,
+      },
+      {
+        id: "irwon-cv-1",
+        category: "convenience",
+        zone: "inside",
+        name: {
+          ko: "GS25 일원역점 (개찰구 안)",
+          en: "GS25 inside Irwon fare gates",
+        },
+        walk: { ko: "현재 역에서 도보 1분", en: "1 min on foot from here" },
+        walkMinutes: 1,
+        status: { ko: "영업중 (24시간)", en: "Open 24h" },
+        note: {
+          ko: "3호선 승강장 연결 통로에 있어요",
+          en: "On the Line 3 platform corridor",
+        },
+        x: 48,
+        y: 38,
+        badge: 1,
+      },
+      {
+        id: "irwon-cv-2",
+        category: "convenience",
+        zone: "outside",
+        name: { ko: "CU 일원2번출구점", en: "CU Irwon Exit 2" },
+        walk: { ko: "도보 2분", en: "2 min on foot" },
+        walkMinutes: 2,
+        status: { ko: "영업중 (24시간)", en: "Open 24h" },
+        note: {
+          ko: "2번 출구 나와서 병원 방향 바로 앞",
+          en: "Right outside Exit 2 toward the hospital",
+        },
+        x: 66,
+        y: 34,
+      },
+    ],
   },
 ];
 
 const CITY_BLOCKS = Array.from({ length: 80 }, (_, i) => {
   const col = i % 8;
   const row = Math.floor(i / 8);
-  const jitterX = (i * 13) % 9;
-  const jitterY = (i * 7) % 8;
   return {
-    x: 6 + col * 50 + jitterX,
-    y: 4 + row * 42 + jitterY,
+    x: 6 + col * 50 + ((i * 13) % 9),
+    y: 4 + row * 42 + ((i * 7) % 8),
     w: 28 + ((i * 5) % 16),
     h: 18 + ((i * 3) % 14),
     r: 3,
@@ -232,6 +977,25 @@ const CITY_BLOCKS = Array.from({ length: 80 }, (_, i) => {
 
 function t(value: Localized, locale: Locale) {
   return value[locale];
+}
+
+function normalize(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function stationMatches(station: Station, query: string) {
+  const q = normalize(query);
+  if (!q) return true;
+  const haystack = [
+    station.name.ko,
+    station.name.en,
+    station.lines.ko,
+    station.lines.en,
+    ...station.aliases,
+  ]
+    .map(normalize)
+    .join(" ");
+  return haystack.includes(q);
 }
 
 function SearchIcon() {
@@ -297,35 +1061,51 @@ function DropPin({
   );
 }
 
-function PharmacyPin({ selected }: { selected?: boolean }) {
+function CategoryIcon({
+  category,
+  size,
+}: {
+  category: CategoryId;
+  size: number;
+}) {
+  const item = CATEGORIES.find((entry) => entry.id === category);
+  if (!item?.icon) {
+    return (
+      <span
+        className="inline-flex shrink-0 items-center justify-center leading-none"
+        style={{ width: size, height: size, fontSize: size * 0.85 }}
+        aria-hidden
+      >
+        {item?.emoji ?? "📍"}
+      </span>
+    );
+  }
   return (
-    <div
-      className={`flex h-[30px] w-[30px] items-center justify-center rounded-full border-[3px] bg-white shadow-md ${
-        selected ? "scale-110 border-[#1d4ed8]" : "border-[#2f6bff]"
-      }`}
-    >
-      <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden>
-        <rect x="5.2" y="1.2" width="3.6" height="11.6" rx="0.8" fill="#ef4444" />
-        <rect x="1.2" y="5.2" width="11.6" height="3.6" rx="0.8" fill="#ef4444" />
-      </svg>
-    </div>
+    <Image
+      src={item.icon}
+      alt=""
+      width={size}
+      height={size}
+      className="shrink-0 rounded-[4px] object-contain"
+      style={{ width: size, height: size }}
+    />
   );
 }
 
-function CategoryPin({
-  emoji,
+function PlacePin({
+  category,
   selected,
 }: {
-  emoji: string;
+  category: CategoryId;
   selected?: boolean;
 }) {
   return (
     <div
-      className={`flex h-[30px] w-[30px] items-center justify-center rounded-full border-[3px] bg-white text-[13px] shadow-md ${
+      className={`flex h-[32px] w-[32px] items-center justify-center rounded-full border-[3px] bg-white shadow-md ${
         selected ? "scale-110 border-[#1d4ed8]" : "border-[#2f6bff]"
       }`}
     >
-      {emoji}
+      <CategoryIcon category={category} size={20} />
     </div>
   );
 }
@@ -356,20 +1136,19 @@ function YellowLabel({
 
 function MockMap({
   locale,
+  station,
   places,
   selectedId,
   onSelect,
   category,
 }: {
   locale: Locale;
+  station: Station;
   places: Place[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   category: CategoryId;
 }) {
-  const categoryEmoji =
-    CATEGORIES.find((item) => item.id === category)?.emoji ?? "📍";
-
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#eef1f3]">
       <svg
@@ -408,7 +1187,6 @@ function MockMap({
           <line x1="198" y1="-20" x2="238" y2="450" />
           <line x1="-20" y1="248" x2="430" y2="226" />
           <line x1="318" y1="-20" x2="348" y2="450" />
-          <line x1="-10" y1="360" x2="430" y2="338" />
         </g>
         <g stroke="#ffffff" strokeWidth="15" strokeLinecap="square">
           <line x1="-20" y1="96" x2="430" y2="78" />
@@ -416,21 +1194,41 @@ function MockMap({
           <line x1="198" y1="-20" x2="238" y2="450" />
           <line x1="-20" y1="248" x2="430" y2="226" />
           <line x1="318" y1="-20" x2="348" y2="450" />
-          <line x1="-10" y1="360" x2="430" y2="338" />
         </g>
 
         <path
           d="M170 62 C 250 78, 330 118, 430 148"
           fill="none"
-          stroke="#77c4a3"
+          stroke={station.map.secondary}
           strokeWidth="10"
           strokeLinecap="round"
         />
 
-        <g transform="translate(200 168) rotate(-16)">
-          <rect x="-240" y="-8" width="170" height="16" rx="8" fill="#2fba4e" />
-          <rect x="-78" y="-18" width="210" height="36" rx="11" fill="#2fba4e" />
-          <rect x="124" y="-8" width="190" height="16" rx="8" fill="#2fba4e" />
+        <g transform={`translate(200 168) rotate(${station.map.angle})`}>
+          <rect
+            x="-240"
+            y="-8"
+            width="170"
+            height="16"
+            rx="8"
+            fill={station.map.primary}
+          />
+          <rect
+            x="-78"
+            y="-18"
+            width="210"
+            height="36"
+            rx="11"
+            fill={station.map.primary}
+          />
+          <rect
+            x="124"
+            y="-8"
+            width="190"
+            height="16"
+            rx="8"
+            fill={station.map.primary}
+          />
           <rect x="-64" y="-3.5" width="182" height="7" rx="3.5" fill="#e7f8ed" />
         </g>
 
@@ -443,23 +1241,28 @@ function MockMap({
         />
       </svg>
 
-      <div className="pointer-events-none absolute right-[16%] top-[12%]">
-        <span className="rounded-md bg-[#6fbf9a] px-2 py-[3px] text-[11px] font-semibold text-white shadow-sm">
-          {t(COPY.gyeongui, locale)}
-        </span>
-      </div>
+      {station.extraLineBadge ? (
+        <div className="pointer-events-none absolute right-[16%] top-[12%]">
+          <span
+            className="rounded-md px-2 py-[3px] text-[11px] font-semibold text-white shadow-sm"
+            style={{ backgroundColor: station.map.secondary }}
+          >
+            {t(station.extraLineBadge, locale)}
+          </span>
+        </div>
+      ) : null}
 
       <div className="pointer-events-none absolute left-[57%] top-[27%] z-10 -translate-x-1/2">
         <span className="text-[13px] font-extrabold tracking-tight text-neutral-900 [text-shadow:0_0_5px_#fff,0_0_8px_#fff]">
-          {t(COPY.station, locale)}
+          {t(station.name, locale)}
         </span>
       </div>
 
       <div className="pointer-events-none absolute left-[49%] top-[40%] z-10 -translate-x-1/2">
-        <YellowLabel>{t(COPY.insidePaid, locale)}</YellowLabel>
+        <YellowLabel>{t(station.insidePaid, locale)}</YellowLabel>
       </div>
 
-      {EXITS.map((exit) => (
+      {station.exits.map((exit) => (
         <div
           key={exit.id}
           className="pointer-events-none absolute z-10"
@@ -469,9 +1272,9 @@ function MockMap({
         </div>
       ))}
 
-      {MAP_LABELS.map((label) => (
+      {station.labels.map((label) => (
         <div
-          key={label.text}
+          key={label.text.ko}
           className="pointer-events-none absolute whitespace-pre text-neutral-400"
           style={{
             left: `${label.x}%`,
@@ -480,7 +1283,7 @@ function MockMap({
             lineHeight: 1.25,
           }}
         >
-          {label.text}
+          {t(label.text, locale)}
         </div>
       ))}
 
@@ -507,14 +1310,7 @@ function MockMap({
           aria-label={t(place.name, locale)}
         >
           <span className="relative inline-flex">
-            {place.pin === "pharmacy" ? (
-              <PharmacyPin selected={selectedId === place.id} />
-            ) : (
-              <CategoryPin
-                emoji={categoryEmoji}
-                selected={selectedId === place.id}
-              />
-            )}
+            <PlacePin category={category} selected={selectedId === place.id} />
             {place.badge ? <NumberBadge n={place.badge} /> : null}
           </span>
         </button>
@@ -526,19 +1322,92 @@ function MockMap({
 export default function Home() {
   const [locale, setLocale] = useState<Locale>("ko");
   const [category, setCategory] = useState<CategoryId>("pharmacy");
+  const [stationId, setStationId] = useState<StationId>("hongdae");
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>("ph-inside");
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>("hongdae-ph-1");
+  const searchRef = useRef<HTMLDivElement>(null);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return PLACES.filter((place) => {
-      if (place.category !== category) return false;
-      if (!q) return true;
-      return `${t(place.name, locale)} ${t(place.note, locale)}`
-        .toLowerCase()
-        .includes(q);
-    }).sort((a, b) => a.walkMinutes - b.walkMinutes);
-  }, [category, locale, query]);
+  const station = STATIONS.find((item) => item.id === stationId) ?? STATIONS[0];
+
+  const suggestions = useMemo(
+    () => STATIONS.filter((item) => stationMatches(item, query)),
+    [query],
+  );
+
+  const filtered = useMemo(
+    () =>
+      station.places
+        .filter((place) => place.category === category)
+        .sort((a, b) => a.walkMinutes - b.walkMinutes),
+    [station, category],
+  );
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!searchRef.current?.contains(event.target as Node)) {
+        setSuggestOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, []);
+
+  function selectStation(next: Station) {
+    const first =
+      next.places
+        .filter((place) => place.category === category)
+        .sort((a, b) => a.walkMinutes - b.walkMinutes)[0] ?? null;
+    setStationId(next.id);
+    setQuery(t(next.name, locale));
+    setSelectedId(first?.id ?? null);
+    setSuggestOpen(false);
+  }
+
+  function selectCategory(next: CategoryId) {
+    setCategory(next);
+    const first =
+      station.places
+        .filter((place) => place.category === next)
+        .sort((a, b) => a.walkMinutes - b.walkMinutes)[0] ?? null;
+    setSelectedId(first?.id ?? null);
+  }
+
+  function toggleLocale() {
+    const nextLocale: Locale = locale === "ko" ? "en" : "ko";
+    const stationNames = STATIONS.flatMap((item) => [item.name.ko, item.name.en]);
+    if (stationNames.includes(query)) {
+      setQuery(t(station.name, nextLocale));
+    }
+    setLocale(nextLocale);
+  }
+
+  function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!suggestOpen && ["ArrowDown", "Enter"].includes(event.key)) {
+      setSuggestOpen(true);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHighlightIndex((index) =>
+        suggestions.length === 0 ? 0 : (index + 1) % suggestions.length,
+      );
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlightIndex((index) =>
+        suggestions.length === 0
+          ? 0
+          : (index - 1 + suggestions.length) % suggestions.length,
+      );
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const picked = suggestions[highlightIndex];
+      if (picked) selectStation(picked);
+    } else if (event.key === "Escape") {
+      setSuggestOpen(false);
+    }
+  }
 
   return (
     <div className="flex min-h-dvh justify-center bg-[#e8eaed]">
@@ -552,25 +1421,89 @@ export default function Home() {
           </div>
           <button
             type="button"
-            onClick={() => setLocale((prev) => (prev === "ko" ? "en" : "ko"))}
-            className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-600"
+            onClick={toggleLocale}
+            className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[13px] font-medium"
             aria-label="Change language"
           >
             <GlobeIcon />
-            KO/EN
+            <span className={locale === "ko" ? "font-bold text-[#2563eb]" : "text-neutral-400"}>
+              KO
+            </span>
+            <span className="text-neutral-300">/</span>
+            <span className={locale === "en" ? "font-bold text-[#2563eb]" : "text-neutral-400"}>
+              EN
+            </span>
           </button>
         </header>
 
-        <div className="px-4">
+        <div className="relative z-50 px-4" ref={searchRef}>
           <label className="flex items-center gap-2 rounded-full bg-[#f3f4f6] px-3.5 py-[11px]">
             <SearchIcon />
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSuggestOpen(true);
+                setHighlightIndex(0);
+              }}
+              onFocus={() => {
+                setSuggestOpen(true);
+                setHighlightIndex(0);
+              }}
+              onKeyDown={onSearchKeyDown}
               placeholder={t(COPY.search, locale)}
               className="w-full bg-transparent text-[13px] text-neutral-800 outline-none placeholder:text-neutral-400"
+              role="combobox"
+              aria-controls="station-suggestions"
+              aria-expanded={suggestOpen}
+              aria-autocomplete="list"
             />
           </label>
+
+          {suggestOpen ? (
+            <div
+              className="absolute inset-x-4 top-[calc(100%+8px)] overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.14)]"
+              id="station-suggestions"
+              role="listbox"
+            >
+              {suggestions.length === 0 ? (
+                <p className="px-4 py-3 text-[13px] text-neutral-400">
+                  {t(COPY.noStation, locale)}
+                </p>
+              ) : (
+                suggestions.map((item, index) => {
+                  const active = index === highlightIndex;
+                  const current = item.id === stationId;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="option"
+                      aria-selected={current}
+                      onMouseEnter={() => setHighlightIndex(index)}
+                      onClick={() => selectStation(item)}
+                      className={`flex w-full items-center justify-between px-4 py-3 text-left ${
+                        active ? "bg-sky-50" : "bg-white"
+                      }`}
+                    >
+                      <span>
+                        <span className="block text-[14px] font-semibold text-neutral-900">
+                          {t(item.name, locale)}
+                        </span>
+                        <span className="mt-0.5 block text-[12px] text-neutral-400">
+                          {t(item.lines, locale)}
+                        </span>
+                      </span>
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: item.map.primary }}
+                      />
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          ) : null}
         </div>
 
         <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-4 pb-3">
@@ -580,11 +1513,7 @@ export default function Home() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => {
-                  setCategory(item.id);
-                  const first = PLACES.find((place) => place.category === item.id);
-                  setSelectedId(first?.id ?? null);
-                }}
+                onClick={() => selectCategory(item.id)}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full border bg-white px-3.5 py-[7px] text-[13px] font-medium ${
                   selected
                     ? "border-[#3b82f6] text-neutral-900 shadow-[0_0_0_1px_#3b82f6]"
@@ -592,7 +1521,7 @@ export default function Home() {
                 }`}
               >
                 {t(item.name, locale)}
-                <span className="text-[14px]">{item.emoji}</span>
+                <CategoryIcon category={item.id} size={18} />
               </button>
             );
           })}
@@ -601,6 +1530,7 @@ export default function Home() {
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <MockMap
             locale={locale}
+            station={station}
             places={filtered}
             selectedId={selectedId}
             onSelect={setSelectedId}
@@ -636,11 +1566,10 @@ export default function Home() {
                         active ? "border-neutral-200" : "border-neutral-100"
                       }`}
                     >
-                      <p className="text-[15px] font-bold leading-snug text-neutral-900">
-                        {
-                          CATEGORIES.find((item) => item.id === place.category)
-                            ?.emoji
-                        }{" "}
+                      <p className="flex items-start gap-2 text-[15px] font-bold leading-snug text-neutral-900">
+                        <span className="mt-[2px]">
+                          <CategoryIcon category={place.category} size={18} />
+                        </span>
                         {t(place.name, locale)}
                       </p>
                       <p className="mt-1.5 text-[13px] text-neutral-500">
@@ -651,6 +1580,16 @@ export default function Home() {
                       <p className="mt-1 text-[13px] text-neutral-400">
                         {t(place.note, locale)}
                       </p>
+                      <span className="mt-2 inline-flex rounded-full bg-neutral-100 px-2 py-[3px] text-[11px] font-medium text-neutral-500">
+                        {t(
+                          place.zone === "inside"
+                            ? COPY.inside
+                            : place.zone === "unpaid"
+                              ? COPY.unpaid
+                              : COPY.outside,
+                          locale,
+                        )}
+                      </span>
                     </button>
                   );
                 })
