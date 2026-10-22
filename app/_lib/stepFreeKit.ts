@@ -106,6 +106,9 @@ export const LINE2_BRANCH = { line: "2호선", cars: 4 } as const;
 export const LINE3 = { line: "3호선", cars: 10 } as const;
 export const LINE4 = { line: "4호선", cars: 10 } as const;
 export const LINE5 = { line: "5호선", cars: 8 } as const;
+export const LINE6 = { line: "6호선", cars: 8 } as const;
+export const LINE7 = { line: "7호선", cars: 8 } as const;
+export const LINE8 = { line: "8호선", cars: 6 } as const;
 
 export function stationMap(
   line: { line: string; cars: number },

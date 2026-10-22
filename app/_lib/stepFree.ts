@@ -5,12 +5,15 @@ import { LINE2_MAPS } from "./stepFreeLine2";
 import { LINE3_MAPS } from "./stepFreeLine3";
 import { LINE4_MAPS } from "./stepFreeLine4";
 import { LINE5_MAPS } from "./stepFreeLine5";
+import { LINE6_MAPS } from "./stepFreeLine6";
+import { LINE7_MAPS } from "./stepFreeLine7";
+import { LINE8_MAPS } from "./stepFreeLine8";
 
 export type { LevelKind, StepFreeMap } from "./stepFreeKit";
 
 export const DOORS_PER_CAR = 4;
 
-const BY_LINE = [LINE1_MAPS, LINE2_MAPS, LINE3_MAPS, LINE4_MAPS, LINE5_MAPS];
+const BY_LINE = [LINE1_MAPS, LINE2_MAPS, LINE3_MAPS, LINE4_MAPS, LINE5_MAPS, LINE6_MAPS, LINE7_MAPS, LINE8_MAPS];
 
 /** Every line with a step-free guide at this station, in line order. */
 export function stepFreeMaps(station: StationOption): StepFreeMap[] {
