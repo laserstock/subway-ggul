@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# raw station map downloads (copies live in public/station-maps)
+/서울교통공사_역이용안내도_*/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
