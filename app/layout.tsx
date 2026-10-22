@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import PreloadResources from "./_components/PreloadResources";
+import SplashScreen from "./_components/SplashScreen";
 import "./globals.css";
 
 const notoSansKr = Noto_Sans_KR({
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className={`${notoSansKr.className} min-h-full flex flex-col`}>
         <PreloadResources />
         {children}
+        <SplashScreen />
       </body>
     </html>
   );

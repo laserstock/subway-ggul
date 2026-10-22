@@ -40,17 +40,24 @@ export function LocateIcon() {
   );
 }
 
+/** The app's train mark, drawn in `currentColor`. */
+export function TrainMark({ size = 30 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="5" y="2.5" width="14" height="15" rx="4" stroke="currentColor" strokeWidth="2" />
+      <path d="M5 10h14" stroke="currentColor" strokeWidth="2" />
+      <path d="M10 5.5h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="9" cy="13.6" r="1.3" fill="currentColor" />
+      <circle cx="15" cy="13.6" r="1.3" fill="currentColor" />
+      <path d="M8.5 21.5l1.6-3.6M15.5 21.5l-1.6-3.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function TrainLogo() {
   return (
     <span className="flex h-9 w-9 items-center justify-center text-honey" aria-hidden>
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-        <rect x="5" y="2.5" width="14" height="15" rx="4" stroke="currentColor" strokeWidth="2" />
-        <path d="M5 10h14" stroke="currentColor" strokeWidth="2" />
-        <path d="M10 5.5h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="9" cy="13.6" r="1.3" fill="currentColor" />
-        <circle cx="15" cy="13.6" r="1.3" fill="currentColor" />
-        <path d="M8.5 21.5l1.6-3.6M15.5 21.5l-1.6-3.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
+      <TrainMark />
     </span>
   );
 }
