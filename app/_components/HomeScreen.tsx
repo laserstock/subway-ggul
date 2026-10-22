@@ -327,9 +327,11 @@ export default function HomeScreen() {
   if (station) {
     headline = (
       <>
-        <PinIcon size={22} className={`mr-1 inline-block align-[-4px] ${destination ? "text-[#2563eb]" : "text-honey"}`} />
-        {t(destination ? COPY.destination : COPY.now, locale)} {t(station.name, locale)}
-        <LineBadges station={station} locale={locale} size="md" className="ml-1.5 align-[-4px]" />
+        <PinIcon size={22} className={`mr-1 shrink-0 ${destination ? "text-[#2563eb]" : "text-honey"}`} />
+        <span className="min-w-0 truncate">
+          {t(destination ? COPY.destination : COPY.now, locale)} {t(station.name, locale)}
+        </span>
+        <LineBadges station={station} locale={locale} size="md" className="ml-1.5" />
       </>
     );
     detail = station.curated ? (
@@ -347,16 +349,16 @@ export default function HomeScreen() {
   } else if (tracker.issue) {
     headline = (
       <>
-        <PinIcon size={22} className="mr-1 inline-block align-[-4px] text-neutral-400" />
-        {t(COPY.noLocation, locale)}
+        <PinIcon size={22} className="mr-1 shrink-0 text-neutral-400" />
+        <span className="min-w-0 truncate">{t(COPY.noLocation, locale)}</span>
       </>
     );
     detail = t(LOCATION_ISSUE_COPY[tracker.issue], locale);
   } else {
     headline = (
       <>
-        <PinIcon size={22} className="mr-1 inline-block animate-pulse align-[-4px] text-honey" />
-        {t(COPY.locating, locale)}
+        <PinIcon size={22} className="mr-1 shrink-0 animate-pulse text-honey" />
+        <span className="min-w-0 truncate">{t(COPY.locating, locale)}</span>
       </>
     );
     detail = t(COPY.locatingHint, locale);
@@ -379,7 +381,7 @@ export default function HomeScreen() {
                 className="min-w-0 flex-1 rounded-xl text-left transition active:scale-[0.99]"
               >
                 <span className="flex items-center gap-1 text-[18px] font-extrabold tracking-tight text-ink">
-                  <span className="min-w-0 truncate">{headline}</span>
+                  <span className="flex min-w-0 items-center">{headline}</span>
                   <span
                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-honey-soft text-honey-strong"
                     aria-hidden
