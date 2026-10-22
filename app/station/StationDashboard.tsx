@@ -63,6 +63,7 @@ const COPY = {
   restroomInside: { ko: "🚻 개찰구 안 화장실", en: "🚻 Restroom inside gate", zh: "🚻 闸机内卫生间", ja: "🚻 改札内トイレ" },
   restroomOutside: { ko: "🚻 개찰구 밖 화장실", en: "🚻 Restroom outside gate", zh: "🚻 闸机外卫生间", ja: "🚻 改札外トイレ" },
   pharmacyInside: { ko: "💊 개찰구 안 약국", en: "💊 Pharmacy inside gate", zh: "💊 闸机内药店", ja: "💊 改札内薬局" },
+  pharmacyStation: { ko: "💊 역 안 약국", en: "💊 Pharmacy in station", zh: "💊 站内药店", ja: "💊 駅構内薬局" },
   pharmacyWalk: { ko: "💊 약국 도보 {n}분", en: "💊 Pharmacy {n} min", zh: "💊 药店 步行{n}分钟", ja: "💊 薬局 徒歩{n}分" },
 } satisfies Record<string, Localized>;
 
@@ -126,6 +127,7 @@ function urgentSummary(urgent: StationUrgent): Localized[] {
   else if (restroom && restroom.zone !== "unknown") lines.push(COPY.restroomOutside);
   const pharmacy = bestSpot(urgent.pharmacy);
   if (pharmacy?.zone === "inside") lines.push(COPY.pharmacyInside);
+  else if (pharmacy?.zone === "station") lines.push(COPY.pharmacyStation);
   else if (pharmacy?.walkMinutes != null) {
     const minutes = String(pharmacy.walkMinutes);
     lines.push({

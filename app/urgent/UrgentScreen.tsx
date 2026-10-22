@@ -40,6 +40,7 @@ import {
   type UrgentSpot,
   type UrgentZone,
 } from "../_lib/urgent";
+import { TOILET_DATA_DATE } from "../_lib/stationToilets";
 import { URGENT_TITLE, UrgentIcon } from "./header";
 
 type UrgentTab = "all" | UrgentKind;
@@ -77,8 +78,8 @@ const COPY = {
   reportDone: { ko: "제보가 등록됐어요. 고마워요!", en: "Report posted. Thank you!" },
   like: { ko: "추천", en: "Like" },
   betaNote: {
-    ko: "베타: 개찰구 안/밖 정보는 일부 역만 예시로 들어가 있어요. 약국·병원은 카카오 장소 기준이며 진료시간은 꼭 확인해 주세요.",
-    en: "Beta: gate-side info is sample data for some stations. Pharmacies and clinics come from Kakao Places; please confirm hours.",
+    ko: `화장실: 서울교통공사 역사공중화장실정보(${TOILET_DATA_DATE} 기준, 1~8호선)와 역 이용 안내도. 약국·병원: 카카오 장소 기준(치과·한의원·피부과 등 제외)이며 진료시간은 꼭 확인해 주세요.`,
+    en: `Restrooms: Seoul Metro open data (as of ${TOILET_DATA_DATE}, Lines 1–8) and station maps. Pharmacies and clinics: Kakao Places (dental, oriental medicine, dermatology etc. excluded); please confirm hours.`,
   },
 };
 
@@ -99,12 +100,13 @@ const KIND_META: Record<UrgentKind, { emoji: string; label: Localized; noun: Loc
     emoji: "🏥",
     label: { ko: "응급의원", en: "Clinic" },
     noun: { ko: "병원", en: "clinic" },
-    empty: { ko: "주변 400m 안에 의원이 없어요", en: "No clinic within 400 m" },
+    empty: { ko: "주변 500m 안에 내과·가정의학과 등 의원이 없어요", en: "No general clinic within 500 m" },
   },
 };
 
 const ZONE_META: Record<UrgentZone, { label: Localized; color: string }> = {
   inside: { label: { ko: "개찰구 안", en: "Inside gate" }, color: "#2563eb" },
+  station: { label: { ko: "역 안 · 개찰구 밖", en: "In station, outside gate" }, color: "#d97706" },
   exit: { label: { ko: "출구 바로 앞", en: "Right by exit" }, color: "#e5484d" },
   outside: { label: { ko: "개찰구 밖", en: "Outside gate" }, color: "#e5484d" },
   unknown: { label: { ko: "위치 확인 필요", en: "Check location" }, color: "#9ca3af" },
@@ -252,6 +254,7 @@ function StationCard({
   highlight,
   aiMessage,
   recommendedId,
+  line,
   locale,
 }: {
   title: ReactNode;
@@ -261,6 +264,7 @@ function StationCard({
   highlight: boolean;
   aiMessage: string | null;
   recommendedId: string | null;
+  line: string | null;
   locale: Locale;
 }) {
   return (
@@ -281,7 +285,7 @@ function StationCard({
       {data ? (
         <ul className="mt-1 divide-y divide-neutral-100">
           {kinds.flatMap((kind) => {
-            const spots = sortSpots(data[kind]).slice(0, limit);
+            const spots = sortSpots(data[kind], line).slice(0, limit);
             if (spots.length === 0) {
               return [
                 <li key={kind} className="flex items-center gap-1.5 py-2 text-[12px] text-neutral-400">
@@ -408,7 +412,7 @@ export default function UrgentScreen({
   const ready = !neighborsLoading && (nextOption === null || nextData !== null);
   const recommendation =
     current && currentData && ready
-      ? pickRecommendation(currentData, nextData, tab === "all" ? RECOMMEND_ORDER : [tab])
+      ? pickRecommendation(currentData, nextData, tab === "all" ? RECOMMEND_ORDER : [tab], line)
       : null;
   const aiMessage =
     current && recommendation ? recommendationText(recommendation, current, nextOption, locale) : null;
@@ -560,6 +564,7 @@ export default function UrgentScreen({
                 highlight={recommendation?.target === "current"}
                 aiMessage={recommendation?.target === "current" ? aiMessage : null}
                 recommendedId={recommendation?.target === "current" ? recommendation.spot.id : null}
+                line={line}
                 locale={locale}
               />
 
@@ -582,6 +587,7 @@ export default function UrgentScreen({
                   highlight={recommendation?.target === "next"}
                   aiMessage={recommendation?.target === "next" ? aiMessage : null}
                   recommendedId={recommendation?.target === "next" ? recommendation.spot.id : null}
+                  line={line}
                   locale={locale}
                 />
               ) : null}

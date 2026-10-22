@@ -11,6 +11,10 @@ export type NearbyPlace = {
   name: string;
   distance: number;
   address: string;
+  roadAddress: string;
+  lotAddress: string;
+  /** Kakao category path, e.g. "의료,건강 > 병원 > 내과". */
+  category: string;
   url: string;
   position: LatLng;
 };
@@ -180,6 +184,9 @@ export function searchNearby(query: NearbyQuery, center: LatLng): Promise<Nearby
             name: item.place_name,
             distance: Number(item.distance) || 0,
             address: item.road_address_name || item.address_name,
+            roadAddress: item.road_address_name,
+            lotAddress: item.address_name,
+            category: item.category_name,
             url: item.place_url,
             position: toLatLng(item),
           })),

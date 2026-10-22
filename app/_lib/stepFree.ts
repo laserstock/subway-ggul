@@ -15,10 +15,15 @@ export const DOORS_PER_CAR = 4;
 
 const BY_LINE = [LINE1_MAPS, LINE2_MAPS, LINE3_MAPS, LINE4_MAPS, LINE5_MAPS, LINE6_MAPS, LINE7_MAPS, LINE8_MAPS];
 
+/** Korean station name without parentheses, always ending in 역 (e.g. "군자(능동)" → "군자역"). */
+export function stationKey(station: StationOption) {
+  const name = station.name.ko.replace(/\(.*?\)/g, "").trim();
+  return name.endsWith("역") ? name : `${name}역`;
+}
+
 /** Every line with a step-free guide at this station, in line order. */
 export function stepFreeMaps(station: StationOption): StepFreeMap[] {
-  const name = station.name.ko.replace(/\(.*?\)/g, "").trim();
-  const key = name.endsWith("역") ? name : `${name}역`;
+  const key = stationKey(station);
   return BY_LINE.flatMap((maps) => maps[key] ?? []);
 }
 
