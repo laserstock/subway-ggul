@@ -1,6 +1,7 @@
 import type { LatLng } from "../KakaoMap";
 import { lineColor, type KakaoStation } from "../kakao-places";
 import { t, type Locale, type Localized } from "./i18n";
+import { STATION_INDEX } from "./stationIndex";
 
 export { t, type Locale, type Localized } from "./i18n";
 export type CategoryId =
@@ -50,6 +51,8 @@ export type StationOption = {
   center: LatLng;
   color: string;
   curated?: Station;
+  /** Alternative names searched too, e.g. "이수" for 총신대입구역. */
+  aliases?: readonly string[];
 };
 
 export const STATIONS: Station[] = [
@@ -1133,6 +1136,8 @@ export function serializeStation({ key, name, lines, center, color }: StationOpt
 export function restoreStation(saved: SavedStation): StationOption {
   const curated = STATIONS.find((station) => station.id === saved.key);
   if (curated) return curatedOption(curated);
+  const indexed = indexedOption(saved.name.ko, saved.center);
+  if (indexed) return indexed;
   const lineBased = linesColor(saved.lines);
   return { ...serializeStation(saved), color: lineBased === lineColor([]) ? saved.color : lineBased };
 }
@@ -1161,20 +1166,61 @@ export const POPULAR_STATIONS: StationOption[] = [
   },
 ];
 
+function localizedLines(lines: readonly string[]): Localized {
+  return {
+    ko: lines.join(" · "),
+    en: lines.map((line) => line.replace(/^(\d+)호선$/, "Line $1")).join(" · "),
+    zh: lines.map((line) => line.replace(/^(\d+)호선$/, "$1号线")).join(" · "),
+    ja: lines.map((line) => line.replace(/^(\d+)호선$/, "$1号線")).join(" · "),
+  };
+}
+
+/** Same-name stations far apart (양평 on Line 5 vs 경의중앙선) get the first line in their key. */
+const INDEX_OPTIONS: StationOption[] = STATION_INDEX.map((entry, index) => {
+  const duplicate = STATION_INDEX.findIndex((other) => other.n === entry.n) !== index;
+  return {
+    key: duplicate ? `kakao:${entry.n}@${entry.l[0]}` : `kakao:${entry.n}`,
+    name: { ko: entry.n, en: entry.n },
+    lines: localizedLines(entry.l),
+    center: { lat: entry.c[0], lng: entry.c[1] },
+    color: lineColor([...entry.l]),
+    aliases: entry.a,
+  };
+});
+
+/** Every Seoul-area station from the city's station master, curated entries first. */
+export const ALL_STATIONS: StationOption[] = [
+  ...STATIONS.map(curatedOption),
+  ...POPULAR_STATIONS.filter((popular) => !STATIONS.some((station) => station.name.ko === popular.name.ko)),
+  ...INDEX_OPTIONS.filter(
+    (option) =>
+      !STATIONS.some((station) => station.name.ko === option.name.ko) &&
+      !POPULAR_STATIONS.some((popular) => popular.name.ko === option.name.ko),
+  ),
+];
+
+/** Nearest station-master entry with this name or alias, so Kakao results get consistent names and lines. */
+function indexedOption(name: string, near: LatLng) {
+  const base = name.replace(/역$/, "");
+  let best: StationOption | null = null;
+  for (const option of INDEX_OPTIONS) {
+    if (option.name.ko !== name && !option.aliases?.includes(base)) continue;
+    if (!best || distanceMeters(near, option.center) < distanceMeters(near, best.center)) best = option;
+  }
+  return best;
+}
+
 export function kakaoOption(found: KakaoStation): StationOption {
   const curated = STATIONS.find((station) => station.name.ko === found.name);
   if (curated) return curatedOption(curated);
   const popular = POPULAR_STATIONS.find((station) => station.name.ko === found.name);
   if (popular) return popular;
+  const indexed = indexedOption(found.name, found.center);
+  if (indexed) return indexed;
   return {
     key: `kakao:${found.name}`,
     name: { ko: found.name, en: found.name },
-    lines: {
-      ko: found.lines.join(" · "),
-      en: found.lines.map((line) => line.replace(/^(\d+)호선$/, "Line $1")).join(" · "),
-      zh: found.lines.map((line) => line.replace(/^(\d+)호선$/, "$1号线")).join(" · "),
-      ja: found.lines.map((line) => line.replace(/^(\d+)호선$/, "$1号線")).join(" · "),
-    },
+    lines: localizedLines(found.lines),
     center: found.center,
     color: lineColor(found.lines),
   };

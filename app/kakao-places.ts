@@ -45,6 +45,10 @@ const LINE_COLORS: [RegExp, string][] = [
   [/김포/, "#a17e46"],
   [/인천\s*2/, "#f5a251"],
   [/인천/, "#7ca8d5"],
+  [/경강/, "#0054a6"],
+  [/GTX/i, "#9a6292"],
+  [/의정부/, "#fd8100"],
+  [/에버라인/, "#56ad2d"],
 ];
 
 export function lineColor(lines: string[]) {
@@ -59,11 +63,15 @@ function toLatLng(item: kakao.maps.services.PlacesSearchResultItem): LatLng {
   return { lat: Number(item.y), lng: Number(item.x) };
 }
 
+/**
+ * "동대문역사문화공원역 2호선" → name + line. The line is the last word, so names that contain
+ * 역 themselves (동대문역사문화공원, 암사역사공원) stay whole.
+ */
 function splitStationName(placeName: string) {
-  const match = placeName.match(/^(.+?역)\s*(.*)$/);
-  if (match) return { name: match[1], line: match[2].trim() };
-  const [name, ...rest] = placeName.split(" ");
-  return { name, line: rest.join(" ").trim() };
+  const trimmed = placeName.trim();
+  const space = trimmed.lastIndexOf(" ");
+  if (space < 0) return { name: trimmed, line: "" };
+  return { name: trimmed.slice(0, space).trim(), line: trimmed.slice(space + 1).trim() };
 }
 
 function places() {

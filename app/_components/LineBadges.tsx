@@ -16,6 +16,10 @@ const NAMED_LINES: [RegExp, { ko: string; symbol: string }][] = [
   [/김포/, { ko: "김포", symbol: "G" }],
   [/인천\s*2/, { ko: "인천2", symbol: "I2" }],
   [/인천/, { ko: "인천1", symbol: "I1" }],
+  [/경강/, { ko: "경강", symbol: "KK" }],
+  [/GTX/i, { ko: "GTX-A", symbol: "A" }],
+  [/의정부/, { ko: "의정부", symbol: "U" }],
+  [/에버라인/, { ko: "에버라인", symbol: "E" }],
 ];
 
 const CIRCLE: Record<LineIconSize, string> = {

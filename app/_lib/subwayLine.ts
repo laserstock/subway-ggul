@@ -3,6 +3,7 @@
 import type { LatLng } from "../KakaoMap";
 import { loadKakaoMaps } from "../kakao-sdk";
 import { findLineStations, normalizeLine, type KakaoStation } from "../kakao-places";
+import { STATION_INDEX } from "./stationIndex";
 import { distanceMeters, type Localized, type StationOption } from "./stations";
 
 const MAX_STOP_GAP_METERS = 4000;
@@ -12,10 +13,24 @@ export function lineCacheKey(station: StationOption, line: string) {
   return `${station.key}|${normalizeLine(line)}`;
 }
 
+function indexedLineStations(line: string): KakaoStation[] {
+  const target = normalizeLine(line);
+  return STATION_INDEX.filter((entry) => entry.l.some((candidate) => normalizeLine(candidate) === target)).map(
+    (entry) => ({ name: entry.n, lines: [...entry.l], center: { lat: entry.c[0], lng: entry.c[1] } }),
+  );
+}
+
+/** Stations on `line`, from the station master when it knows the line, else from Kakao. */
 export function loadLineStations(station: StationOption, line: string): Promise<KakaoStation[]> {
   const key = lineCacheKey(station, line);
   const cached = lineCache.get(key);
   if (cached) return cached;
+  const indexed = indexedLineStations(line);
+  if (indexed.length > 1) {
+    const request = Promise.resolve(indexed);
+    lineCache.set(key, request);
+    return request;
+  }
   const request = loadKakaoMaps()
     .then(() => findLineStations(line, station.center))
     .catch(() => {

@@ -4,26 +4,13 @@ import { useEffect, useEffectEvent, useState } from "react";
 import type { LatLng } from "../KakaoMap";
 import { searchStations } from "../kakao-places";
 import { loadKakaoMaps } from "../kakao-sdk";
-import {
-  POPULAR_STATIONS,
-  STATIONS,
-  curatedOption,
-  distanceMeters,
-  kakaoOption,
-  normalize,
-  type StationOption,
-} from "./stations";
+import { ALL_STATIONS, distanceMeters, kakaoOption, normalize, type StationOption } from "./stations";
 
 const DEBOUNCE_MS = 90;
 const MAX_RESULTS = 10;
 /** Single-syllable queries ("광") match too much nationwide; keep them to the Seoul area. */
 const SHORT_QUERY_RADIUS = 20000;
 const SEOUL_CITY_HALL: LatLng = { lat: 37.5663, lng: 126.9779 };
-
-const LOCAL_STATIONS: StationOption[] = [
-  ...STATIONS.map(curatedOption),
-  ...POPULAR_STATIONS.filter((popular) => !STATIONS.some((station) => station.id === popular.key)),
-];
 
 const results = new Map<string, StationOption[]>();
 const inflight = new Map<string, Promise<StationOption[]>>();
@@ -33,7 +20,7 @@ function searchKey(query: string) {
 }
 
 function haystack(station: StationOption) {
-  return [...Object.values(station.name), ...Object.values(station.lines)].map(normalize);
+  return [...Object.values(station.name), ...Object.values(station.lines), ...(station.aliases ?? [])].map(normalize);
 }
 
 function rank(station: StationOption, q: string) {
@@ -115,7 +102,7 @@ export function useStationSuggestions(query: string, near: LatLng | null) {
 
   if (!key) return { stations: [] as StationOption[], pending: false };
 
-  const local = LOCAL_STATIONS.filter((station) => matches(station, key));
+  const local = ALL_STATIONS.filter((station) => matches(station, key));
   const { stations: remote, exact } = instantResults(key);
   const seen = new Set<string>();
   const merged = [...local, ...remote].filter((station) => {
