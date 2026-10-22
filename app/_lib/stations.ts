@@ -39,7 +39,6 @@ export type Station = {
   lines: Localized;
   insidePaid: Localized;
   center: LatLng;
-  color: string;
   exits: Exit[];
   places: Place[];
 };
@@ -69,7 +68,6 @@ export const STATIONS: Station[] = [
       en: "Inside station (paid area)",
     },
     center: { lat: 37.5575, lng: 126.9245 },
-    color: "#2fba4e",
     exits: [
       { id: "e9a", label: { ko: "9번 출구", en: "Exit 9" }, x: 39, y: 24 },
       { id: "e2", label: { ko: "2번 출구", en: "Exit 2" }, x: 18, y: 34 },
@@ -286,7 +284,6 @@ export const STATIONS: Station[] = [
       en: "Inside Gangnam station (paid area)",
     },
     center: { lat: 37.4979, lng: 127.0276 },
-    color: "#2fba4e",
     exits: [
       { id: "g11", label: { ko: "11번 출구", en: "Exit 11" }, x: 18, y: 28 },
       { id: "g10", label: { ko: "10번 출구", en: "Exit 10" }, x: 32, y: 22 },
@@ -501,7 +498,6 @@ export const STATIONS: Station[] = [
       en: "Inside Seoul Station (paid area)",
     },
     center: { lat: 37.5547, lng: 126.9707 },
-    color: "#0032a0",
     exits: [
       { id: "s1", label: { ko: "1번 출구", en: "Exit 1" }, x: 20, y: 30 },
       { id: "s3", label: { ko: "3번 출구", en: "Exit 3" }, x: 38, y: 22 },
@@ -711,7 +707,6 @@ export const STATIONS: Station[] = [
       en: "Inside Irwon station (paid area)",
     },
     center: { lat: 37.4837, lng: 127.0843 },
-    color: "#ef7c1b",
     exits: [
       { id: "i1", label: { ko: "1번 출구", en: "Exit 1" }, x: 22, y: 32 },
       { id: "i2", label: { ko: "2번 출구", en: "Exit 2" }, x: 70, y: 28 },
@@ -919,7 +914,6 @@ export const STATIONS: Station[] = [
       en: "Inside Dapsimni station (paid area)",
     },
     center: { lat: 37.5667, lng: 127.0527 },
-    color: "#996cac",
     exits: [
       { id: "d1", label: { ko: "1번 출구", en: "Exit 1" }, x: 24, y: 28 },
       { id: "d2", label: { ko: "2번 출구", en: "Exit 2" }, x: 72, y: 26 },
@@ -1114,13 +1108,17 @@ export function stationMatches(station: Station, query: string) {
   return haystack.includes(q);
 }
 
+export function linesColor(lines: Localized) {
+  return lineColor(lines.ko.split(" · ").filter(Boolean));
+}
+
 export function curatedOption(station: Station): StationOption {
   return {
     key: station.id,
     name: station.name,
     lines: station.lines,
     center: station.center,
-    color: station.color,
+    color: linesColor(station.lines),
     curated: station,
   };
 }
@@ -1134,7 +1132,9 @@ export function serializeStation({ key, name, lines, center, color }: StationOpt
 
 export function restoreStation(saved: SavedStation): StationOption {
   const curated = STATIONS.find((station) => station.id === saved.key);
-  return curated ? curatedOption(curated) : serializeStation(saved);
+  if (curated) return curatedOption(curated);
+  const lineBased = linesColor(saved.lines);
+  return { ...serializeStation(saved), color: lineBased === lineColor([]) ? saved.color : lineBased };
 }
 
 function popularOption(id: StationId): StationOption {
@@ -1150,14 +1150,14 @@ export const POPULAR_STATIONS: StationOption[] = [
     name: { ko: "잠실역", en: "Jamsil", zh: "蚕室站", ja: "蚕室駅" },
     lines: { ko: "2호선 · 8호선", en: "Line 2 · Line 8", zh: "2号线 · 8号线", ja: "2号線 · 8号線" },
     center: { lat: 37.513294, lng: 127.10014 },
-    color: "#00a84d",
+    color: lineColor(["2호선"]),
   },
   {
     key: "kakao:광화문역",
     name: { ko: "광화문역", en: "Gwanghwamun", zh: "光化门站", ja: "光化門駅" },
     lines: { ko: "5호선", en: "Line 5", zh: "5号线", ja: "5号線" },
     center: { lat: 37.571026, lng: 126.976669 },
-    color: "#996cac",
+    color: lineColor(["5호선"]),
   },
 ];
 

@@ -51,14 +51,14 @@ const JANGHANPYEONG: SavedStation = {
   name: { ko: "장한평역", en: "Janghanpyeong", zh: "长汉坪站", ja: "長漢坪駅" },
   lines: { ko: "5호선", en: "Line 5", zh: "5号线", ja: "5号線" },
   center: { lat: 37.561432, lng: 127.064623 },
-  color: "#996cac",
+  color: "#a05eb5",
 };
 const SEONGSU: SavedStation = {
   key: "kakao:성수역",
   name: { ko: "성수역", en: "Seongsu", zh: "圣水站", ja: "聖水駅" },
   lines: { ko: "2호선", en: "Line 2", zh: "2号线", ja: "2号線" },
   center: { lat: 37.544581, lng: 127.055961 },
-  color: "#00a84d",
+  color: "#00b140",
 };
 const GWANGHWAMUN = serializeStation(POPULAR_STATIONS.find((station) => station.key === "kakao:광화문역")!);
 

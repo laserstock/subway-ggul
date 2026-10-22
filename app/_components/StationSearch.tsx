@@ -6,6 +6,7 @@ import { useRecentStations } from "../_lib/recentStations";
 import { useStationSuggestions } from "../_lib/stationSearch";
 import { POPULAR_STATIONS, t, type Locale, type StationOption } from "../_lib/stations";
 import { SearchIcon } from "./icons";
+import LineBadges from "./LineBadges";
 
 const MAX_SHORTCUTS = 8;
 
@@ -149,15 +150,8 @@ export default function StationSearch({
                   index === highlightIndex ? "bg-sky-50" : "bg-white"
                 }`}
               >
-                <span>
-                  <span className="block text-[14px] font-semibold text-neutral-900">
-                    {t(item.name, locale)}
-                  </span>
-                  <span className="mt-0.5 block text-[12px] text-neutral-400">
-                    {t(item.lines, locale)}
-                  </span>
-                </span>
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                <span className="text-[14px] font-semibold text-neutral-900">{t(item.name, locale)}</span>
+                <LineBadges station={item} locale={locale} size="sm" />
               </button>
             ))
           )}

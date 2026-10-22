@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, type ReactNode } from "react";
+import LineBadges from "../_components/LineBadges";
 import StationSearch from "../_components/StationSearch";
 import { useLocale } from "../_lib/locale";
 import {
@@ -14,7 +15,7 @@ import {
   type PlacePreset,
   type RouteEndpoint,
 } from "../_lib/myStations";
-import { compactLines, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import { t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 
 const COPY = {
   close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
@@ -22,7 +23,7 @@ const COPY = {
   editPlaceTitle: { ko: "My 역 편집", en: "Edit My Station", zh: "编辑 My 车站", ja: "My 駅を編集" },
   stepStation: { ko: "1. 어느 역인가요?", en: "1. Which station?", zh: "1. 哪个车站？", ja: "1. どの駅ですか？" },
   stepLabel: { ko: "2. 별명을 붙여 주세요", en: "2. Give it a nickname", zh: "2. 起个昵称", ja: "2. ニックネームを付けましょう" },
-  nowAt: { ko: "📍 지금 {station}", en: "📍 Now: {station}", zh: "📍 当前 {station}", ja: "📍 現在 {station}" },
+  nowAt: { ko: "📍 지금", en: "📍 Now:", zh: "📍 当前", ja: "📍 現在" },
   searchPlaceholder: { ko: "역 이름 검색 (예: 장한평역)", en: "Search a station", zh: "搜索车站", ja: "駅名で検索" },
   change: { ko: "변경", en: "Change", zh: "更改", ja: "変更" },
   customLabel: {
@@ -53,9 +54,13 @@ export function placeLabel(place: Pick<MyPlace, "preset" | "label">, locale: Loc
   return place.label || t(PLACE_PRESETS[place.preset].label, locale);
 }
 
-export function stationWithLines(station: StationOption, locale: Locale) {
-  const lines = compactLines(station, locale);
-  return lines ? `${t(station.name, locale)} (${lines})` : t(station.name, locale);
+function StationWithLines({ station, locale }: { station: StationOption; locale: Locale }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1 align-middle">
+      <LineBadges station={station} locale={locale} size="sm" />
+      <span className="truncate">{t(station.name, locale)}</span>
+    </span>
+  );
 }
 
 function Sheet({
@@ -115,12 +120,10 @@ function Sheet({
 }
 
 function SelectedStation({
-  emoji,
   station,
   locale,
   onChange,
 }: {
-  emoji: string;
   station: StationOption;
   locale: Locale;
   onChange: () => void;
@@ -130,11 +133,9 @@ function SelectedStation({
       className="flex items-center gap-2 rounded-2xl border-2 px-3.5 py-3"
       style={{ backgroundColor: `${station.color}14`, borderColor: `${station.color}55` }}
     >
-      <span className="text-[18px]" aria-hidden>
-        {emoji}
-      </span>
+      <LineBadges station={station} locale={locale} size="md" />
       <span className="min-w-0 flex-1 truncate text-[15px] font-extrabold text-neutral-900">
-        {stationWithLines(station, locale)}
+        {t(station.name, locale)}
       </span>
       <button
         type="button"
@@ -182,16 +183,16 @@ export function PlaceSheet({
     <Sheet title={t(place ? COPY.editPlaceTitle : COPY.addPlaceTitle, locale)} onClose={onClose}>
       <h3 className="mb-2 mt-4 text-[13px] font-extrabold text-neutral-700">{t(COPY.stepStation, locale)}</h3>
       {station ? (
-        <SelectedStation emoji={meta.emoji} station={station} locale={locale} onChange={() => setStation(null)} />
+        <SelectedStation station={station} locale={locale} onChange={() => setStation(null)} />
       ) : (
         <>
           {suggested ? (
             <button
               type="button"
               onClick={() => setStation(suggested)}
-              className="mb-2 rounded-full bg-[#eef4ff] px-3 py-1.5 text-[12px] font-bold text-[#1d4ed8] active:scale-95"
+              className="mb-2 inline-flex items-center gap-1 rounded-full bg-[#eef4ff] py-1 pl-2.5 pr-3 text-[12px] font-bold text-[#1d4ed8] active:scale-95"
             >
-              {t(COPY.nowAt, locale).replace("{station}", stationWithLines(suggested, locale))}
+              {t(COPY.nowAt, locale)} <StationWithLines station={suggested} locale={locale} />
             </button>
           ) : null}
           <StationSearch
@@ -241,10 +242,12 @@ export function PlaceSheet({
         <p className="mt-3 flex items-center gap-2 text-[12px] font-semibold text-neutral-400">
           {t(COPY.preview, locale)}
           <span
-            className="rounded-2xl px-3 py-1.5 text-[13px] font-bold text-neutral-800"
-            style={{ backgroundColor: meta.bg, boxShadow: `inset 0 0 0 1px ${meta.ring}` }}
+            className="inline-flex items-center gap-1 rounded-2xl bg-surface px-3 py-1.5 text-[13px] font-bold text-neutral-800"
+            style={{ boxShadow: `inset 0 0 0 1px ${station.color}40` }}
           >
-            {meta.emoji} {label.trim() || t(meta.label, locale)}: {stationWithLines(station, locale)}
+            <LineBadges station={station} locale={locale} size="sm" />
+            <span className="text-neutral-500">{label.trim() || t(meta.label, locale)}:</span>
+            {t(station.name, locale)}
           </span>
         </p>
       ) : null}
@@ -292,7 +295,7 @@ function EndpointPicker({
     <div>
       <h3 className="mb-2 text-[13px] font-extrabold text-neutral-700">{title}</h3>
       {value ? (
-        <SelectedStation emoji={value.emoji} station={value.station} locale={locale} onChange={() => onChange(null)} />
+        <SelectedStation station={value.station} locale={locale} onChange={() => onChange(null)} />
       ) : (
         <>
           {places.length > 0 ? (
@@ -302,10 +305,10 @@ function EndpointPicker({
                   key={place.id}
                   type="button"
                   onClick={() => onChange({ emoji: placeEmoji(place), station: place.station })}
-                  className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-bold text-neutral-800 active:scale-95"
-                  style={{ backgroundColor: PLACE_PRESETS[place.preset].bg }}
+                  className="flex shrink-0 items-center gap-1 rounded-full bg-surface py-1 pl-1.5 pr-3 text-[12px] font-bold text-neutral-800 ring-1 ring-line active:scale-95"
                 >
-                  {placeEmoji(place)} {placeLabel(place, locale)} · {t(place.station.name, locale)}
+                  <LineBadges station={place.station} locale={locale} size="sm" />
+                  {placeLabel(place, locale)} · {t(place.station.name, locale)}
                 </button>
               ))}
             </div>

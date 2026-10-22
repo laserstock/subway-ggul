@@ -16,7 +16,7 @@ import { useLocale } from "../_lib/locale";
 import { useStationReports } from "../_lib/reports";
 import { setDestinationStation } from "../_lib/selectedStation";
 import { STATION_TIPS } from "../_lib/stationTips";
-import { compactLines, stationParams, t, type Localized, type StationOption } from "../_lib/stations";
+import { stationParams, t, type Localized, type StationOption } from "../_lib/stations";
 import { bestSpot, loadUrgent, type StationUrgent } from "../_lib/urgent";
 import { DASHBOARD_TITLE } from "./header";
 
@@ -189,7 +189,7 @@ export default function StationDashboard({ station }: { station: StationOption |
   }
 
   const name = station ? t(station.name, locale) : "";
-  const lines = station ? compactLines(station, locale) : "";
+  const lines = station ? t(station.lines, locale) : "";
   const curatedTip = station ? STATION_TIPS[station.name.ko] : undefined;
   const liveTip = reports[0];
   const exits = station ? exitLabels(station) : [];
@@ -211,14 +211,17 @@ export default function StationDashboard({ station }: { station: StationOption |
                 style={{ background: `linear-gradient(135deg, ${station.color}, #1e3a8a)` }}
               >
                 <p className="text-[12px] font-semibold text-white/80">📍 {t(COPY.selected, locale)}</p>
-                <h1 className="mt-1 text-[24px] font-extrabold leading-tight tracking-tight">
+                <h1 className="mt-1 flex flex-wrap items-center gap-2 text-[24px] font-extrabold leading-tight tracking-tight">
                   {name}
-                  {lines ? <span className="ml-1.5 text-[15px] font-bold text-white/85">({lines})</span> : null}
+                  <LineBadges
+                    station={station}
+                    locale={locale}
+                    size="md"
+                    className="gap-1 [&>span]:ring-2 [&>span]:ring-white/90"
+                  />
                 </h1>
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="rounded-full bg-white/95 px-1.5 py-1">
-                    <LineBadges station={station} locale={locale} />
-                  </span>
+                  <span className="min-w-0 truncate text-[12px] font-semibold text-white/85">{lines}</span>
                   <button
                     type="button"
                     onClick={openSearch}
@@ -270,10 +273,11 @@ export default function StationDashboard({ station }: { station: StationOption |
                         yAnchor: 1.2,
                         content: (
                           <span
-                            className="whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-bold text-white shadow-md"
-                            style={{ backgroundColor: station.color }}
+                            className="flex items-center gap-1 whitespace-nowrap rounded-full border-2 bg-white py-0.5 pl-0.5 pr-2.5 text-[12px] font-bold text-neutral-900 shadow-md"
+                            style={{ borderColor: station.color }}
                           >
-                            🚇 {name}
+                            <LineBadges station={station} locale={locale} size="sm" />
+                            {name}
                           </span>
                         ),
                       },

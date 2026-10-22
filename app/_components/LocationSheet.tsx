@@ -6,7 +6,6 @@ import { useLocale } from "../_lib/locale";
 import { useNearbyStations } from "../_lib/nearbyStations";
 import type { StationSource } from "../_lib/selectedStation";
 import {
-  compactLines,
   distanceMeters,
   formatDistance,
   t,
@@ -14,6 +13,8 @@ import {
   type StationOption,
 } from "../_lib/stations";
 import { LOCATION_ISSUE_COPY, type LocationIssue } from "../_lib/useStationTracker";
+import { PinIcon } from "./icons";
+import LineBadges from "./LineBadges";
 import StationSearch from "./StationSearch";
 
 const MAX_CHIPS = 4;
@@ -242,9 +243,9 @@ export default function LocationSheet({
                   borderColor: isCurrent ? station.color : `${station.color}33`,
                 }}
               >
-                {isCurrent ? <span aria-hidden>📍</span> : null}
+                {isCurrent ? <PinIcon size={16} className="text-honey" /> : null}
+                <LineBadges station={station} locale={locale} size="sm" />
                 <span className="text-[15px] font-extrabold text-neutral-900">{t(station.name, locale)}</span>
-                <span className="text-[12px] font-medium text-neutral-500">({compactLines(station, locale)})</span>
                 <span className="text-[12px] font-bold" style={{ color: station.color }}>
                   ·{" "}
                   {isCurrent

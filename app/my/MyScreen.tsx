@@ -5,13 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import AppHeader from "../_components/AppHeader";
 import BottomNav, { type NavTab } from "../_components/BottomNav";
+import LineBadges, { LineIcon } from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import SearchOverlay from "../_components/SearchOverlay";
 import { Toast, useToast } from "../_components/Toast";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import {
-  PLACE_PRESETS,
   removePlace,
   removeRoute,
   reverseRoute,
@@ -22,7 +22,7 @@ import {
 import { addRecentStation } from "../_lib/recentStations";
 import { routeSummary } from "../_lib/routeTips";
 import { setDestinationStation, useDestinationStation } from "../_lib/selectedStation";
-import { compactLines, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import { stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { MY_TITLE } from "./header";
 import { placeLabel, PlaceSheet, RouteSheet } from "./MySheets";
 
@@ -147,22 +147,17 @@ function PlaceChip({
   onOpen: () => void;
   onRemove: () => void;
 }) {
-  const preset = PLACE_PRESETS[place.preset];
-  const lines = compactLines(place.station, locale);
   return (
     <li className="relative">
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-h-[48px] items-center gap-1.5 rounded-2xl px-3.5 py-2.5 text-left transition active:scale-[0.96]"
-        style={{ backgroundColor: preset.bg, boxShadow: `inset 0 0 0 1px ${preset.ring}` }}
+        className="flex min-h-[48px] items-center gap-1.5 rounded-2xl bg-surface px-3 py-2.5 text-left transition active:scale-[0.96]"
+        style={{ boxShadow: `inset 0 0 0 1px ${place.station.color}40` }}
       >
-        <span className="text-[17px]" aria-hidden>
-          {preset.emoji}
-        </span>
-        <span className="text-[12px] font-bold text-neutral-500">{placeLabel(place, locale)}:</span>
-        <span className="text-[14px] font-extrabold text-neutral-900">{t(place.station.name, locale)}</span>
-        {lines ? <span className="text-[12px] font-semibold text-neutral-500">({lines})</span> : null}
+        <LineBadges station={place.station} locale={locale} size="md" />
+        <span className="text-[12px] font-bold text-ink-muted">{placeLabel(place, locale)}:</span>
+        <span className="text-[14px] font-extrabold text-ink">{t(place.station.name, locale)}</span>
         {status ? (
           <span className="ml-0.5 rounded-full bg-white/90 px-1.5 py-[1px] text-[10px] font-bold text-[#2563eb]">
             {t(status, locale)}
@@ -217,12 +212,7 @@ function RouteCard({
       to: summary.toLine ? lineText(summary.toLine) : "?",
     });
   }
-  const headerLine = summary.directLine
-    ? lineText(summary.directLine)
-    : [summary.fromLine, summary.toLine]
-        .filter((line): line is string => line !== null)
-        .map(lineText)
-        .join(" → ");
+  const rideIcon = summary.boarding?.line ?? summary.directLine ?? summary.fromLine;
 
   return (
     <li className="overflow-hidden rounded-3xl bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] ring-1 ring-neutral-200/70">
@@ -230,15 +220,18 @@ function RouteCard({
         className="flex items-start gap-2 px-4 pb-3 pt-3.5"
         style={{ backgroundImage: `linear-gradient(120deg, ${from.station.color}1f, ${to.station.color}1f)` }}
       >
-        <h3 className="min-w-0 flex-1 text-[16px] font-extrabold leading-snug tracking-tight text-neutral-900">
-          <span aria-hidden>{from.emoji}</span> {t(from.station.name, locale)}{" "}
-          <span className="mx-0.5 text-neutral-400" aria-hidden>
+        <h3 className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1 text-[16px] font-extrabold leading-snug tracking-tight text-neutral-900">
+          <span className="inline-flex items-center gap-1">
+            <LineBadges station={from.station} locale={locale} size="sm" />
+            {t(from.station.name, locale)}
+          </span>
+          <span className="text-neutral-400" aria-hidden>
             ➔
-          </span>{" "}
-          <span aria-hidden>{to.emoji}</span> {t(to.station.name, locale)}
-          {headerLine ? (
-            <span className="ml-1 text-[13px] font-bold text-neutral-500">({headerLine})</span>
-          ) : null}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <LineBadges station={to.station} locale={locale} size="sm" />
+            {t(to.station.name, locale)}
+          </span>
         </h3>
         {editing ? (
           <button
@@ -261,7 +254,11 @@ function RouteCard({
       </div>
       <ul className="flex flex-col gap-1.5 px-4 py-3 text-[13px] leading-snug text-neutral-700">
         <li className="flex gap-1.5">
-          <span aria-hidden>🚇</span>
+          {rideIcon ? (
+            <LineIcon line={rideIcon} locale={locale} size="xs" className="mt-px" />
+          ) : (
+            <span aria-hidden>🚇</span>
+          )}
           <span className={summary.boarding ? "font-bold text-neutral-900" : ""}>{rideLine}</span>
         </li>
         {summary.tips.length > 0 ? (
@@ -284,9 +281,12 @@ function RouteCard({
             key={index}
             type="button"
             onClick={() => onOpenStation(endpoint.station)}
-            className="truncate rounded-xl bg-surface-muted px-2 py-2 text-[12px] font-bold text-neutral-700 active:scale-95"
+            className="flex min-w-0 items-center justify-center gap-1 rounded-xl bg-surface-muted px-2 py-2 text-[12px] font-bold text-neutral-700 active:scale-95"
           >
-            {endpoint.emoji} {fill(t(COPY.stationInfo, locale), { station: t(endpoint.station.name, locale) })} ›
+            <LineBadges station={endpoint.station} locale={locale} size="xs" />
+            <span className="truncate">
+              {fill(t(COPY.stationInfo, locale), { station: t(endpoint.station.name, locale) })} ›
+            </span>
           </button>
         ))}
       </div>

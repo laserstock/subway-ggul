@@ -19,7 +19,7 @@ export default function AppHeader({
 }: {
   backHref?: string;
   title?: Localized;
-  subtitle?: string;
+  subtitle?: ReactNode;
   icon?: ReactNode;
   /** Extra button shown left of the language switch. */
   action?: ReactNode;
@@ -85,7 +85,9 @@ export default function AppHeader({
             {title ? t(title, locale) : m.app.name}
           </h1>
           {subtitle ? (
-            <p className="truncate text-[12px] font-semibold leading-tight text-neutral-500">{subtitle}</p>
+            <div className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-[12px] font-semibold leading-tight text-neutral-500">
+              {subtitle}
+            </div>
           ) : null}
         </div>
       </div>

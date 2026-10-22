@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav, { type NavTab } from "../_components/BottomNav";
+import { LineIcon } from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import { Toast, useToast } from "../_components/Toast";
 import type { LatLng } from "../KakaoMap";
@@ -516,10 +517,11 @@ export default function UrgentScreen({
                           setManualNext(null);
                         }}
                         aria-pressed={active}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                        className={`flex items-center gap-1 rounded-full py-1 pl-1 pr-2.5 text-[11px] font-bold ${
                           active ? "bg-[#5b3fd6] text-white" : "bg-white text-[#5b3fd6] ring-1 ring-[#ddd3ff]"
                         }`}
                       >
+                        <LineIcon line={candidate} locale={locale} size="sm" className={active ? "ring-2 ring-white" : ""} />
                         {t(lineLabel(candidate), locale)}
                       </button>
                     );
@@ -527,9 +529,13 @@ export default function UrgentScreen({
                 </div>
               ) : null}
               <div className="flex items-center gap-2 rounded-xl bg-[#efe9ff] px-3 py-2.5">
-                <span aria-hidden className="text-[16px]">
-                  🚇
-                </span>
+                {line ? (
+                  <LineIcon line={line} locale={locale} size="md" />
+                ) : (
+                  <span aria-hidden className="text-[16px]">
+                    🚇
+                  </span>
+                )}
                 <p className="min-w-0 flex-1 text-[13px] font-extrabold leading-snug text-[#4c2fd1]">{route}</p>
                 {otherNeighbor ? (
                   <button

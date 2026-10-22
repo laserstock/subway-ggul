@@ -6,13 +6,15 @@ import { flushSync } from "react-dom";
 import { lineColor } from "../kakao-places";
 import AppHeader from "../_components/AppHeader";
 import BottomNav, { type NavTab } from "../_components/BottomNav";
+import { PinIcon } from "../_components/icons";
+import LineBadges, { LineIcon } from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import SearchOverlay from "../_components/SearchOverlay";
 import { Toast, useToast } from "../_components/Toast";
 import { useFacilityVotes, voteFacility, type FacilityVote } from "../_lib/facilityVotes";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
-import { compactLines, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import { stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { stationLines } from "../_lib/subwayLine";
 import {
   transferInfo,
@@ -224,18 +226,14 @@ function LineMark({
   locale: Locale;
   size?: "sm" | "lg";
 }) {
-  const name = lineName(station, line, locale);
-  const mark = line.match(/^(\d+)호선$/)?.[1] ?? [...name][0];
   return (
-    <span
-      className={`flex shrink-0 items-center justify-center rounded-full font-extrabold text-white ${
-        size === "lg" ? "h-12 w-12 text-[20px] shadow-[0_3px_10px_rgba(15,23,42,0.18)]" : "h-6 w-6 text-[12px]"
-      }`}
-      style={{ backgroundColor: lineColor([line]) }}
-      aria-hidden
-    >
-      {mark}
-    </span>
+    <LineIcon
+      line={line}
+      locale={locale}
+      label={lineName(station, line, locale)}
+      size={size === "lg" ? "lg" : "md"}
+      className={size === "lg" ? "shadow-[0_3px_10px_rgba(15,23,42,0.18)]" : ""}
+    />
   );
 }
 
@@ -717,9 +715,13 @@ export default function TransferScreen({
     showToast(t(added ? COPY.votedThanks : COPY.voteCanceled, locale));
   }
 
-  const subtitle = station
-    ? `📍 ${t(station.name, locale)}${compactLines(station, locale) ? ` · ${compactLines(station, locale)}` : ""}`
-    : undefined;
+  const subtitle = station ? (
+    <>
+      <PinIcon size={14} className="shrink-0 text-honey" />
+      <span className="truncate">{t(station.name, locale)}</span>
+      <LineBadges station={station} locale={locale} size="xs" />
+    </>
+  ) : undefined;
 
   return (
     <div className="flex min-h-dvh justify-center bg-frame">

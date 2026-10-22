@@ -8,6 +8,7 @@ import AppHeader from "./AppHeader";
 import BottomNav, { type NavTab } from "./BottomNav";
 import ActionTile, { type ActionKind } from "./ActionTile";
 import { PinIcon, SearchIcon, StarIcon } from "./icons";
+import LineBadges from "./LineBadges";
 import LiveFeed from "./LiveFeed";
 import LocationSheet from "./LocationSheet";
 import ReportSheet from "./ReportSheet";
@@ -16,7 +17,7 @@ import { Toast, useToast } from "./Toast";
 import { useHomeResetToken } from "../_lib/homeReset";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale, useMessages } from "../_lib/locale";
-import { PLACE_PRESETS, useMyStations, type MyPlace } from "../_lib/myStations";
+import { useMyStations, type MyPlace } from "../_lib/myStations";
 import {
   clearSelectedStation,
   selectStation,
@@ -27,12 +28,10 @@ import {
 } from "../_lib/selectedStation";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
 import {
-  compactLines,
   distanceMeters,
   formatDistance,
   stationParams,
   t,
-  type Locale,
   type Localized,
   type StationOption,
 } from "../_lib/stations";
@@ -187,11 +186,6 @@ const MAIN_ACTIONS: MainAction[] = [
   },
 ];
 
-function stationLabel(station: StationOption, locale: Locale) {
-  const lines = compactLines(station, locale);
-  return lines ? `${t(station.name, locale)} (${lines})` : t(station.name, locale);
-}
-
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <section
@@ -334,7 +328,8 @@ export default function HomeScreen() {
     headline = (
       <>
         <PinIcon size={22} className={`mr-1 inline-block align-[-4px] ${destination ? "text-[#2563eb]" : "text-honey"}`} />
-        {t(destination ? COPY.destination : COPY.now, locale)} {stationLabel(station, locale)}
+        {t(destination ? COPY.destination : COPY.now, locale)} {t(station.name, locale)}
+        <LineBadges station={station} locale={locale} size="md" className="ml-1.5 align-[-4px]" />
       </>
     );
     detail = station.curated ? (
@@ -458,7 +453,6 @@ export default function HomeScreen() {
                 {m.nav.station}:
               </span>
               {myPlaces.map((place) => {
-                const preset = PLACE_PRESETS[place.preset];
                 const active = place.station.key === station?.key;
                 return (
                   <button
@@ -466,13 +460,12 @@ export default function HomeScreen() {
                     type="button"
                     onClick={() => pickMyPlace(place)}
                     aria-pressed={active}
-                    className="flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold text-neutral-800 transition active:scale-95"
+                    className="flex shrink-0 items-center gap-1.5 rounded-full bg-surface py-1 pl-1.5 pr-3 text-[12px] font-bold text-ink transition active:scale-95"
                     style={{
-                      backgroundColor: preset.bg,
-                      boxShadow: `inset 0 0 0 ${active ? 2 : 1}px ${active ? place.station.color : preset.ring}`,
+                      boxShadow: `inset 0 0 0 ${active ? 2 : 1}px ${active ? place.station.color : "var(--line)"}`,
                     }}
                   >
-                    <span aria-hidden>{preset.emoji}</span>
+                    <LineBadges station={place.station} locale={locale} size="sm" />
                     {t(place.station.name, locale)}
                   </button>
                 );

@@ -122,9 +122,9 @@ export default function SearchOverlay({
         <button
           type="button"
           onClick={() => select(station)}
-          className={`flex items-center gap-1.5 py-2 pl-3.5 ${onRemove ? "pr-1" : "pr-3.5"}`}
+          className={`flex items-center gap-1.5 py-1.5 pl-2 ${onRemove ? "pr-1" : "pr-3.5"}`}
         >
-          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: station.color }} aria-hidden />
+          <LineBadges station={station} locale={locale} size="sm" />
           {t(station.name, locale)}
         </button>
         {onRemove ? (
