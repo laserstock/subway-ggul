@@ -30,11 +30,23 @@ const COPY = {
     zh: "🛗 电梯{n}次 · 🪜 0台阶",
     ja: "🛗 エレベーター{n}回 · 🪜 階段0",
   },
+  levelAccess: {
+    ko: "🪜 계단 0개 · 엘리베이터 없이 평지로 이동",
+    en: "🪜 0 stairs · level access, no lift needed",
+    zh: "🪜 0台阶 · 平地通行，无需电梯",
+    ja: "🪜 階段0 · EVなしで段差なし",
+  },
   carHint: {
     ko: "{dir} 방면 열차는 {car}번 문 앞이 엘리베이터와 가장 가까워요",
     en: "On trains to {dir}, door {car} is closest to the lift",
     zh: "开往{dir}的列车，{car}号门离电梯最近",
     ja: "{dir}方面の列車は{car}番ドアがエレベーターに一番近いです",
+  },
+  carHintGate: {
+    ko: "{dir} 방면 열차는 {car}번 문 앞이 개찰구와 가장 가까워요",
+    en: "On trains to {dir}, door {car} is closest to the gates",
+    zh: "开往{dir}的列车，{car}号门离检票口最近",
+    ja: "{dir}方面の列車は{car}番ドアが改札に一番近いです",
   },
   diagramTitle: {
     ko: "🗺️ 한눈에 보는 역 단면도",
@@ -125,10 +137,24 @@ function markerPositions(map: StepFreeMap) {
   return { lift, gate: clamp(gate), exit: clamp(exit) };
 }
 
+type StepId = "car" | "lift" | "gate" | "exit";
+
+/** Route order when leaving the station; boarding walks it backwards. */
+function routeSteps(map: StepFreeMap, mode: Mode): StepId[] {
+  const steps: StepId[] = map.platformLevel === map.gateLevel ? ["car", "gate", "exit"] : ["car", "lift", "gate", "exit"];
+  return mode === "exit" ? steps : steps.reverse();
+}
+
+/** The platform row needs extra room when gate or exit labels sit above the car strip. */
+function platformHasLabels(map: StepFreeMap) {
+  return map.gateLevel === map.platformLevel || map.exitLevel === map.platformLevel;
+}
+
 function rowLayout(map: StepFreeMap) {
+  const labeled = platformHasLabels(map);
   let top = 0;
   return map.levels.map((level) => {
-    const height = ROW_HEIGHT[level.kind];
+    const height = level.kind === "platform" && labeled ? ROW_HEIGHT.platform + 22 : ROW_HEIGHT[level.kind];
     const row = { top, height, anchor: top + (level.kind === "platform" ? 22 : height / 2) };
     top += height + ROW_GAP;
     return row;
@@ -214,11 +240,14 @@ function StationSection({
     map.platformLevel !== map.gateLevel ? { x: x.lift, from: map.platformLevel, to: map.gateLevel } : null,
     map.exitLevel !== map.gateLevel ? { x: x.exit, from: map.gateLevel, to: map.exitLevel } : null,
   ].filter((lift) => lift !== null);
-  const walkFrom = Math.min(x.gate, x.exit, map.platformLevel !== map.gateLevel ? x.lift : x.gate);
-  const walkTo = Math.max(x.gate, x.exit, map.platformLevel !== map.gateLevel ? x.lift : x.gate);
-  const stepOf = (exitStep: number) => (mode === "exit" ? exitStep : 5 - exitStep);
+  const walkFrom = Math.min(x.gate, x.exit, x.lift);
+  const walkTo = Math.max(x.gate, x.exit, x.lift);
+  const steps = routeSteps(map, mode);
+  const stepOf = (id: StepId) => steps.indexOf(id) + 1;
   const exitOnGateRow = map.exitLevel === map.gateLevel;
   const ends = map.ends.map((end) => t(end, locale));
+  const platformRow = rows[map.platformLevel];
+  const stripTop = platformRow ? platformRow.top + (platformHasLabels(map) ? 64 : 42) : 0;
 
   return (
     <div className="flex gap-2">
@@ -228,7 +257,7 @@ function StationSection({
           if (!row) return null;
           return (
             <div
-              key={level.floor}
+              key={index}
               className="absolute inset-x-0 flex flex-col justify-center"
               style={{ top: row.top, height: row.height }}
             >
@@ -258,7 +287,7 @@ function StationSection({
               : undefined;
           return (
             <div
-              key={level.floor}
+              key={index}
               className={`absolute inset-x-0 rounded-xl border ${
                 level.kind === "street"
                   ? "border-[#bfe3fb] bg-gradient-to-b from-[#eef8ff] to-[#dff1fd]"
@@ -272,7 +301,7 @@ function StationSection({
             >
               {level.kind === "passage" ? (
                 <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-ink-muted">
-                  🔁 {t(level.label ?? LEVEL_LABEL.passage, locale)}
+                  ↔ {t(level.label ?? LEVEL_LABEL.passage, locale)}
                 </span>
               ) : null}
             </div>
@@ -307,7 +336,7 @@ function StationSection({
 
         {map.platformLevel !== map.gateLevel ? (
           <>
-            <Marker x={x.lift} y={rows[map.platformLevel]?.anchor ?? 0} icon="🛗" tone="lift" step={stepOf(2)} />
+            <Marker x={x.lift} y={rows[map.platformLevel]?.anchor ?? 0} icon="🛗" tone="lift" step={stepOf("lift")} />
             <Marker x={x.lift} y={rows[map.gateLevel]?.anchor ?? 0} icon="🛗" tone="lift" />
           </>
         ) : null}
@@ -317,7 +346,7 @@ function StationSection({
           icon="🎫"
           tone="gate"
           label={t(COPY.gate, locale)}
-          step={stepOf(3)}
+          step={stepOf("gate")}
         />
         {exitOnGateRow ? (
           <Marker
@@ -326,7 +355,7 @@ function StationSection({
             icon="🚪"
             tone="door"
             label={t(map.exit, locale)}
-            step={stepOf(4)}
+            step={stepOf("exit")}
           />
         ) : (
           <>
@@ -337,21 +366,22 @@ function StationSection({
               icon="🚪"
               tone="door"
               label={t(map.exit, locale)}
-              step={stepOf(4)}
+              step={stepOf("exit")}
             />
           </>
         )}
 
-        {rows[map.platformLevel] ? (
+        {platformRow ? (
           <PlatformStrip
-            top={(rows[map.platformLevel]?.top ?? 0) + 42}
+            top={stripTop}
+            liftY={platformRow.anchor}
             cars={map.cars}
             car={car}
             door={door}
             towardFirst={towardFirst}
             liftX={x.lift}
             color={color}
-            step={stepOf(1)}
+            step={stepOf("car")}
             caption={fill(t(COPY.front, locale), { dir: ends[towardFirst ? 0 : 1] ?? "" })}
           />
         ) : null}
@@ -362,6 +392,7 @@ function StationSection({
 
 function PlatformStrip({
   top,
+  liftY,
   cars,
   car,
   door,
@@ -372,6 +403,7 @@ function PlatformStrip({
   caption,
 }: {
   top: number;
+  liftY: number;
   cars: number;
   car: number;
   door: number;
@@ -387,7 +419,7 @@ function PlatformStrip({
     <>
       <span
         className="absolute z-0 w-0 -translate-x-1/2 border-l-2 border-dotted border-honey"
-        style={{ left: `${liftX * 100}%`, top: top - 22, height: 22 }}
+        style={{ left: `${liftX * 100}%`, top: liftY, height: top - liftY }}
         aria-hidden
       />
       <div
@@ -629,21 +661,18 @@ export default function StepFreeGuide({
   const ends = map.ends.map((end) => t(end, locale));
   const liftRides = (map.platformLevel !== map.gateLevel ? 1 : 0) + (map.exitLevel !== map.gateLevel ? 1 : 0);
 
-  const exitFlow = [
-    { icon: "🚇", text: fill(t(COPY.stepAlight, locale), { car: carDoor }), accent: true },
-    { icon: "🛗", text: t(COPY.stepLift, locale) },
-    { icon: "🎫", text: fill(t(COPY.stepGate, locale), { floor: gateFloor }) },
-    { icon: "🚪", text: t(map.exit, locale) },
-  ];
-  const flow =
-    mode === "exit"
-      ? exitFlow
-      : [
-          { icon: "🚪", text: t(map.exit, locale) },
-          { icon: "🎫", text: fill(t(COPY.stepGate, locale), { floor: gateFloor }) },
-          { icon: "🛗", text: t(COPY.stepLift, locale) },
-          { icon: "🚇", text: fill(t(COPY.stepBoard, locale), { car: carDoor }), accent: true },
-        ];
+  const nodes: Record<StepId, FlowItem> = {
+    car: {
+      icon: "🚇",
+      text: fill(t(mode === "exit" ? COPY.stepAlight : COPY.stepBoard, locale), { car: carDoor }),
+      accent: true,
+    },
+    lift: { icon: "🛗", text: t(COPY.stepLift, locale) },
+    gate: { icon: "🎫", text: fill(t(COPY.stepGate, locale), { floor: gateFloor }) },
+    exit: { icon: "🚪", text: t(map.exit, locale) },
+  };
+  const flow = routeSteps(map, mode).map((id) => ({ id, ...nodes[id] }));
+  const flowColumns = flow.map(() => "minmax(0,1fr)").join(" auto ");
 
   const mapTitle = fill(t(COPY.mapTitle, locale), { station: t(station.name, locale) });
 
@@ -670,14 +699,18 @@ export default function StepFreeGuide({
             />
           </div>
 
-          <ol className="mt-3 grid grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] gap-1" aria-label={t(COPY.badge, locale)}>
+          <ol
+            className="mt-3 grid gap-1"
+            style={{ gridTemplateColumns: flowColumns }}
+            aria-label={t(COPY.badge, locale)}
+          >
             {flow.map((node, index) => (
-              <FlowStep key={node.icon} index={index} node={node} />
+              <FlowStep key={node.id} index={index} node={node} />
             ))}
           </ol>
 
           <p className="mt-2.5 text-center text-[11.5px] font-bold text-ink-muted">
-            {fill(t(COPY.liftCount, locale), { n: liftRides })}
+            {liftRides > 0 ? fill(t(COPY.liftCount, locale), { n: liftRides }) : t(COPY.levelAccess, locale)}
           </p>
 
           <div className="mt-3 rounded-xl bg-white/80 p-2.5 ring-1 ring-line">
@@ -693,7 +726,10 @@ export default function StepFreeGuide({
             />
             <p className="mt-2 text-[12.5px] font-bold leading-snug text-ink">
               💡{" "}
-              {fill(t(COPY.carHint, locale), { dir: ends[toward] ?? "", car: carDoor })}
+              {fill(t(map.platformLevel === map.gateLevel ? COPY.carHintGate : COPY.carHint, locale), {
+                dir: ends[toward] ?? "",
+                car: carDoor,
+              })}
             </p>
           </div>
         </div>
@@ -749,7 +785,9 @@ export default function StepFreeGuide({
   );
 }
 
-function FlowStep({ index, node }: { index: number; node: { icon: string; text: string; accent?: boolean } }) {
+type FlowItem = { icon: string; text: string; accent?: boolean };
+
+function FlowStep({ index, node }: { index: number; node: FlowItem }) {
   return (
     <>
       {index > 0 ? <FlowArrow /> : null}

@@ -15,8 +15,8 @@ import { useFacilityVotes, voteFacility, type FacilityVote } from "../_lib/facil
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import { stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
-import { stepFreeMap } from "../_lib/stepFree";
-import { stationLines } from "../_lib/subwayLine";
+import { stepFreeMaps } from "../_lib/stepFree";
+import { lineLabel, stationLines } from "../_lib/subwayLine";
 import {
   transferInfo,
   type AccessCourse,
@@ -93,6 +93,7 @@ const COPY = {
     zh: "可在“设施状态”中查看电梯位置，或分享您走过的路线。",
     ja: "「設備状況」タブでエレベーターの位置を確認するか、通った道を教えてください。",
   },
+  pickLine: { ko: "어느 호선을 타시나요?", en: "Which line are you taking?", zh: "您乘坐哪条线？", ja: "どの路線に乗りますか？" },
   moreCourses: { ko: "♿ 다른 무장애 코스", en: "♿ More step-free routes", zh: "♿ 其他无障碍路线", ja: "♿ ほかのバリアフリールート" },
   diagramTitle: { ko: "역사 단면도 · 안내도", en: "Station cross-section", zh: "车站剖面图 · 导览图", ja: "駅断面図 · 案内図" },
   diagramPlaceholder: {
@@ -487,16 +488,45 @@ function BarrierFreePanel({
   locale: Locale;
   onReport: () => void;
 }) {
+  const [guideIndex, setGuideIndex] = useState(0);
   const mapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(station.name.ko)},${station.center.lat},${station.center.lng}`;
-  const guide = stepFreeMap(station);
+  const guides = stepFreeMaps(station);
+  const guide = guides[guideIndex] ?? guides[0];
   if (guide) {
     return (
       <>
         <p className="mb-3 inline-flex rounded-full bg-white px-3 py-1.5 text-[12px] font-bold text-neutral-700 shadow-sm">
           {t(COPY.audience, locale)}
         </p>
+        {guides.length > 1 ? (
+          <div className="mb-3">
+            <p className="mb-1.5 text-[12px] font-extrabold text-neutral-600">{t(COPY.pickLine, locale)}</p>
+            <div role="radiogroup" aria-label={t(COPY.pickLine, locale)} className="flex flex-wrap gap-2">
+              {guides.map((option, index) => {
+                const active = option === guide;
+                return (
+                  <button
+                    key={option.code}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setGuideIndex(index)}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-extrabold transition active:scale-95 ${
+                      active
+                        ? "bg-white text-neutral-900 shadow-[0_2px_8px_rgba(15,23,42,0.12)] ring-2 ring-honey"
+                        : "bg-white/70 text-neutral-500 ring-1 ring-neutral-200"
+                    }`}
+                  >
+                    <LineIcon line={option.line} locale={locale} size="sm" />
+                    {t(lineLabel(option.line), locale)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
         <div className="flex flex-col gap-3">
-          <StepFreeGuide map={guide} station={station} locale={locale} />
+          <StepFreeGuide key={guide.code} map={guide} station={station} locale={locale} />
           {courses.length > 0 ? (
             <>
               <h3 className="mt-2 text-[14px] font-extrabold text-neutral-900">{t(COPY.moreCourses, locale)}</h3>
