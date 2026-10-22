@@ -2,12 +2,13 @@ import type { StationOption } from "./stations";
 import type { StepFreeMap } from "./stepFreeKit";
 import { LINE1_MAPS } from "./stepFreeLine1";
 import { LINE2_MAPS } from "./stepFreeLine2";
+import { LINE3_MAPS } from "./stepFreeLine3";
 
 export type { LevelKind, StepFreeMap } from "./stepFreeKit";
 
 export const DOORS_PER_CAR = 4;
 
-const BY_LINE = [LINE1_MAPS, LINE2_MAPS];
+const BY_LINE = [LINE1_MAPS, LINE2_MAPS, LINE3_MAPS];
 
 /** Every line with a step-free guide at this station, in line order. */
 export function stepFreeMaps(station: StationOption): StepFreeMap[] {

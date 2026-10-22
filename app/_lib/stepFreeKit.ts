@@ -103,6 +103,7 @@ export const LINE1 = { line: "1호선", cars: 10 } as const;
 export const LINE2 = { line: "2호선", cars: 10 } as const;
 /** Seongsu and Sinjeong branches run 4-car trains. */
 export const LINE2_BRANCH = { line: "2호선", cars: 4 } as const;
+export const LINE3 = { line: "3호선", cars: 10 } as const;
 
 export function stationMap(
   line: { line: string; cars: number },
