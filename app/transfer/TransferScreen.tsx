@@ -5,7 +5,7 @@ import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { lineColor } from "../kakao-places";
 import AppHeader from "../_components/AppHeader";
-import BottomNav, { type NavTab } from "../_components/BottomNav";
+import BottomNav from "../_components/BottomNav";
 import { PinIcon } from "../_components/icons";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
@@ -704,13 +704,6 @@ export default function TransferScreen({
     router.push(`/transfer?${params}`);
   }
 
-  function onNavTab(navTab: NavTab) {
-    if (navTab === "home") router.push("/");
-    if (navTab === "search") openSearch();
-    if (navTab === "station") router.push("/my");
-    if (navTab === "report") setSheetOpen(true);
-  }
-
   function onVoted(added: boolean) {
     showToast(t(added ? COPY.votedThanks : COPY.voteCanceled, locale));
   }
@@ -803,7 +796,7 @@ export default function TransferScreen({
           </main>
         )}
 
-        <BottomNav onTab={onNavTab} />
+        <BottomNav active="home" />
 
         <Toast message={toast} />
 

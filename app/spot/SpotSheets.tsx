@@ -1,0 +1,298 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { t, type Locale, type Localized } from "../_lib/i18n";
+import { authorLabel } from "../_lib/profile";
+import { formatRelativeTime } from "../_lib/reports";
+import {
+  addSpotComment,
+  addSpotPost,
+  SPOT_BODY_MAX,
+  SPOT_CATEGORIES,
+  SPOT_COMMENT_MAX,
+  SPOT_TITLE_MAX,
+  type SpotCategory,
+  type SpotComment,
+  type SpotPost,
+} from "../_lib/spot";
+
+const COPY = {
+  writeTitle: { ko: "{plaza}에 글쓰기", en: "Post to {plaza}", zh: "在{plaza}发帖", ja: "{plaza}に投稿" },
+  category: { ko: "말머리", en: "Topic", zh: "分类", ja: "カテゴリー" },
+  titlePlaceholder: { ko: "제목 (최대 40자)", en: "Title (max 40)", zh: "标题（最多40字）", ja: "タイトル（最大40文字）" },
+  bodyPlaceholder: {
+    ko: "역 이웃들과 나누고 싶은 이야기를 적어 주세요",
+    en: "Share something with your line neighbors",
+    zh: "写下想和同线邻居分享的内容",
+    ja: "同じ路線のご近所さんと共有したいことを書いてください",
+  },
+  postAs: { ko: "이 이름으로 올라가요", en: "Posting as", zh: "将以此身份发布", ja: "この名前で投稿されます" },
+  changeProfile: { ko: "마이에서 변경", en: "Change in Me", zh: "在我的中修改", ja: "マイで変更" },
+  submit: { ko: "올리기", en: "Post", zh: "发布", ja: "投稿する" },
+  rules: {
+    ko: "욕설·비방·개인정보 노출 글은 숨김 처리될 수 있어요 · 베타: 글은 이 기기에만 저장돼요",
+    en: "Abusive or private-info posts may be hidden · Beta: posts stay on this device",
+    zh: "辱骂、诽谤或泄露隐私的帖子可能被隐藏 · 测试版：帖子仅保存在本设备",
+    ja: "暴言・誹謗・個人情報を含む投稿は非表示になる場合があります · ベータ：投稿はこの端末にのみ保存",
+  },
+  comments: { ko: "댓글 {n}", en: "{n} comments", zh: "评论 {n}", ja: "コメント {n}" },
+  noComments: {
+    ko: "아직 댓글이 없어요. 첫 댓글을 남겨 보세요!",
+    en: "No comments yet. Be the first!",
+    zh: "还没有评论，来抢沙发吧！",
+    ja: "まだコメントがありません。最初のコメントをどうぞ！",
+  },
+  hiddenComments: {
+    ko: "베타 샘플 글이라 일부 댓글만 보여요",
+    en: "Sample post: only some comments are shown",
+    zh: "示例帖子：仅显示部分评论",
+    ja: "サンプル投稿のため一部のコメントのみ表示",
+  },
+  commentPlaceholder: { ko: "댓글 달기…", en: "Add a comment…", zh: "写评论…", ja: "コメントする…" },
+  send: { ko: "등록", en: "Send", zh: "发送", ja: "送信" },
+  me: { ko: "나", en: "Me", zh: "我", ja: "自分" },
+} satisfies Record<string, Localized>;
+
+export const CATEGORY_META: Record<SpotCategory, { emoji: string; label: Localized }> = {
+  commute: { emoji: "🚃", label: { ko: "출퇴근", en: "Commute", zh: "通勤", ja: "通勤" } },
+  food: { emoji: "🍽️", label: { ko: "역주변 맛집", en: "Food nearby", zh: "站点周边美食", ja: "駅近グルメ" } },
+  lost: { emoji: "🎒", label: { ko: "분실물", en: "Lost & found", zh: "失物招领", ja: "落とし物" } },
+  free: { emoji: "💬", label: { ko: "자유", en: "Chat", zh: "闲聊", ja: "雑談" } },
+};
+
+function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  const titleId = useId();
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="absolute inset-0 z-[85]">
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden
+        onClick={onClose}
+        className="absolute inset-0 animate-[fade-in_200ms_ease-out] bg-black/40 backdrop-blur-[2px]"
+      />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="absolute inset-x-0 bottom-0 flex max-h-[88%] animate-[sheet-up_300ms_cubic-bezier(0.22,1,0.36,1)] flex-col rounded-t-[28px] bg-surface pb-[max(16px,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_40px_rgba(15,23,42,0.18)]"
+      >
+        <div className="flex justify-center pb-3" aria-hidden>
+          <span className="h-[5px] w-11 rounded-full bg-neutral-300" />
+        </div>
+        <h2 id={titleId} className="px-5 text-[18px] font-extrabold tracking-tight text-ink">
+          {title}
+        </h2>
+        {children}
+      </section>
+    </div>
+  );
+}
+
+function AuthorChip({ station, nickname, locale }: { station: string | null; nickname: string; locale: Locale }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-2xl bg-honey-soft px-3.5 py-2.5">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold text-ink-muted">{t(COPY.postAs, locale)}</p>
+        <p className="truncate text-[14px] font-extrabold text-ink">
+          [{authorLabel(station, nickname)}] <span aria-hidden>🐝</span>
+        </p>
+      </div>
+      <Link href="/me" className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[11px] font-bold text-honey-strong">
+        {t(COPY.changeProfile, locale)} ›
+      </Link>
+    </div>
+  );
+}
+
+export function WriteSheet({
+  line,
+  plaza,
+  station,
+  nickname,
+  locale,
+  onClose,
+  onPosted,
+}: {
+  line: string;
+  plaza: string;
+  station: string | null;
+  nickname: string;
+  locale: Locale;
+  onClose: () => void;
+  onPosted: () => void;
+}) {
+  const [category, setCategory] = useState<SpotCategory>("free");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const ready = title.trim().length > 0 && body.trim().length > 0;
+
+  function submit() {
+    if (!ready) return;
+    addSpotPost({ line, station, author: nickname, category, title: title.trim(), body: body.trim() });
+    onPosted();
+  }
+
+  return (
+    <Sheet title={t(COPY.writeTitle, locale).replace("{plaza}", plaza)} onClose={onClose}>
+      <form
+        className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
+        <p className="mt-3 text-[12px] font-bold text-ink-muted">{t(COPY.category, locale)}</p>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {SPOT_CATEGORIES.map((id) => {
+            const active = id === category;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setCategory(id)}
+                aria-pressed={active}
+                className={`rounded-full px-3 py-1.5 text-[13px] font-bold transition active:scale-95 ${
+                  active ? "bg-ink text-white" : "bg-surface-muted text-ink-muted ring-1 ring-line"
+                }`}
+              >
+                {CATEGORY_META[id].emoji} {t(CATEGORY_META[id].label, locale)}
+              </button>
+            );
+          })}
+        </div>
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value.slice(0, SPOT_TITLE_MAX))}
+          placeholder={t(COPY.titlePlaceholder, locale)}
+          className="mt-3 w-full rounded-2xl border border-line bg-surface-muted px-3.5 py-3 text-[15px] font-bold text-ink outline-none placeholder:font-medium placeholder:text-neutral-400 focus:border-honey"
+        />
+        <textarea
+          value={body}
+          onChange={(event) => setBody(event.target.value.slice(0, SPOT_BODY_MAX))}
+          placeholder={t(COPY.bodyPlaceholder, locale)}
+          rows={5}
+          className="mt-2 w-full resize-none rounded-2xl border border-line bg-surface-muted px-3.5 py-3 text-[14px] leading-relaxed text-ink outline-none placeholder:text-neutral-400 focus:border-honey"
+        />
+        <p className="mt-0.5 text-right text-[11px] text-neutral-400">
+          {body.length}/{SPOT_BODY_MAX}
+        </p>
+        <div className="mt-1.5">
+          <AuthorChip station={station} nickname={nickname} locale={locale} />
+        </div>
+        <p className="mt-2 text-[11px] leading-relaxed text-neutral-400">{t(COPY.rules, locale)}</p>
+        <button
+          type="submit"
+          disabled={!ready}
+          className="mb-1 mt-3 w-full rounded-2xl bg-[#2b2418] py-3.5 text-[15px] font-bold text-white transition active:scale-[0.98] disabled:bg-neutral-300"
+        >
+          ✏️ {t(COPY.submit, locale)}
+        </button>
+      </form>
+    </Sheet>
+  );
+}
+
+function CommentRow({ comment, now, locale }: { comment: SpotComment; now: number | null; locale: Locale }) {
+  return (
+    <li className="rounded-2xl bg-surface-muted px-3.5 py-2.5">
+      <p className="flex items-center gap-1.5 text-[12px] font-bold text-ink">
+        {authorLabel(comment.station, comment.author)}
+        {comment.mine ? (
+          <span className="rounded-full bg-honey-soft px-1.5 py-[1px] text-[10px] text-honey-strong">
+            {t(COPY.me, locale)}
+          </span>
+        ) : null}
+        {now !== null ? (
+          <span className="ml-auto text-[11px] font-medium text-neutral-400">
+            {formatRelativeTime(comment.createdAt, now, locale)}
+          </span>
+        ) : null}
+      </p>
+      <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{comment.text}</p>
+    </li>
+  );
+}
+
+export function CommentSheet({
+  post,
+  station,
+  nickname,
+  now,
+  locale,
+  onClose,
+}: {
+  post: SpotPost;
+  station: string | null;
+  nickname: string;
+  now: number | null;
+  locale: Locale;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const hidden = post.commentCount > post.comments.length;
+
+  function send() {
+    const text = draft.trim();
+    if (!text) return;
+    addSpotComment(post.id, { station, author: nickname, text });
+    setDraft("");
+  }
+
+  return (
+    <Sheet title={t(COPY.comments, locale).replace("{n}", String(post.commentCount))} onClose={onClose}>
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5">
+        <article className="mt-3 border-b border-line pb-3">
+          <p className="text-[12px] font-bold text-ink-muted">{authorLabel(post.station, post.author)}</p>
+          <h3 className="mt-1 text-[16px] font-extrabold leading-snug text-ink">{post.title}</h3>
+          <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-neutral-600">{post.body}</p>
+        </article>
+        {post.comments.length === 0 ? (
+          <p className="py-6 text-center text-[13px] text-neutral-400">{t(COPY.noComments, locale)}</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {post.comments.map((comment) => (
+              <CommentRow key={comment.id} comment={comment} now={now} locale={locale} />
+            ))}
+          </ul>
+        )}
+        {hidden ? <p className="mt-2 text-center text-[11px] text-neutral-400">{t(COPY.hiddenComments, locale)}</p> : null}
+      </div>
+      <form
+        className="mt-2 flex items-center gap-2 border-t border-line px-4 pt-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          send();
+        }}
+      >
+        <span className="max-w-[38%] shrink-0 truncate rounded-full bg-honey-soft px-2 py-1 text-[11px] font-bold text-honey-strong">
+          {authorLabel(station, nickname)}
+        </span>
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value.slice(0, SPOT_COMMENT_MAX))}
+          placeholder={t(COPY.commentPlaceholder, locale)}
+          aria-label={t(COPY.commentPlaceholder, locale)}
+          className="min-w-0 flex-1 rounded-full border border-line bg-surface-muted px-3.5 py-2.5 text-[14px] text-ink outline-none placeholder:text-neutral-400 focus:border-honey"
+        />
+        <button
+          type="submit"
+          disabled={!draft.trim()}
+          className="shrink-0 rounded-full bg-[#2b2418] px-3.5 py-2.5 text-[13px] font-bold text-white disabled:bg-neutral-300"
+        >
+          {t(COPY.send, locale)}
+        </button>
+      </form>
+    </Sheet>
+  );
+}

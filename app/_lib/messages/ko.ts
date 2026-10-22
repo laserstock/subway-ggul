@@ -10,9 +10,9 @@ const ko = {
   },
   nav: {
     home: "홈",
-    search: "검색",
+    spot: "꿀스팟",
     station: "My 역",
-    report: "제보",
+    me: "마이",
   },
   language: {
     title: "언어 선택 / Select Language",

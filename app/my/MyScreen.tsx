@@ -2,12 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import AppHeader from "../_components/AppHeader";
-import BottomNav, { type NavTab } from "../_components/BottomNav";
+import BottomNav from "../_components/BottomNav";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
-import ReportSheet from "../_components/ReportSheet";
-import SearchOverlay from "../_components/SearchOverlay";
 import { Toast, useToast } from "../_components/Toast";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
@@ -108,12 +105,6 @@ const COPY = {
   placeRemoved: { ko: "My 역을 삭제했어요", en: "My Station removed", zh: "已删除 My 车站", ja: "My 駅を削除しました" },
   routeSaved: { ko: "동선을 저장했어요", en: "Route saved", zh: "已保存路线", ja: "ルートを保存しました" },
   routeRemoved: { ko: "동선을 삭제했어요", en: "Route removed", zh: "已删除路线", ja: "ルートを削除しました" },
-  reportDone: {
-    ko: "제보가 등록됐어요. 고마워요!",
-    en: "Report posted. Thank you!",
-    zh: "上报成功，谢谢！",
-    ja: "投稿しました。ありがとうございます！",
-  },
 } satisfies Record<string, Localized>;
 
 function localizedLine(line: string, locale: Locale) {
@@ -302,13 +293,9 @@ export default function MyScreen() {
   const lastStation = useLastStation();
   const { toast, showToast } = useToast();
   const mainRef = useRef<HTMLElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [placeSheet, setPlaceSheet] = useState<{ place: MyPlace | null } | null>(null);
   const [routeSheetOpen, setRouteSheetOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
-  const closeSearch = useCallback(() => setSearchOpen(false), []);
   const closePlaceSheet = useCallback(() => setPlaceSheet(null), []);
   const closeRouteSheet = useCallback(() => setRouteSheetOpen(false), []);
 
@@ -319,20 +306,7 @@ export default function MyScreen() {
   function openDashboard(station: StationOption) {
     setDestinationStation(station);
     addRecentStation(station);
-    setSearchOpen(false);
     router.push(`/station?${stationParams(station)}`);
-  }
-
-  function openSearch() {
-    flushSync(() => setSearchOpen(true));
-    searchInputRef.current?.focus();
-  }
-
-  function onNavTab(tab: NavTab) {
-    if (tab === "home") router.push("/");
-    if (tab === "search") openSearch();
-    if (tab === "station") mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    if (tab === "report") setReportOpen(true);
   }
 
   function placeStatus(place: MyPlace): Localized | null {
@@ -449,7 +423,7 @@ export default function MyScreen() {
           <p className="mt-4 px-1 text-[11px] leading-relaxed text-neutral-400">{t(COPY.savedNote, locale)}</p>
         </main>
 
-        <BottomNav active="station" onTab={onNavTab} />
+        <BottomNav active="station" onReselect={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })} />
 
         <Toast message={toast} />
 
@@ -476,24 +450,6 @@ export default function MyScreen() {
           />
         ) : null}
 
-        {reportOpen ? (
-          <ReportSheet
-            station={destination ?? lastStation}
-            onClose={() => setReportOpen(false)}
-            onPosted={() => {
-              setReportOpen(false);
-              showToast(t(COPY.reportDone, locale));
-            }}
-          />
-        ) : null}
-
-        <SearchOverlay
-          isOpen={searchOpen}
-          onClose={closeSearch}
-          onSelect={openDashboard}
-          inputRef={searchInputRef}
-          near={lastStation?.center ?? null}
-        />
       </div>
     </div>
   );

@@ -1,9 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import AppHeader from "../_components/AppHeader";
-import BottomNav, { type NavTab } from "../_components/BottomNav";
+import BottomNav from "../_components/BottomNav";
 import { LineIcon } from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import { Toast, useToast } from "../_components/Toast";
@@ -316,7 +315,6 @@ export default function UrgentScreen({
   follow: boolean;
 }) {
   const locale = useLocale();
-  const router = useRouter();
   const [tab, setTab] = useState<UrgentTab>("all");
   const [picked, setPicked] = useState<StationOption | null>(follow ? null : initialStation);
   const [heading, setHeading] = useState<number | null>(null);
@@ -460,13 +458,6 @@ export default function UrgentScreen({
     setManualLine(null);
     setManualNext(null);
     tracker.start();
-  }
-
-  function onTab(navTab: NavTab) {
-    if (navTab === "home") router.push("/");
-    if (navTab === "search") router.push("/#search");
-    if (navTab === "station") router.push("/my");
-    if (navTab === "report") setSheetOpen(true);
   }
 
   function onReportPosted() {
@@ -665,7 +656,7 @@ export default function UrgentScreen({
           )}
         </main>
 
-        <BottomNav onTab={onTab} />
+        <BottomNav />
 
         <Toast message={toast} />
 

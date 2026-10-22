@@ -12,9 +12,9 @@ const ja: Messages = {
   },
   nav: {
     home: "ホーム",
-    search: "検索",
+    spot: "ハニースポット",
     station: "My 駅",
-    report: "投稿",
+    me: "マイ",
   },
   language: {
     title: "언어 선택 / Select Language",

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import AppHeader from "./AppHeader";
-import BottomNav, { type NavTab } from "./BottomNav";
+import BottomNav from "./BottomNav";
 import ActionTile, { type ActionKind } from "./ActionTile";
 import { PinIcon, SearchIcon, StarIcon } from "./icons";
 import LineBadges from "./LineBadges";
@@ -310,13 +310,6 @@ export default function HomeScreen() {
     showToast(t(COPY.reportDone, locale));
   }
 
-  function onTab(tab: NavTab) {
-    if (tab === "home") mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    if (tab === "search") openSearch();
-    if (tab === "station") router.push("/my");
-    if (tab === "report") setSheetOpen(true);
-  }
-
   const distance =
     !destination && !isManual && tracker.position && tracker.nearest
       ? distanceMeters(tracker.position, tracker.nearest.center)
@@ -526,7 +519,7 @@ export default function HomeScreen() {
           </button>
         </main>
 
-        <BottomNav active="home" onTab={onTab} />
+        <BottomNav active="home" onReselect={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })} />
 
         <Toast message={toast} />
 

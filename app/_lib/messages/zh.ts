@@ -12,9 +12,9 @@ const zh: Messages = {
   },
   nav: {
     home: "首页",
-    search: "搜索",
+    spot: "蜜点",
     station: "My 车站",
-    report: "上报",
+    me: "我的",
   },
   language: {
     title: "언어 선택 / Select Language",

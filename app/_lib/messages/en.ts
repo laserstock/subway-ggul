@@ -12,9 +12,9 @@ const en: Messages = {
   },
   nav: {
     home: "Home",
-    search: "Search",
+    spot: "Honey Spot",
     station: "My Station",
-    report: "Report",
+    me: "Me",
   },
   language: {
     title: "언어 선택 / Select Language",

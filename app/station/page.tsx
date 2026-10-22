@@ -25,10 +25,10 @@ function DashboardShell() {
         <div className="mx-4 h-[118px] animate-pulse rounded-3xl bg-[#e3e8f0]" />
         <div className="mx-4 mt-4 grid grid-cols-2 gap-2.5">
           {[0, 1, 2, 3].map((index) => (
-            <div key={index} className="h-[124px] animate-pulse rounded- bg-surface-muted" />
+            <div key={index} className="h-[124px] animate-pulse rounded-2xl bg-surface-muted" />
           ))}
         </div>
-        <div className="mx-4 mt-4 h-[230px] animate-pulse rounded- bg-surface-muted" />
+        <div className="mx-4 mt-4 h-[230px] animate-pulse rounded-2xl bg-surface-muted" />
       </div>
     </div>
   );

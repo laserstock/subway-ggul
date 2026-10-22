@@ -21,10 +21,10 @@ function UrgentShell() {
     <div className="flex min-h-dvh justify-center bg-frame">
       <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader backHref="/" title={URGENT_TITLE} icon={<UrgentIcon />} />
-        <div className="mx-4 h-[34px] animate-pulse rounded- bg-surface-muted" />
+        <div className="mx-4 h-[34px] animate-pulse rounded-full bg-surface-muted" />
         <div className="mx-4 mt-3 h-[44px] animate-pulse rounded-xl bg-[#efe9ff]" />
-        <div className="mx-4 mt-3 h-[150px] animate-pulse rounded- bg-surface-muted" />
-        <div className="mx-4 mt-3 h-[200px] animate-pulse rounded- bg-surface-muted" />
+        <div className="mx-4 mt-3 h-[150px] animate-pulse rounded-2xl bg-surface-muted" />
+        <div className="mx-4 mt-3 h-[200px] animate-pulse rounded-2xl bg-surface-muted" />
       </div>
     </div>
   );

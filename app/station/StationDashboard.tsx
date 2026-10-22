@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import KakaoMap from "../KakaoMap";
 import ActionTile, { type ActionKind } from "../_components/ActionTile";
 import AppHeader from "../_components/AppHeader";
-import BottomNav, { type NavTab } from "../_components/BottomNav";
+import BottomNav from "../_components/BottomNav";
 import LineBadges from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import SearchOverlay from "../_components/SearchOverlay";
@@ -181,13 +181,6 @@ export default function StationDashboard({ station }: { station: StationOption |
     router.push(`/station?${stationParams(next)}`);
   }
 
-  function onTab(tab: NavTab) {
-    if (tab === "home") router.push("/");
-    if (tab === "search") openSearch();
-    if (tab === "station") router.push("/my");
-    if (tab === "report") setSheetOpen(true);
-  }
-
   const name = station ? t(station.name, locale) : "";
   const lines = station ? t(station.lines, locale) : "";
   const curatedTip = station ? STATION_TIPS[station.name.ko] : undefined;
@@ -356,7 +349,7 @@ export default function StationDashboard({ station }: { station: StationOption |
           )}
         </main>
 
-        <BottomNav active="search" onTab={onTab} />
+        <BottomNav active="home" />
 
         <Toast message={toast} />
 

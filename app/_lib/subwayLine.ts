@@ -93,5 +93,10 @@ export function sameLine(a: string, b: string) {
 }
 
 export function lineLabel(line: string): Localized {
-  return { ko: line, en: line.replace(/^(\d+)호선$/, "Line $1") };
+  return {
+    ko: line,
+    en: line.replace(/^(\d+)호선$/, "Line $1"),
+    zh: line.replace(/^(\d+)호선$/, "$1号线"),
+    ja: line.replace(/^(\d+)호선$/, "$1号線"),
+  };
 }
