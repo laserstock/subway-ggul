@@ -93,7 +93,7 @@ function FeedItem({
     <li className={`py-2.5 ${expired ? "opacity-60" : ""}`}>
       <div className="flex items-start gap-2">
         <span
-          className="mt-[1px] flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#f6f2ea] text-[13px]"
+          className="mt-[1px] flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-[13px]"
           title={t(type.label, locale)}
           aria-hidden
         >
@@ -178,7 +178,7 @@ export default function LiveFeed({
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-[#efe9dd] bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+    <section className="mt-4 rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
       <div className="flex items-center justify-between gap-2">
         <h2 className="min-w-0 truncate text-[14px] font-extrabold text-neutral-900">
           <span aria-hidden>💬 </span>

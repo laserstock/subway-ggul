@@ -41,6 +41,10 @@ const zh: Messages = {
     feedbackSend: "发送",
     feedbackDone: "感谢您的宝贵意见！",
     feedbackNote: "测试版：反馈目前保存在本设备，正式版将发送至服务器",
+    theme: "显示模式",
+    themeLight: "浅色",
+    themeDark: "深色",
+    themeSoon: "即将推出",
   },
 };
 

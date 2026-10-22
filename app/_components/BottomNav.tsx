@@ -57,7 +57,7 @@ export default function BottomNav({
 }) {
   const m = useMessages();
   return (
-    <nav className="grid shrink-0 grid-cols-4 border-t border-neutral-200 bg-white pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5">
+    <nav className="grid shrink-0 grid-cols-4 border-t border-line bg-surface pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5">
       {NAV_TABS.map((tab) => (
         <button
           key={tab}

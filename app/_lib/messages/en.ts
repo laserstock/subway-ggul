@@ -41,6 +41,10 @@ const en: Messages = {
     feedbackSend: "Send",
     feedbackDone: "Thanks for your feedback!",
     feedbackNote: "Beta: feedback is stored on this device until the server is ready",
+    theme: "Display mode",
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeSoon: "Soon",
   },
 };
 

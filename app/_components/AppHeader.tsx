@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { LANGUAGES, t, type Locale, type Localized } from "../_lib/i18n";
 import { setLocale, useLocale, useMessages } from "../_lib/locale";
+import { useApplyTheme } from "../_lib/theme";
 import { GlobeIcon, TrainLogo } from "./icons";
 import LanguageSheet from "./LanguageSheet";
 import SideDrawer from "./SideDrawer";
@@ -33,6 +34,8 @@ export default function AppHeader({
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
   const closeLanguageSheet = useCallback(() => setIsLanguageSheetOpen(false), []);
 
+  useApplyTheme();
+
   useEffect(() => {
     document.documentElement.lang = LANGUAGES[locale].htmlLang;
   }, [locale]);
@@ -43,7 +46,7 @@ export default function AppHeader({
   }
 
   return (
-    <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
+    <header className="flex items-center justify-between gap-2 bg-app px-4 pb-2 pt-3">
       <div className="flex min-w-0 items-center gap-2">
         {backHref ? (
           <Link
@@ -75,9 +78,9 @@ export default function AppHeader({
         </button>
         <div className="min-w-0">
           <h1
-            className={`truncate font-bold tracking-tight text-neutral-900 ${
-              subtitle ? "text-[16px] leading-tight" : "text-[18px]"
-            }`}
+            className={`truncate tracking-tight ${
+              title ? "font-bold text-ink" : "font-extrabold text-honey-strong"
+            } ${subtitle ? "text-[16px] leading-tight" : title ? "text-[18px]" : "text-[21px]"}`}
           >
             {title ? t(title, locale) : m.app.name}
           </h1>

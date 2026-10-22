@@ -1,13 +1,50 @@
 @import "tailwindcss";
 
-:root {
-  --background: #e8eaed;
-  --foreground: #171717;
+:root,
+[data-theme="light"] {
+  --app-frame: #eef0f3;
+  --app-bg: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f7f8fa;
+  --line: #eceef1;
+  --ink: #171717;
+  --ink-muted: #6b7280;
+  --honey: #f5a700;
+  --honey-strong: #e39300;
+  --honey-soft: #fff6dc;
+  --background: var(--app-frame);
+  --foreground: var(--ink);
+  color-scheme: light;
+}
+
+/* Dark palette for the upcoming theme switch (not selectable yet). */
+[data-theme="dark"] {
+  --app-frame: #0b0d12;
+  --app-bg: #14161c;
+  --surface: #1d2028;
+  --surface-muted: #252a33;
+  --line: #2e333d;
+  --ink: #f3f4f6;
+  --ink-muted: #9ca3af;
+  --honey: #ffbe2e;
+  --honey-strong: #ffcf5c;
+  --honey-soft: #3a2f12;
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-frame: var(--app-frame);
+  --color-app: var(--app-bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-honey: var(--honey);
+  --color-honey-strong: var(--honey-strong);
+  --color-honey-soft: var(--honey-soft);
   --font-sans: var(--font-sans);
 }
 

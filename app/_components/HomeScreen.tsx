@@ -6,7 +6,8 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNod
 import { flushSync } from "react-dom";
 import AppHeader from "./AppHeader";
 import BottomNav, { type NavTab } from "./BottomNav";
-import { SearchIcon } from "./icons";
+import ActionTile, { type ActionKind } from "./ActionTile";
+import { PinIcon, SearchIcon, StarIcon } from "./icons";
 import LiveFeed from "./LiveFeed";
 import LocationSheet from "./LocationSheet";
 import ReportSheet from "./ReportSheet";
@@ -122,54 +123,44 @@ const COPY = {
 };
 
 type MainAction = {
-  id: string;
-  emoji: string;
+  kind: ActionKind;
   title: Localized;
   detail?: Localized;
   sub: Localized;
-  bg: string;
-  accent: string;
   href?: "/urgent" | "/shops" | "/transfer";
 };
 
 const MAIN_ACTIONS: MainAction[] = [
   {
-    id: "urgent",
-    emoji: "🚽💊",
+    kind: "urgent",
     title: { ko: "긴급", en: "Urgent", zh: "紧急", ja: "緊急" },
     detail: {
-      ko: "(화장실·약국·병원)",
-      en: "(Restroom·Pharmacy·Clinic)",
-      zh: "(卫生间·药店·医院)",
-      ja: "(トイレ·薬局·病院)",
+      ko: "(화장실·약국)",
+      en: "(Restroom·Pharmacy)",
+      zh: "(卫生间·药店)",
+      ja: "(トイレ·薬局)",
     },
     sub: {
-      ko: "개찰구 안! 3초 비교 →",
-      en: "Inside the gate! 3-sec compare →",
-      zh: "闸机内！3秒比较 →",
-      ja: "改札内！3秒比較 →",
+      ko: "개찰구 안/밖 3초 비교 →",
+      en: "In/out of gate, 3-sec compare →",
+      zh: "闸机内/外 3秒比较 →",
+      ja: "改札内/外を3秒比較 →",
     },
-    bg: "#fde9ec",
-    accent: "#e5484d",
     href: "/urgent",
   },
   {
-    id: "shops",
-    emoji: "🛍️☕",
+    kind: "shops",
     title: { ko: "출구 매장 & 픽업", en: "Exit Shops & Pickup", zh: "出口商店 & 自提", ja: "出口ショップ & 受け取り" },
     sub: {
-      ko: "올영 · 다이소 · 카페 · 편의점",
-      en: "Olive Young · Daiso · Cafe · Store",
-      zh: "Olive Young · 大创 · 咖啡 · 便利店",
-      ja: "オリーブヤング · ダイソー · カフェ · コンビニ",
+      ko: "올영·다이소·카페·편의점",
+      en: "Olive Young·Daiso·Cafe·Store",
+      zh: "Olive Young·大创·咖啡·便利店",
+      ja: "オリヤン·ダイソー·カフェ·コンビニ",
     },
-    bg: "#fdf1df",
-    accent: "#b45309",
     href: "/shops",
   },
   {
-    id: "transfer",
-    emoji: "🛗♿",
+    kind: "transfer",
     title: {
       ko: "빠른환승 & 편한길",
       en: "Fast Transfer & Easy Route",
@@ -177,27 +168,22 @@ const MAIN_ACTIONS: MainAction[] = [
       ja: "スムーズ乗換 & らくらくルート",
     },
     sub: {
-      ko: "에스컬레이터 · 무장애 →",
-      en: "Escalator · Barrier-free →",
-      zh: "扶梯 · 无障碍 →",
-      ja: "エスカレーター · バリアフリー →",
+      ko: "에스컬레이터·무장애",
+      en: "Escalator·Barrier-free",
+      zh: "扶梯·无障碍",
+      ja: "エスカレーター·バリアフリー",
     },
-    bg: "#e5efff",
-    accent: "#2563eb",
     href: "/transfer",
   },
   {
-    id: "luggage",
-    emoji: "🧳🌏",
+    kind: "luggage",
     title: { ko: "짐보관 & 외국인", en: "Lockers & Travelers", zh: "行李寄存 & 外国游客", ja: "荷物預け & 旅行者" },
     sub: {
-      ko: "T-Locker · 환전 · KTX →",
-      en: "T-Locker · Exchange · KTX →",
-      zh: "T-Locker · 换汇 · KTX →",
-      ja: "T-Locker · 両替 · KTX →",
+      ko: "T-Locker·환전·KTX",
+      en: "T-Locker·Exchange·KTX",
+      zh: "T-Locker·换汇·KTX",
+      ja: "T-Locker·両替·KTX",
     },
-    bg: "#e6f5e9",
-    accent: "#15803d",
   },
 ];
 
@@ -209,7 +195,7 @@ function stationLabel(station: StationOption, locale: Locale) {
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <section
-      className={`rounded-2xl border border-[#efe9dd] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)] ${className}`}
+      className={`rounded-[20px] border border-line bg-surface shadow-[0_2px_10px_rgba(15,23,42,0.05)] ${className}`}
     >
       {children}
     </section>
@@ -347,7 +333,7 @@ export default function HomeScreen() {
   if (station) {
     headline = (
       <>
-        <span aria-hidden>{destination ? "🎯" : "📍"}</span>
+        <PinIcon size={22} className={`mr-1 inline-block align-[-4px] ${destination ? "text-[#2563eb]" : "text-honey"}`} />
         {t(destination ? COPY.destination : COPY.now, locale)} {stationLabel(station, locale)}
       </>
     );
@@ -366,7 +352,7 @@ export default function HomeScreen() {
   } else if (tracker.issue) {
     headline = (
       <>
-        <span aria-hidden>📍</span>
+        <PinIcon size={22} className="mr-1 inline-block align-[-4px] text-neutral-400" />
         {t(COPY.noLocation, locale)}
       </>
     );
@@ -374,7 +360,7 @@ export default function HomeScreen() {
   } else {
     headline = (
       <>
-        <span aria-hidden>📍</span>
+        <PinIcon size={22} className="mr-1 inline-block animate-pulse align-[-4px] text-honey" />
         {t(COPY.locating, locale)}
       </>
     );
@@ -382,12 +368,12 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="flex min-h-dvh justify-center bg-[#e8eaed]">
-      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-[#fbf8f2] shadow-[0_0_40px_rgba(15,23,42,0.12)]">
+    <div className="flex min-h-dvh justify-center bg-frame">
+      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader />
 
         <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-5">
-          <Card className="bg-gradient-to-br from-[#fff7e6] to-[#fffdf8] px-4 py-3.5">
+          <Card className="px-4 py-3.5">
             <div className="flex items-start justify-between gap-2">
               <button
                 type="button"
@@ -397,10 +383,10 @@ export default function HomeScreen() {
                 title={t(COPY.correctLocation, locale)}
                 className="min-w-0 flex-1 rounded-xl text-left transition active:scale-[0.99]"
               >
-                <span className="flex items-center gap-1 text-[18px] font-extrabold tracking-tight text-neutral-900">
+                <span className="flex items-center gap-1 text-[18px] font-extrabold tracking-tight text-ink">
                   <span className="min-w-0 truncate">{headline}</span>
                   <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#b45309]/10 text-[#b45309]"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-honey-soft text-honey-strong"
                     aria-hidden
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -415,7 +401,7 @@ export default function HomeScreen() {
                   </span>
                   <span className="sr-only">{t(COPY.correctLocation, locale)}</span>
                 </span>
-                <span className="mt-1.5 block text-[12px] font-normal text-neutral-600">{detail}</span>
+                <span className="mt-1.5 block pl-[26px] text-[12px] font-normal text-ink-muted">{detail}</span>
               </button>
               {destination ? (
                 <button
@@ -459,7 +445,7 @@ export default function HomeScreen() {
             onClick={openSearch}
             aria-haspopup="dialog"
             aria-expanded={searchOpen}
-            className="mt-3 flex w-full items-center gap-2 rounded-2xl border border-[#ece6da] bg-white px-3.5 py-3 text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)] transition active:scale-[0.99]"
+            className="mt-3 flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-muted px-3.5 py-3 text-left transition active:scale-[0.99]"
           >
             <SearchIcon />
             <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-400">{t(COPY.search, locale)}</span>
@@ -467,7 +453,10 @@ export default function HomeScreen() {
 
           {myPlaces.length > 0 ? (
             <div className="no-scrollbar -mx-4 mt-2.5 flex items-center gap-1.5 overflow-x-auto px-4">
-              <span className="shrink-0 text-[12px] font-extrabold text-neutral-500">⭐ {m.nav.station}</span>
+              <span className="flex shrink-0 items-center gap-1 text-[12px] font-extrabold text-ink">
+                <StarIcon className="text-honey" />
+                {m.nav.station}:
+              </span>
               {myPlaces.map((place) => {
                 const preset = PLACE_PRESETS[place.preset];
                 const active = place.station.key === station?.key;
@@ -488,8 +477,11 @@ export default function HomeScreen() {
                   </button>
                 );
               })}
-              <Link href="/my" className="shrink-0 px-1 text-[12px] font-bold text-neutral-400">
-                {t(COPY.editMy, locale)} ›
+              <Link
+                href="/my"
+                className="ml-auto shrink-0 rounded-full border border-line bg-surface px-2.5 py-1.5 text-[12px] font-bold text-ink-muted"
+              >
+                ⚙️ {t(COPY.editMy, locale)}
               </Link>
             </div>
           ) : null}
@@ -509,51 +501,17 @@ export default function HomeScreen() {
             </div>
           </header>
           <div className="grid grid-cols-2 gap-2.5">
-            {MAIN_ACTIONS.map((action) => {
-              const body = (
-                <>
-                  <span className="block text-[34px] leading-none" aria-hidden>
-                    {action.emoji}
-                  </span>
-                  <span className="mt-3 block text-[15px] font-extrabold leading-tight text-neutral-900">
-                    {t(action.title, locale)}
-                    {action.detail ? (
-                      <span className="ml-0.5 text-[11px] font-semibold text-neutral-600">
-                        {t(action.detail, locale)}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span
-                    className="mt-1.5 block text-[11px] font-bold"
-                    style={{ color: action.accent }}
-                  >
-                    {t(action.sub, locale)}
-                  </span>
-                </>
-              );
-              const className =
-                "block min-h-[132px] rounded-2xl p-3.5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition active:scale-[0.98]";
-              return action.href ? (
-                <Link
-                  key={action.id}
-                  href={actionHref(action.href)}
-                  className={className}
-                  style={{ backgroundColor: action.bg }}
-                >
-                  {body}
-                </Link>
-              ) : (
-                <button
-                  key={action.id}
-                  type="button"
-                  onClick={() => showToast(t(COPY.comingSoon, locale))}
-                  className={className}
-                  style={{ backgroundColor: action.bg }}
-                >
-                  {body}
-                </button>
-              );
-            })}
+            {MAIN_ACTIONS.map((action) => (
+              <ActionTile
+                key={action.kind}
+                kind={action.kind}
+                title={t(action.title, locale)}
+                detail={action.detail ? t(action.detail, locale) : undefined}
+                sub={t(action.sub, locale)}
+                href={action.href ? actionHref(action.href) : undefined}
+                onClick={action.href ? undefined : () => showToast(t(COPY.comingSoon, locale))}
+              />
+            ))}
           </div>
 
           <LiveFeed station={station} onToast={showToast} />
@@ -561,7 +519,7 @@ export default function HomeScreen() {
           <button
             type="button"
             onClick={() => setSheetOpen(true)}
-            className="mt-2.5 flex w-full items-center justify-between rounded-2xl border border-[#efe9dd] bg-white px-4 py-3.5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
+            className="mt-2.5 flex w-full items-center justify-between rounded-2xl border border-line bg-surface px-4 py-3.5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
           >
             <span className="text-[14px] font-extrabold text-neutral-900">
               <span aria-hidden>✏️ </span>

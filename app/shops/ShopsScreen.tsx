@@ -527,8 +527,8 @@ export default function ShopsScreen({
   }
 
   return (
-    <div className="flex min-h-dvh justify-center bg-[#e8eaed]">
-      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-white shadow-[0_0_40px_rgba(15,23,42,0.12)]">
+    <div className="flex min-h-dvh justify-center bg-frame">
+      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader backHref="/" onLocaleChange={onLocaleChange} />
 
         <StationSearch

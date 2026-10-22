@@ -8,6 +8,7 @@ import { t, type Localized } from "../_lib/i18n";
 import { useLocale, useMessages } from "../_lib/locale";
 import { deleteReport, formatRelativeTime, useMyReports, useNow } from "../_lib/reports";
 import { clearSelectedStation, setDestinationStation } from "../_lib/selectedStation";
+import { setTheme, THEME_READY, THEMES, useTheme } from "../_lib/theme";
 import { TrainLogo } from "./icons";
 
 export const APP_VERSION = "1.0.0";
@@ -142,6 +143,7 @@ export default function SideDrawer({
   const router = useRouter();
   const myReports = useMyReports();
   const now = useNow();
+  const theme = useTheme();
   const [view, setView] = useState<DrawerView>("menu");
   const [shareStatus, setShareStatus] = useState<ShareStatus>(null);
   const [feedback, setFeedback] = useState("");
@@ -229,7 +231,7 @@ export default function SideDrawer({
         onTransitionEnd={(event) => {
           if (event.target === event.currentTarget && !isOpen) resetInnerState();
         }}
-        className={`absolute inset-y-0 left-0 flex w-[84%] max-w-[330px] flex-col rounded-r-[28px] bg-white pt-[max(12px,env(safe-area-inset-top))] shadow-[8px_0_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+        className={`absolute inset-y-0 left-0 flex w-[84%] max-w-[330px] flex-col rounded-r-[28px] bg-surface pt-[max(12px,env(safe-area-inset-top))] shadow-[8px_0_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -237,9 +239,8 @@ export default function SideDrawer({
           <div className="flex min-w-0 items-center gap-3">
             <TrainLogo />
             <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[17px] font-extrabold tracking-tight text-neutral-900">
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[17px] font-extrabold tracking-tight text-honey-strong">
                 {m.app.name}
-                <span aria-hidden>🚇</span>
                 <span className="rounded-full bg-neutral-100 px-2 py-[2px] text-[11px] font-bold text-neutral-500">
                   v{APP_VERSION}
                 </span>
@@ -303,6 +304,36 @@ export default function SideDrawer({
                 </li>
               ))}
             </ul>
+            <div className="mx-2 mt-3 rounded-2xl bg-surface-muted p-3">
+              <p className="text-[12px] font-bold text-ink-muted">{m.drawer.theme}</p>
+              <div role="radiogroup" aria-label={m.drawer.theme} className="mt-2 grid grid-cols-2 gap-2">
+                {THEMES.map((option) => {
+                  const active = theme === option;
+                  const ready = THEME_READY[option];
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      disabled={!ready}
+                      onClick={() => setTheme(option)}
+                      className={`flex flex-col items-center gap-0.5 rounded-xl border py-2.5 text-[13px] font-bold transition-colors ${
+                        active
+                          ? "border-honey bg-honey-soft text-honey-strong"
+                          : "border-line bg-surface text-ink disabled:text-neutral-400"
+                      }`}
+                    >
+                      <span aria-hidden>{option === "light" ? "☀️" : "🌙"}</span>
+                      {option === "light" ? m.drawer.themeLight : m.drawer.themeDark}
+                      {!ready ? (
+                        <span className="text-[10px] font-semibold text-neutral-400">{m.drawer.themeSoon}</span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </nav>
         ) : null}
 

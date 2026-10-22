@@ -26,8 +26,8 @@ async function ShopsContent({ searchParams }: { searchParams: SearchParams }) {
 
 function ShopsShell() {
   return (
-    <div className="flex min-h-dvh justify-center bg-[#e8eaed]">
-      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-white shadow-[0_0_40px_rgba(15,23,42,0.12)]">
+    <div className="flex min-h-dvh justify-center bg-frame">
+      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader backHref="/" />
         <div className="mx-4 h-[42px] animate-pulse rounded-full bg-[#f3f4f6]" />
         <div className="mt-3 flex-1 animate-pulse bg-[#eef1f5]" />

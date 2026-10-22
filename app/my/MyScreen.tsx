@@ -284,7 +284,7 @@ function RouteCard({
             key={index}
             type="button"
             onClick={() => onOpenStation(endpoint.station)}
-            className="truncate rounded-xl bg-[#f6f7f9] px-2 py-2 text-[12px] font-bold text-neutral-700 active:scale-95"
+            className="truncate rounded-xl bg-surface-muted px-2 py-2 text-[12px] font-bold text-neutral-700 active:scale-95"
           >
             {endpoint.emoji} {fill(t(COPY.stationInfo, locale), { station: t(endpoint.station.name, locale) })} ›
           </button>
@@ -344,8 +344,8 @@ export default function MyScreen() {
   const summary = fill(t(COPY.summary, locale), { places: places.length, routes: routes.length });
 
   return (
-    <div className="flex min-h-dvh justify-center bg-[#e8eaed]">
-      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-[#f6f7f9] shadow-[0_0_40px_rgba(15,23,42,0.12)]">
+    <div className="flex min-h-dvh justify-center bg-frame">
+      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader
           title={MY_TITLE}
           subtitle={summary}
@@ -364,7 +364,7 @@ export default function MyScreen() {
         />
 
         <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-6">
-          <section className="rounded-3xl bg-white px-4 py-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+          <section className="rounded-3xl bg-surface px-4 py-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)] ring-1 ring-line">
             <div className="flex items-center gap-2">
               <h2 className="text-[16px] font-extrabold tracking-tight text-neutral-900">
                 ⭐ {t(COPY.placesTitle, locale)}
@@ -416,7 +416,7 @@ export default function MyScreen() {
               <p className="mt-0.5 text-[12px] text-neutral-500">{t(COPY.routesHint, locale)}</p>
             </div>
             {routes.length === 0 ? (
-              <p className="mt-3 rounded-3xl bg-white px-4 py-5 text-center text-[12px] leading-relaxed text-neutral-500">
+              <p className="mt-3 rounded-3xl bg-surface-muted px-4 py-5 text-center text-[12px] leading-relaxed text-neutral-500">
                 {t(COPY.routesEmpty, locale)}
               </p>
             ) : (

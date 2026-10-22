@@ -41,6 +41,10 @@ const ja: Messages = {
     feedbackSend: "送信",
     feedbackDone: "貴重なご意見ありがとうございます！",
     feedbackNote: "ベータ版：フィードバックは現在この端末に保存され、正式版でサーバーに送信されます",
+    theme: "表示モード",
+    themeLight: "ライト",
+    themeDark: "ダーク",
+    themeSoon: "準備中",
   },
 };
 

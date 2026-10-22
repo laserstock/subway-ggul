@@ -266,7 +266,7 @@ function StationCard({
   return (
     <section
       className={`mt-3 rounded-2xl px-3.5 py-3 shadow-[0_1px_3px_rgba(15,23,42,0.06)] ${
-        highlight ? "border-2 border-[#f59e0b] bg-[#fffaf0]" : "border border-[#efe9dd] bg-white"
+        highlight ? "border-2 border-[#f59e0b] bg-[#fffaf0]" : "border border-line bg-surface"
       }`}
     >
       <h2 className="text-[15px] font-extrabold tracking-tight text-neutral-900">{title}</h2>
@@ -474,8 +474,8 @@ export default function UrgentScreen({
   }
 
   return (
-    <div className="flex min-h-dvh justify-center bg-[#e8eaed]">
-      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-[#fbf8f2] shadow-[0_0_40px_rgba(15,23,42,0.12)]">
+    <div className="flex min-h-dvh justify-center bg-frame">
+      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader backHref="/" title={URGENT_TITLE} icon={<UrgentIcon />} />
 
         <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-2">
@@ -629,7 +629,7 @@ export default function UrgentScreen({
               <button
                 type="button"
                 onClick={() => setSheetOpen(true)}
-                className="mx-auto mt-3 flex items-center gap-1.5 rounded-full border border-[#efe9dd] bg-white px-5 py-2.5 text-[13px] font-extrabold text-neutral-900 shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
+                className="mx-auto mt-3 flex items-center gap-1.5 rounded-full border border-line bg-surface px-5 py-2.5 text-[13px] font-extrabold text-neutral-900 shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
               >
                 <span aria-hidden>💬</span>
                 {t(COPY.reportCta, locale)} →
@@ -638,7 +638,7 @@ export default function UrgentScreen({
               <p className="mt-4 text-[10.5px] leading-relaxed text-neutral-400">{t(COPY.betaNote, locale)}</p>
             </>
           ) : (
-            <section className="mt-2 rounded-2xl border border-[#efe9dd] bg-white px-4 py-6 text-center">
+            <section className="mt-2 rounded-2xl border border-line bg-surface px-4 py-6 text-center">
               <p className="text-[15px] font-extrabold text-neutral-900">
                 <span aria-hidden>📍 </span>
                 {t(COPY.locating, locale)}

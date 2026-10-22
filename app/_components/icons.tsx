@@ -42,10 +42,45 @@ export function LocateIcon() {
 
 export function TrainLogo() {
   return (
-    <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#1e3a8a] text-white shadow-sm">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M12 2c-4.6 0-8 1.35-8 4.2V15c0 1.8 1.4 3.3 3.2 3.6V21h-1.4v1.5h5.1V21h2.2v1.5h5.1V21h-1.4v-2.4c1.8-.3 3.2-1.8 3.2-3.6V6.2C20 3.35 16.6 2 12 2zm-4.2 15.1a1.35 1.35 0 1 1 0-2.7 1.35 1.35 0 0 1 0 2.7zm8.4 0a1.35 1.35 0 1 1 0-2.7 1.35 1.35 0 0 1 0 2.7zM18 12.2H6V7.1h12v5.1z" />
+    <span className="flex h-9 w-9 items-center justify-center text-honey" aria-hidden>
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+        <rect x="5" y="2.5" width="14" height="15" rx="4" stroke="currentColor" strokeWidth="2" />
+        <path d="M5 10h14" stroke="currentColor" strokeWidth="2" />
+        <path d="M10 5.5h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="9" cy="13.6" r="1.3" fill="currentColor" />
+        <circle cx="15" cy="13.6" r="1.3" fill="currentColor" />
+        <path d="M8.5 21.5l1.6-3.6M15.5 21.5l-1.6-3.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
-    </div>
+    </span>
+  );
+}
+
+export function PinIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M12 21.5s-6.5-6.1-6.5-11.2a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11.2-6.5 11.2z"
+        fill="currentColor"
+        fillOpacity="0.16"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="10.2" r="2.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function StarIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        d="M12 2.8l2.75 5.6 6.15.9-4.45 4.33 1.05 6.12L12 16.85l-5.5 2.9 1.05-6.12L3.1 9.3l6.15-.9z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

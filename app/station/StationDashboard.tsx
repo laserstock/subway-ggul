@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import KakaoMap from "../KakaoMap";
+import ActionTile, { type ActionKind } from "../_components/ActionTile";
 import AppHeader from "../_components/AppHeader";
 import BottomNav, { type NavTab } from "../_components/BottomNav";
 import LineBadges from "../_components/LineBadges";
@@ -67,19 +67,15 @@ const COPY = {
 } satisfies Record<string, Localized>;
 
 type Tile = {
-  id: "urgent" | "shops" | "transfer" | "luggage";
-  emoji: string;
+  id: ActionKind;
   title: Localized;
   sub: Localized;
-  bg: string;
-  accent: string;
   href?: "/urgent" | "/shops" | "/transfer";
 };
 
 const TILES: Tile[] = [
   {
     id: "urgent",
-    emoji: "🚨",
     title: { ko: "긴급", en: "Urgent", zh: "紧急", ja: "緊急" },
     sub: {
       ko: "개찰구 안 화장실 · 약국",
@@ -87,13 +83,10 @@ const TILES: Tile[] = [
       zh: "闸机内卫生间 · 药店",
       ja: "改札内トイレ · 薬局",
     },
-    bg: "#fde9ec",
-    accent: "#e5484d",
     href: "/urgent",
   },
   {
     id: "shops",
-    emoji: "🛍️",
     title: { ko: "출구 매장 & 픽업", en: "Exit Shops & Pickup", zh: "出口商店 & 自提", ja: "出口ショップ & 受け取り" },
     sub: {
       ko: "올영 · 다이소 · 스벅",
@@ -101,13 +94,10 @@ const TILES: Tile[] = [
       zh: "Olive Young · 大创 · 星巴克",
       ja: "オリーブヤング · ダイソー · スタバ",
     },
-    bg: "#fdf1df",
-    accent: "#b45309",
     href: "/shops",
   },
   {
     id: "transfer",
-    emoji: "⚡",
     title: {
       ko: "빠른환승 & 편한길",
       en: "Fast Transfer & Easy Route",
@@ -120,17 +110,12 @@ const TILES: Tile[] = [
       zh: "扶梯 · 无障碍",
       ja: "エスカレーター · バリアフリー",
     },
-    bg: "#e5efff",
-    accent: "#2563eb",
     href: "/transfer",
   },
   {
     id: "luggage",
-    emoji: "🧳",
     title: { ko: "짐보관 & 외국인", en: "Lockers & Travelers", zh: "行李寄存 & 外国游客", ja: "荷物預け & 旅行者" },
     sub: { ko: "T-Locker · 환전", en: "T-Locker · Exchange", zh: "T-Locker · 换汇", ja: "T-Locker · 両替" },
-    bg: "#e6f5e9",
-    accent: "#15803d",
   },
 ];
 
@@ -214,8 +199,8 @@ export default function StationDashboard({ station }: { station: StationOption |
     : "";
 
   return (
-    <div className="flex min-h-dvh justify-center bg-[#e8eaed]">
-      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-[#f6f7f9] shadow-[0_0_40px_rgba(15,23,42,0.12)]">
+    <div className="flex min-h-dvh justify-center bg-frame">
+      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader backHref="/" title={DASHBOARD_TITLE} />
 
         <main className="no-scrollbar flex-1 overflow-y-auto px-4 pb-6">
@@ -248,52 +233,26 @@ export default function StationDashboard({ station }: { station: StationOption |
                 ⏱️ {t(COPY.tilesTitle, locale)}
               </h2>
               <div className="grid grid-cols-2 gap-2.5">
-                {TILES.map((tile) => {
-                  const body = (
-                    <>
-                      <span className="block text-[30px] leading-none" aria-hidden>
-                        {tile.emoji}
+                {TILES.map((tile) => (
+                  <ActionTile
+                    key={tile.id}
+                    kind={tile.id}
+                    title={t(tile.title, locale)}
+                    sub={t(tile.sub, locale)}
+                    href={tile.href ? `${tile.href}?${stationParams(station)}` : undefined}
+                    onClick={tile.href ? undefined : () => showToast(t(COPY.comingSoon, locale))}
+                  >
+                    {tile.id === "urgent" && urgentLines.length > 0 ? (
+                      <span className="mt-1.5 flex flex-col gap-0.5 text-[11px] font-semibold text-neutral-700">
+                        {urgentLines.map((line) => (
+                          <span key={line.ko} className="truncate">
+                            {t(line, locale)}
+                          </span>
+                        ))}
                       </span>
-                      <span className="mt-2.5 block text-[15px] font-extrabold leading-tight text-neutral-900">
-                        {t(tile.title, locale)}
-                      </span>
-                      <span className="mt-1 block text-[11px] font-bold" style={{ color: tile.accent }}>
-                        {t(tile.sub, locale)}
-                      </span>
-                      {tile.id === "urgent" && urgentLines.length > 0 ? (
-                        <span className="mt-2 flex flex-col gap-0.5 text-[11px] font-semibold text-neutral-700">
-                          {urgentLines.map((line) => (
-                            <span key={line.ko} className="truncate">
-                              {t(line, locale)}
-                            </span>
-                          ))}
-                        </span>
-                      ) : null}
-                    </>
-                  );
-                  const className =
-                    "block min-h-[124px] rounded-2xl p-3.5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition active:scale-[0.98]";
-                  return tile.href ? (
-                    <Link
-                      key={tile.id}
-                      href={`${tile.href}?${stationParams(station)}`}
-                      className={className}
-                      style={{ backgroundColor: tile.bg }}
-                    >
-                      {body}
-                    </Link>
-                  ) : (
-                    <button
-                      key={tile.id}
-                      type="button"
-                      onClick={() => showToast(t(COPY.comingSoon, locale))}
-                      className={className}
-                      style={{ backgroundColor: tile.bg }}
-                    >
-                      {body}
-                    </button>
-                  );
-                })}
+                    ) : null}
+                  </ActionTile>
+                ))}
               </div>
 
               <section className="mt-4 overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">

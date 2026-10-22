@@ -722,13 +722,13 @@ export default function TransferScreen({
     : undefined;
 
   return (
-    <div className="flex min-h-dvh justify-center bg-[#e8eaed]">
-      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-[#f6f7f9] shadow-[0_0_40px_rgba(15,23,42,0.12)]">
+    <div className="flex min-h-dvh justify-center bg-frame">
+      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader backHref="/" title={TRANSFER_TITLE} subtitle={subtitle} icon={<TransferIcon />} />
 
         {station && info ? (
           <>
-            <div role="tablist" className="mx-4 mb-2 grid shrink-0 grid-cols-3 gap-1 rounded-2xl bg-white p-1 shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
+            <div role="tablist" className="mx-4 mb-2 grid shrink-0 grid-cols-3 gap-1 rounded-2xl bg-surface-muted p-1">
               {TRANSFER_TABS.map((id) => {
                 const meta = TAB_META[id];
                 const active = id === tab;
