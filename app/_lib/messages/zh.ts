@@ -34,7 +34,7 @@ const zh: Messages = {
     shareText: "乘地铁时3秒找到卫生间·药店·出口商店的应用——地铁小贴士",
     reset: "重置到主页（返回首页）",
     myReportsEmpty: "还没有上报记录，在车站留下1秒上报吧！",
-    myReportsNote: "测试版：上报仅保存在本设备",
+    myReportsNote: "我的上报与本设备的匿名账号绑定 · 清除浏览器数据后将无法删除",
     delete: "删除",
     feedbackIntro: "请告诉我们不便之处或希望增加的功能，我们会认真阅读并改进。",
     feedbackPlaceholder: "例：希望增加2号线换乘信息",

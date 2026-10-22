@@ -11,6 +11,7 @@ import {
   SPOT_BODY_MAX,
   SPOT_CATEGORIES,
   SPOT_COMMENT_MAX,
+  SPOT_COMMENTS_SHOWN,
   SPOT_TITLE_MAX,
   type SpotCategory,
   type SpotComment,
@@ -31,10 +32,10 @@ const COPY = {
   changeProfile: { ko: "마이에서 변경", en: "Change in Me", zh: "在我的中修改", ja: "マイで変更" },
   submit: { ko: "올리기", en: "Post", zh: "发布", ja: "投稿する" },
   rules: {
-    ko: "욕설·비방·개인정보 노출 글은 숨김 처리될 수 있어요 · 베타: 글은 이 기기에만 저장돼요",
-    en: "Abusive or private-info posts may be hidden · Beta: posts stay on this device",
-    zh: "辱骂、诽谤或泄露隐私的帖子可能被隐藏 · 测试版：帖子仅保存在本设备",
-    ja: "暴言・誹謗・個人情報を含む投稿は非表示になる場合があります · ベータ：投稿はこの端末にのみ保存",
+    ko: "글은 이 광장의 모든 이용자에게 공개돼요 · 욕설·비방·개인정보 노출 글은 숨김 처리될 수 있어요",
+    en: "Posts are public to everyone in this plaza · Abusive or private-info posts may be hidden",
+    zh: "帖子对本广场所有用户公开 · 辱骂、诽谤或泄露隐私的帖子可能被隐藏",
+    ja: "投稿はこの広場の全員に公開されます · 暴言・誹謗・個人情報を含む投稿は非表示になる場合があります",
   },
   comments: { ko: "댓글 {n}", en: "{n} comments", zh: "评论 {n}", ja: "コメント {n}" },
   noComments: {
@@ -44,10 +45,10 @@ const COPY = {
     ja: "まだコメントがありません。最初のコメントをどうぞ！",
   },
   hiddenComments: {
-    ko: "베타 샘플 글이라 일부 댓글만 보여요",
-    en: "Sample post: only some comments are shown",
-    zh: "示例帖子：仅显示部分评论",
-    ja: "サンプル投稿のため一部のコメントのみ表示",
+    ko: "최근 댓글 {n}개까지 보여요",
+    en: "Showing the latest {n} comments",
+    zh: "仅显示最近{n}条评论",
+    ja: "最新{n}件のコメントを表示しています",
   },
   commentPlaceholder: { ko: "댓글 달기…", en: "Add a comment…", zh: "写评论…", ja: "コメントする…" },
   send: { ko: "등록", en: "Send", zh: "发送", ja: "送信" },
@@ -266,7 +267,11 @@ export function CommentSheet({
             ))}
           </ul>
         )}
-        {hidden ? <p className="mt-2 text-center text-[11px] text-neutral-400">{t(COPY.hiddenComments, locale)}</p> : null}
+        {hidden ? (
+          <p className="mt-2 text-center text-[11px] text-neutral-400">
+            {t(COPY.hiddenComments, locale).replace("{n}", String(SPOT_COMMENTS_SHOWN))}
+          </p>
+        ) : null}
       </div>
       <form
         className="mt-2 flex items-center gap-2 border-t border-line px-4 pt-3"

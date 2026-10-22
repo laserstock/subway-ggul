@@ -11,7 +11,7 @@ import LineBadges, { LineIcon } from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import SearchOverlay from "../_components/SearchOverlay";
 import { Toast, useToast } from "../_components/Toast";
-import { useFacilityVotes, voteFacility, type FacilityVote } from "../_lib/facilityVotes";
+import { useFacilityVotes, voteFacility, type FacilityTally, type FacilityVote } from "../_lib/facilityVotes";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import { stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
@@ -134,10 +134,10 @@ const COPY = {
   },
   voteCanceled: { ko: "투표를 취소했어요", en: "Vote removed", zh: "已取消投票", ja: "投票を取り消しました" },
   facilitiesNote: {
-    ko: "베타: 상태는 샘플 데이터 + 이 기기의 투표 기준이에요. 서울교통공사 승강기 가동현황 공공데이터 연동 예정.",
-    en: "Beta: status uses sample data plus votes on this device. Seoul Metro live lift data coming soon.",
-    zh: "测试版：状态基于样例数据与本设备投票，将接入首尔交通公社电梯运行公共数据。",
-    ja: "ベータ版：状況はサンプルデータとこの端末の投票に基づきます。ソウル交通公社の昇降機稼働データを連携予定。",
+    ko: "베타: 시설 목록·기본 상태는 샘플이고, 숫자는 최근 24시간 이용자 투표예요. 서울교통공사 승강기 가동현황 공공데이터 연동 예정.",
+    en: "Beta: the facility list is sample data; counts are everyone's votes from the last 24 h. Seoul Metro live lift data coming soon.",
+    zh: "测试版：设施列表为样例数据，数字为最近24小时用户投票。将接入首尔交通公社电梯运行公共数据。",
+    ja: "ベータ版：設備一覧はサンプルで、数字は直近24時間の利用者投票です。ソウル交通公社の昇降機稼働データを連携予定。",
   },
   insideStation: { ko: "역 내부", en: "Inside station", zh: "站内", ja: "駅構内" },
   exitN: { ko: "{n}번 출구", en: "Exit {n}", zh: "{n}号出口", ja: "{n}番出口" },
@@ -586,9 +586,9 @@ function facilityName(facility: Facility, locale: Locale) {
   return `${place} ${t(FACILITY_KIND_META[facility.kind].label, locale)}`;
 }
 
-function crowdView(facility: Facility, mine: FacilityVote | undefined) {
-  const ok = facility.votes.ok + (mine === "ok" ? 1 : 0);
-  const broken = facility.votes.broken + (mine === "broken" ? 1 : 0);
+function crowdView(facility: Facility, tally: FacilityTally | undefined) {
+  const ok = tally?.ok ?? 0;
+  const broken = tally?.broken ?? 0;
   const byVotes = ok + broken > 0 ? (broken > ok ? "maintenance" : "ok") : "unknown";
   const status: FacilityStatus = facility.status === "unknown" ? byVotes : facility.status;
   const disagree =
@@ -599,15 +599,17 @@ function crowdView(facility: Facility, mine: FacilityVote | undefined) {
 function FacilityCard({
   facility,
   mine,
+  tally,
   locale,
   onVote,
 }: {
   facility: Facility;
   mine: FacilityVote | undefined;
+  tally: FacilityTally | undefined;
   locale: Locale;
   onVote: (vote: FacilityVote) => void;
 }) {
-  const { ok, broken, status, disagree } = crowdView(facility, mine);
+  const { ok, broken, status, disagree } = crowdView(facility, tally);
   const meta = STATUS_META[status];
   const voteButton = (vote: FacilityVote, count: number) => {
     const active = mine === vote;
@@ -680,12 +682,12 @@ function FacilitiesPanel({
   locale: Locale;
   onVoted: (added: boolean) => void;
 }) {
-  const votes = useFacilityVotes();
+  const { mine, tallies } = useFacilityVotes(facilities.map((facility) => facility.id));
   const counts = { ok: 0, maintenance: 0, unknown: 0 } satisfies Record<FacilityStatus, number>;
-  for (const facility of facilities) counts[crowdView(facility, votes[facility.id]).status] += 1;
+  for (const facility of facilities) counts[crowdView(facility, tallies[facility.id]).status] += 1;
 
   function vote(facility: Facility, next: FacilityVote) {
-    const added = votes[facility.id] !== next;
+    const added = mine[facility.id] !== next;
     voteFacility(facility.id, next);
     onVoted(added);
   }
@@ -707,7 +709,8 @@ function FacilitiesPanel({
           <FacilityCard
             key={facility.id}
             facility={facility}
-            mine={votes[facility.id]}
+            mine={mine[facility.id]}
+            tally={tallies[facility.id]}
             locale={locale}
             onVote={(next) => vote(facility, next)}
           />

@@ -27,7 +27,6 @@ export type Facility = {
   exit: number | null;
   levels: string;
   status: FacilityStatus;
-  votes: { ok: number; broken: number };
 };
 
 export type StationTransfer = {
@@ -116,10 +115,10 @@ const SAMPLES: Record<string, SampleTransfer> = {
       },
     ],
     facilities: [
-      { kind: "elevator", exit: 1, levels: "1F ↔ B1", status: "ok", votes: { ok: 18, broken: 1 } },
-      { kind: "escalator", exit: 11, levels: "1F ↔ B1", status: "ok", votes: { ok: 24, broken: 2 } },
-      { kind: "escalator", exit: 10, levels: "1F ↔ B1", status: "maintenance", votes: { ok: 1, broken: 9 } },
-      { kind: "elevator", exit: null, levels: "B1 ↔ B2", status: "ok", votes: { ok: 11, broken: 0 } },
+      { kind: "elevator", exit: 1, levels: "1F ↔ B1", status: "ok" },
+      { kind: "escalator", exit: 11, levels: "1F ↔ B1", status: "ok" },
+      { kind: "escalator", exit: 10, levels: "1F ↔ B1", status: "maintenance" },
+      { kind: "elevator", exit: null, levels: "B1 ↔ B2", status: "ok" },
     ],
   },
   홍대입구역: {
@@ -194,10 +193,10 @@ const SAMPLES: Record<string, SampleTransfer> = {
       },
     ],
     facilities: [
-      { kind: "escalator", exit: 9, levels: "1F ↔ B1", status: "ok", votes: { ok: 21, broken: 1 } },
-      { kind: "elevator", exit: 3, levels: "1F ↔ B1", status: "ok", votes: { ok: 9, broken: 0 } },
-      { kind: "escalator", exit: 8, levels: "1F ↔ B1", status: "maintenance", votes: { ok: 0, broken: 7 } },
-      { kind: "elevator", exit: null, levels: "B1 ↔ B3", status: "ok", votes: { ok: 6, broken: 1 } },
+      { kind: "escalator", exit: 9, levels: "1F ↔ B1", status: "ok" },
+      { kind: "elevator", exit: 3, levels: "1F ↔ B1", status: "ok" },
+      { kind: "escalator", exit: 8, levels: "1F ↔ B1", status: "maintenance" },
+      { kind: "elevator", exit: null, levels: "B1 ↔ B3", status: "ok" },
     ],
   },
   서울역: {
@@ -286,10 +285,10 @@ const SAMPLES: Record<string, SampleTransfer> = {
       },
     ],
     facilities: [
-      { kind: "elevator", exit: 1, levels: "1F ↔ B1", status: "ok", votes: { ok: 15, broken: 1 } },
-      { kind: "escalator", exit: 15, levels: "1F ↔ B1", status: "ok", votes: { ok: 12, broken: 0 } },
-      { kind: "elevator", exit: 9, levels: "1F ↔ B1", status: "maintenance", votes: { ok: 1, broken: 6 } },
-      { kind: "escalator", exit: null, levels: "B1 ↔ B2", status: "ok", votes: { ok: 8, broken: 1 } },
+      { kind: "elevator", exit: 1, levels: "1F ↔ B1", status: "ok" },
+      { kind: "escalator", exit: 15, levels: "1F ↔ B1", status: "ok" },
+      { kind: "elevator", exit: 9, levels: "1F ↔ B1", status: "maintenance" },
+      { kind: "escalator", exit: null, levels: "B1 ↔ B2", status: "ok" },
     ],
   },
   잠실역: {
@@ -364,9 +363,9 @@ const SAMPLES: Record<string, SampleTransfer> = {
       },
     ],
     facilities: [
-      { kind: "escalator", exit: 2, levels: "1F ↔ B1", status: "ok", votes: { ok: 19, broken: 1 } },
-      { kind: "elevator", exit: 4, levels: "1F ↔ B1", status: "ok", votes: { ok: 10, broken: 0 } },
-      { kind: "escalator", exit: 8, levels: "1F ↔ B1", status: "maintenance", votes: { ok: 0, broken: 5 } },
+      { kind: "escalator", exit: 2, levels: "1F ↔ B1", status: "ok" },
+      { kind: "elevator", exit: 4, levels: "1F ↔ B1", status: "ok" },
+      { kind: "escalator", exit: 8, levels: "1F ↔ B1", status: "maintenance" },
     ],
   },
   광화문역: {
@@ -412,10 +411,10 @@ const SAMPLES: Record<string, SampleTransfer> = {
       },
     ],
     facilities: [
-      { kind: "escalator", exit: 3, levels: "1F ↔ B1", status: "ok", votes: { ok: 16, broken: 1 } },
-      { kind: "elevator", exit: 7, levels: "1F ↔ B1", status: "maintenance", votes: { ok: 0, broken: 8 } },
-      { kind: "elevator", exit: 1, levels: "1F ↔ B1", status: "ok", votes: { ok: 7, broken: 0 } },
-      { kind: "escalator", exit: null, levels: "B2 ↔ B5", status: "ok", votes: { ok: 13, broken: 1 } },
+      { kind: "escalator", exit: 3, levels: "1F ↔ B1", status: "ok" },
+      { kind: "elevator", exit: 7, levels: "1F ↔ B1", status: "maintenance" },
+      { kind: "elevator", exit: 1, levels: "1F ↔ B1", status: "ok" },
+      { kind: "escalator", exit: null, levels: "B2 ↔ B5", status: "ok" },
     ],
   },
 };
@@ -448,15 +447,14 @@ function generatedRoutes(station: StationOption): TransferRoute[] {
     }));
 }
 
-/** Matches the seeded "Exit N escalator" report in reports.ts so the feed and this list agree. */
 function generatedFacilities(station: StationOption): Omit<Facility, "id">[] {
   const seed = nameSeed(station);
   const escalatorExit = (seed % 9) + 1;
   let elevatorExit = ((seed * 7) % 9) + 1;
   if (elevatorExit === escalatorExit) elevatorExit = (escalatorExit % 9) + 1;
   return [
-    { kind: "escalator", exit: escalatorExit, levels: "1F ↔ B1", status: "ok", votes: { ok: 12, broken: 1 } },
-    { kind: "elevator", exit: elevatorExit, levels: "1F ↔ B1", status: "unknown", votes: { ok: 0, broken: 0 } },
+    { kind: "escalator", exit: escalatorExit, levels: "1F ↔ B1", status: "ok" },
+    { kind: "elevator", exit: elevatorExit, levels: "1F ↔ B1", status: "unknown" },
   ];
 }
 

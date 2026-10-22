@@ -16,15 +16,16 @@ import {
   filterSpotPosts,
   markSpotViewed,
   PLAZA_LINES,
-  plazaOnlineCount,
   SPOT_TABS,
   toggleSpotLike,
   toggleSpotScrap,
+  usePlazaOnline,
   useSpotPosts,
   type SpotPost,
   type SpotTab,
 } from "../_lib/spot";
 import { lineLabel, stationLines } from "../_lib/subwayLine";
+import { SERVER_CONFIGURED } from "../_lib/supabase";
 import { SpotIcon } from "./header";
 import { CATEGORY_META, CommentSheet, WriteSheet } from "./SpotSheets";
 
@@ -37,6 +38,12 @@ const COPY = {
     ja: "今{n}人が{plaza}でリアルタイムおしゃべり中",
   },
   connecting: { ko: "광장에 입장하는 중…", en: "Entering the plaza…", zh: "正在进入广场…", ja: "広場に入場中…" },
+  offline: {
+    ko: "서버 연결 준비 중이에요",
+    en: "Server connection is being set up",
+    zh: "服务器连接准备中",
+    ja: "サーバー接続を準備中です",
+  },
   composer: {
     ko: "{line} 이웃들에게 실시간 수다를 던져보세요",
     en: "Say something to your {line} neighbors",
@@ -62,10 +69,10 @@ const COPY = {
   scrapped: { ko: "스크랩했어요 · 마이에서 볼 수 있어요", en: "Saved · find it in Me", zh: "已收藏 · 可在我的中查看", ja: "保存しました · マイで確認できます" },
   unscrapped: { ko: "스크랩을 취소했어요", en: "Removed from saved", zh: "已取消收藏", ja: "保存を取り消しました" },
   beta: {
-    ko: "베타: 광장 글은 이 기기에만 저장되고, 일부는 예시 글이에요",
-    en: "Beta: posts stay on this device and some are samples",
-    zh: "测试版：帖子仅保存在本设备，部分为示例",
-    ja: "ベータ：投稿はこの端末にのみ保存され、一部はサンプルです",
+    ko: "광장 글은 같은 호선을 타는 모든 이용자에게 공개돼요 · 개인정보는 올리지 말아 주세요",
+    en: "Plaza posts are public to everyone on this line · Please don't share personal info",
+    zh: "广场帖子对同线所有用户公开 · 请勿发布个人信息",
+    ja: "広場の投稿は同じ路線の全員に公開されます · 個人情報は投稿しないでください",
   },
 } satisfies Record<string, Localized>;
 
@@ -252,6 +259,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
   const [pickedLine, setPickedLine] = useState(initialLine);
   const line = pickedLine ?? hereLines[0] ?? DEFAULT_PLAZA_LINE;
   const posts = useSpotPosts(line);
+  const online = usePlazaOnline(line);
   const [tab, setTab] = useState<SpotTab>("all");
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -290,14 +298,14 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
 
   const [onlineBefore, onlineAfter] = fill(t(COPY.online, locale), { plaza }).split("{n}");
   const subtitle =
-    now !== null ? (
+    online !== null ? (
       <span className="truncate">
         {onlineBefore}
-        <b className="font-extrabold text-honey-strong">{plazaOnlineCount(line, now).toLocaleString()}</b>
+        <b className="font-extrabold text-honey-strong">{online.toLocaleString()}</b>
         {onlineAfter}
       </span>
     ) : (
-      <span className="truncate">{t(COPY.connecting, locale)}</span>
+      <span className="truncate">{t(SERVER_CONFIGURED ? COPY.connecting : COPY.offline, locale)}</span>
     );
 
   return (

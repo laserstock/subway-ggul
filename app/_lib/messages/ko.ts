@@ -32,7 +32,7 @@ const ko = {
     shareText: "지하철 탈 때 화장실·약국·출구 매장을 3초 만에 찾는 앱, 지하철꿀정보",
     reset: "메인 화면으로 리셋 (홈으로 이동)",
     myReportsEmpty: "아직 남긴 제보가 없어요. 역에서 1초 제보를 남겨 보세요!",
-    myReportsNote: "베타: 제보는 이 기기에만 저장돼요",
+    myReportsNote: "내 제보는 이 기기의 익명 계정에 연결돼요 · 브라우저 데이터를 지우면 삭제 권한이 사라져요",
     delete: "삭제",
     feedbackIntro: "불편한 점이나 바라는 기능을 알려 주세요. 꼼꼼히 읽고 반영할게요.",
     feedbackPlaceholder: "예: 2호선 환승 경로도 알려 주세요",

@@ -1,8 +1,20 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
-import { t, type Locale } from "./i18n";
-import { STATIONS, type Localized, type StationOption } from "./stations";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { type Locale } from "./i18n";
+import { stationFeedKey, type Localized, type StationOption } from "./stations";
+import {
+  currentUserId,
+  ensureUser,
+  getSupabase,
+  isDuplicate,
+  notifyServerError,
+  onUserChange,
+  TEMP_PREFIX,
+  tempId,
+  useUserId,
+} from "./supabase";
 
 export type ReportType = "toilet_paper" | "escalator" | "crowd" | "general";
 
@@ -13,7 +25,7 @@ export type Report = {
   likes: number;
   liked: boolean;
   createdAt: number;
-  /** Last time this user tapped "still true"; restarts the report's TTL. */
+  /** Last time anyone tapped "still true"; restarts the report's TTL. */
   confirmedAt: number | null;
 };
 
@@ -24,58 +36,55 @@ export type MyReport = {
   createdAt: number;
 };
 
-type StoredReport = {
+type ReportRow = {
   id: string;
-  stationKey: string;
-  stationName?: Localized;
-  type?: ReportType;
+  station_key: string;
+  station_name: Localized;
+  type: ReportType;
   text: Localized;
-  createdAt: number;
-};
-type Stored = {
-  reports: StoredReport[];
-  liked: string[];
-  confirmed: Record<string, number>;
-  resolved: string[];
+  author_id: string;
+  created_at: string;
+  confirm_count: number;
+  last_confirmed_at: string | null;
+  resolved_at: string | null;
 };
 
-const STORAGE_KEY = "subway-ggul:reports";
-const MAX_STORED = 100;
+type State = {
+  byStation: Readonly<Record<string, ReportRow[]>>;
+  mine: ReportRow[];
+  confirmed: ReadonlySet<string>;
+  resolved: ReadonlySet<string>;
+};
+
+const COLUMNS =
+  "id, station_key, station_name, type, text, author_id, created_at, confirm_count, last_confirmed_at, resolved_at";
+/** Longest TTL is 2 h; a day back is plenty for the "expired" drawer. */
+const FEED_WINDOW_MS = 24 * 60 * 60_000;
+const FEED_LIMIT = 50;
+const MY_LIMIT = 100;
+const REFRESH_MS = 60_000;
 const CLOCK_TICK = 30_000;
-let seedBase: number | null = null;
-let clockNow = 0;
+
+let state: State = { byStation: {}, mine: [], confirmed: new Set(), resolved: new Set() };
 const listeners = new Set<() => void>();
-let fallbackRaw: string | null = null;
+const fetchedAt = new Map<string, number>();
+let ownFor: string | null = null;
+let realtimeStarted = false;
+let clockNow = 0;
 
-function readRaw(): string | null {
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) ?? fallbackRaw;
-  } catch {
-    return fallbackRaw;
-  }
+function setState(patch: Partial<State>) {
+  state = { ...state, ...patch };
+  listeners.forEach((listener) => listener());
 }
 
-function emptyStored(): Stored {
-  return { reports: [], liked: [], confirmed: {}, resolved: [] };
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
-function parse(raw: string | null): Stored {
-  if (!raw) return emptyStored();
-  try {
-    const value = JSON.parse(raw) as Partial<Stored>;
-    return {
-      reports: Array.isArray(value.reports) ? value.reports : [],
-      liked: Array.isArray(value.liked) ? value.liked : [],
-      confirmed:
-        value.confirmed && typeof value.confirmed === "object" && !Array.isArray(value.confirmed)
-          ? value.confirmed
-          : {},
-      resolved: Array.isArray(value.resolved) ? value.resolved : [],
-    };
-  } catch {
-    return emptyStored();
-  }
-}
+const readState = () => state;
 
 const TYPE_KEYWORDS: [ReportType, RegExp][] = [
   ["toilet_paper", /휴지|화장실|위생|tissue|toilet|restroom|卫生间|纸巾|トイレ|ティッシュ/i],
@@ -85,24 +94,6 @@ const TYPE_KEYWORDS: [ReportType, RegExp][] = [
 
 export function inferReportType(text: string): ReportType {
   return TYPE_KEYWORDS.find(([, pattern]) => pattern.test(text))?.[0] ?? "general";
-}
-
-function write(next: Stored) {
-  const raw = JSON.stringify(next);
-  fallbackRaw = raw;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, raw);
-  } catch {}
-  listeners.forEach((listener) => listener());
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  window.addEventListener("storage", listener);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", listener);
-  };
 }
 
 function subscribeClock(listener: () => void) {
@@ -122,146 +113,285 @@ export function useNow(): number | null {
   return useSyncExternalStore(subscribeClock, readClock, () => null);
 }
 
-function seedsFor(station: StationOption): StoredReport[] {
-  seedBase ??= readClock();
-  const prefix = (locale: Locale) =>
-    `${t(station.name, locale)} ${t(station.lines, locale).split(" · ")[0] ?? ""}`;
-  const exit = ([...station.name.ko].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 9) + 1;
-  return [
-    {
-      id: `seed:${station.key}:restroom`,
-      stationKey: station.key,
-      type: "toilet_paper",
-      text: {
-        ko: `${prefix("ko")} 승강장 화장실 휴지 있어요!`.replace(/\s+/g, " "),
-        en: `${prefix("en")} platform restroom has tissue!`.replace(/\s+/g, " "),
-        zh: `${prefix("zh")} 站台卫生间有纸巾！`.replace(/\s+/g, " "),
-        ja: `${prefix("ja")} ホームのトイレにティッシュあり！`.replace(/\s+/g, " "),
-      },
-      createdAt: seedBase - 3 * 60_000,
-    },
-    {
-      id: `seed:${station.key}:escalator`,
-      stationKey: station.key,
-      type: "escalator",
-      text: {
-        ko: `${exit}번 출구 에스컬레이터 정상 가동`,
-        en: `Exit ${exit} escalator is running normally`,
-        zh: `${exit}号出口扶梯运行正常`,
-        ja: `${exit}番出口のエスカレーター正常稼働`,
-      },
-      createdAt: seedBase - 10 * 60_000,
-    },
-    {
-      id: `seed:${station.key}:crowd`,
-      stationKey: station.key,
-      type: "crowd",
-      text: {
-        ko: `${prefix("ko")} 승강장 지금 많이 붐벼요`.replace(/\s+/g, " "),
-        en: `${prefix("en")} platform is very crowded now`.replace(/\s+/g, " "),
-        zh: `${prefix("zh")} 站台现在非常拥挤`.replace(/\s+/g, " "),
-        ja: `${prefix("ja")} ホームが今とても混雑`.replace(/\s+/g, " "),
-      },
-      createdAt: seedBase - 24 * 60_000,
-    },
-  ];
+function upsertRow(row: ReportRow) {
+  const replace = (list: ReportRow[]) =>
+    list.some((item) => item.id === row.id)
+      ? list.map((item) => (item.id === row.id ? row : item))
+      : [row, ...list];
+  const feed = state.byStation[row.station_key];
+  const uid = currentUserId();
+  setState({
+    byStation:
+      feed !== undefined
+        ? {
+            ...state.byStation,
+            [row.station_key]: row.resolved_at ? feed.filter((item) => item.id !== row.id) : replace(feed),
+          }
+        : state.byStation,
+    mine:
+      row.author_id === uid || state.mine.some((item) => item.id === row.id) ? replace(state.mine) : state.mine,
+  });
 }
 
-const SEED_LIKES = [24, 12, 5];
+function removeRow(id: string) {
+  setState({
+    byStation: Object.fromEntries(
+      Object.entries(state.byStation).map(([key, list]) => [key, list.filter((item) => item.id !== id)]),
+    ),
+    mine: state.mine.filter((item) => item.id !== id),
+  });
+}
+
+function patchRow(id: string, patch: (row: ReportRow) => ReportRow) {
+  const apply = (list: ReportRow[]) => list.map((item) => (item.id === id ? patch(item) : item));
+  setState({
+    byStation: Object.fromEntries(Object.entries(state.byStation).map(([key, list]) => [key, apply(list)])),
+    mine: apply(state.mine),
+  });
+}
+
+function findRow(id: string) {
+  return (
+    Object.values(state.byStation)
+      .flat()
+      .find((item) => item.id === id) ?? state.mine.find((item) => item.id === id)
+  );
+}
+
+function onRealtime(payload: RealtimePostgresChangesPayload<ReportRow>) {
+  if (payload.eventType === "DELETE") {
+    if (payload.old.id) removeRow(payload.old.id);
+    return;
+  }
+  upsertRow(payload.new);
+}
+
+function startRealtime() {
+  if (realtimeStarted) return;
+  const supabase = getSupabase();
+  if (!supabase) return;
+  realtimeStarted = true;
+  supabase
+    .channel("reports")
+    .on<ReportRow>("postgres_changes", { event: "*", schema: "public", table: "reports" }, onRealtime)
+    .subscribe();
+}
+
+async function fetchStation(key: string) {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  fetchedAt.set(key, Date.now());
+  const { data, error } = await supabase
+    .from("reports")
+    .select(COLUMNS)
+    .eq("station_key", key)
+    .is("resolved_at", null)
+    .gte("created_at", new Date(Date.now() - FEED_WINDOW_MS).toISOString())
+    .order("created_at", { ascending: false })
+    .limit(FEED_LIMIT);
+  if (error) {
+    fetchedAt.delete(key);
+    return;
+  }
+  const pending = (state.byStation[key] ?? []).filter((row) => row.id.startsWith(TEMP_PREFIX));
+  setState({ byStation: { ...state.byStation, [key]: [...pending, ...(data as ReportRow[])] } });
+}
+
+function ensureStation(key: string) {
+  startRealtime();
+  const last = fetchedAt.get(key);
+  if (last === undefined || Date.now() - last > REFRESH_MS) void fetchStation(key);
+}
+
+/** The user's own reports, confirmations and resolutions — reloaded whenever the device account changes. */
+async function fetchOwn() {
+  const supabase = getSupabase();
+  const uid = currentUserId();
+  if (!supabase || !uid || ownFor === uid) return;
+  ownFor = uid;
+  const [mine, confirmed, resolved] = await Promise.all([
+    supabase
+      .from("reports")
+      .select(COLUMNS)
+      .eq("author_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(MY_LIMIT),
+    supabase.from("report_confirmations").select("report_id").order("created_at", { ascending: false }).limit(300),
+    supabase.from("report_resolutions").select("report_id").order("created_at", { ascending: false }).limit(300),
+  ]);
+  if (mine.error || confirmed.error || resolved.error) {
+    ownFor = null;
+    return;
+  }
+  // Merge rather than replace: taps made while the first sign-in was in flight are already in state.
+  const ids = (rows: { report_id: string }[]) => rows.map((row) => row.report_id);
+  setState({
+    mine: [...state.mine.filter((row) => row.id.startsWith(TEMP_PREFIX)), ...(mine.data as ReportRow[])],
+    confirmed: new Set([...state.confirmed, ...ids(confirmed.data as { report_id: string }[])]),
+    resolved: new Set([...state.resolved, ...ids(resolved.data as { report_id: string }[])]),
+  });
+}
+
+function useOwnData() {
+  useEffect(() => {
+    void fetchOwn();
+    return onUserChange(() => void fetchOwn());
+  }, []);
+}
+
+const EMPTY: ReportRow[] = [];
 
 export function useStationReports(station: StationOption | null): Report[] {
-  const raw = useSyncExternalStore(subscribe, readRaw, () => null);
+  const snapshot = useSyncExternalStore(subscribe, readState, readState);
+  const uid = useUserId();
+  const key = station ? stationFeedKey(station) : null;
+  useOwnData();
+
+  useEffect(() => {
+    if (key) ensureStation(key);
+  }, [key]);
+
   return useMemo(() => {
-    if (!station) return [];
-    const stored = parse(raw);
-    const liked = new Set(stored.liked);
-    const resolved = new Set(stored.resolved);
-    const seeds = seedsFor(station).map((report, index) => ({
-      ...report,
-      baseLikes: SEED_LIKES[index] ?? 0,
-    }));
-    const mine = stored.reports
-      .filter((report) => report.stationKey === station.key)
-      .map((report) => ({ ...report, baseLikes: 0 }));
-    return [...mine, ...seeds]
-      .filter((report) => !resolved.has(report.id))
-      .map(({ id, type, text, createdAt, baseLikes }) => ({
-        id,
-        type: type ?? inferReportType(text.ko),
-        text,
-        createdAt,
-        liked: liked.has(id),
-        likes: baseLikes + (liked.has(id) ? 1 : 0),
-        confirmedAt: liked.has(id) ? (stored.confirmed[id] ?? null) : null,
+    const rows = key ? (snapshot.byStation[key] ?? EMPTY) : EMPTY;
+    return rows
+      .filter((row) => !row.resolved_at && !snapshot.resolved.has(row.id))
+      .map((row) => ({
+        id: row.id,
+        type: row.type,
+        text: row.text,
+        likes: row.confirm_count,
+        liked: uid !== null && snapshot.confirmed.has(row.id),
+        createdAt: Date.parse(row.created_at),
+        confirmedAt: row.last_confirmed_at ? Date.parse(row.last_confirmed_at) : null,
       }))
       .sort((a, b) => b.createdAt - a.createdAt);
-  }, [raw, station]);
-}
-
-function stationNameFromKey(key: string): Localized {
-  const curated = STATIONS.find((station) => station.id === key);
-  if (curated) return curated.name;
-  const name = key.replace(/^kakao:/, "");
-  return { ko: name, en: name };
+  }, [snapshot, key, uid]);
 }
 
 export function useMyReports(): MyReport[] {
-  const raw = useSyncExternalStore(subscribe, readRaw, () => null);
-  return useMemo(() => {
-    return parse(raw)
-      .reports.map((report) => ({
-        id: report.id,
-        stationName: report.stationName ?? stationNameFromKey(report.stationKey),
-        text: report.text,
-        createdAt: report.createdAt,
-      }))
-      .sort((a, b) => b.createdAt - a.createdAt);
-  }, [raw]);
+  const snapshot = useSyncExternalStore(subscribe, readState, readState);
+  useOwnData();
+  return useMemo(
+    () =>
+      snapshot.mine
+        .map((row) => ({
+          id: row.id,
+          stationName: row.station_name,
+          text: row.text,
+          createdAt: Date.parse(row.created_at),
+        }))
+        .sort((a, b) => b.createdAt - a.createdAt),
+    [snapshot],
+  );
 }
 
-export function deleteReport(id: string) {
-  const stored = parse(readRaw());
-  write({ ...stored, reports: stored.reports.filter((report) => report.id !== id) });
+export async function deleteReport(id: string) {
+  const supabase = getSupabase();
+  const row = findRow(id);
+  if (!supabase || !row) return false;
+  removeRow(id);
+  const { error } = await supabase.from("reports").delete().eq("id", id);
+  if (error) {
+    upsertRow(row);
+    notifyServerError(error);
+    return false;
+  }
+  return true;
 }
 
-export function addReport(
+export async function addReport(
   station: StationOption,
   text: Localized,
   type: ReportType = inferReportType(text.ko),
 ) {
-  const stored = parse(readRaw());
-  const report: StoredReport = {
-    id: `user:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
-    stationKey: station.key,
-    stationName: station.name,
-    type,
-    text,
-    createdAt: Date.now(),
-  };
-  write({ ...stored, reports: [report, ...stored.reports].slice(0, MAX_STORED) });
-}
-
-function withoutConfirmation(stored: Stored, id: string): Stored {
-  const confirmed = { ...stored.confirmed };
-  delete confirmed[id];
-  return { ...stored, liked: stored.liked.filter((item) => item !== id), confirmed };
-}
-
-/** "Still true": +1 upvote and restarts the TTL. Tapping again withdraws both. */
-export function confirmReport(id: string) {
-  const stored = parse(readRaw());
-  if (stored.liked.includes(id)) {
-    write(withoutConfirmation(stored, id));
+  const supabase = getSupabase();
+  const uid = await ensureUser();
+  if (!supabase || !uid) {
+    notifyServerError();
     return false;
   }
-  write({ ...stored, liked: [...stored.liked, id], confirmed: { ...stored.confirmed, [id]: Date.now() } });
+  const key = stationFeedKey(station);
+  const temp: ReportRow = {
+    id: tempId(),
+    station_key: key,
+    station_name: station.name,
+    type,
+    text,
+    author_id: uid,
+    created_at: new Date().toISOString(),
+    confirm_count: 0,
+    last_confirmed_at: null,
+    resolved_at: null,
+  };
+  upsertRow(temp);
+  const { data, error } = await supabase
+    .from("reports")
+    .insert({ station_key: key, station_name: station.name, type, text })
+    .select(COLUMNS)
+    .single();
+  removeRow(temp.id);
+  if (error || !data) {
+    notifyServerError(error);
+    return false;
+  }
+  upsertRow(data as ReportRow);
   return true;
 }
 
-/** "Resolved": hides the report from every feed on this device. */
+/** "Still true": +1 upvote and restarts the TTL for everyone. Tapping again withdraws it. Returns the new state. */
+export function confirmReport(id: string) {
+  if (id.startsWith(TEMP_PREFIX)) return false;
+  const adding = !state.confirmed.has(id);
+  const nextSet = (add: boolean) => {
+    const next = new Set(state.confirmed);
+    if (add) next.add(id);
+    else next.delete(id);
+    return next;
+  };
+  setState({ confirmed: nextSet(adding) });
+  patchRow(id, (row) => ({
+    ...row,
+    confirm_count: Math.max(0, row.confirm_count + (adding ? 1 : -1)),
+    last_confirmed_at: adding ? new Date().toISOString() : row.last_confirmed_at,
+  }));
+
+  void (async () => {
+    const supabase = getSupabase();
+    const uid = await ensureUser();
+    const { error } =
+      !supabase || !uid
+        ? { error: { code: "offline" } }
+        : adding
+          ? await supabase.from("report_confirmations").insert({ report_id: id })
+          : await supabase.from("report_confirmations").delete().eq("report_id", id).eq("user_id", uid);
+    if (error && !isDuplicate(error)) {
+      setState({ confirmed: nextSet(!adding) });
+      patchRow(id, (row) => ({ ...row, confirm_count: Math.max(0, row.confirm_count + (adding ? -1 : 1)) }));
+      notifyServerError(error);
+    }
+  })();
+  return adding;
+}
+
+/** "Resolved": hides the report for this user right away, and for everyone once the author or two people agree. */
 export function resolveReport(id: string) {
-  const stored = withoutConfirmation(parse(readRaw()), id);
-  write({ ...stored, resolved: [...stored.resolved.filter((item) => item !== id), id].slice(-MAX_STORED) });
+  if (id.startsWith(TEMP_PREFIX)) return;
+  if (state.confirmed.has(id)) confirmReport(id);
+  setState({ resolved: new Set(state.resolved).add(id) });
+
+  void (async () => {
+    const supabase = getSupabase();
+    const uid = await ensureUser();
+    const { error } = !supabase || !uid
+      ? { error: { code: "offline" } }
+      : await supabase.from("report_resolutions").insert({ report_id: id });
+    if (error && !isDuplicate(error)) {
+      const next = new Set(state.resolved);
+      next.delete(id);
+      setState({ resolved: next });
+      notifyServerError(error);
+    }
+  })();
 }
 
 const AGO: Record<Locale, { now: string; minutes: string; hours: string; days: string }> = {

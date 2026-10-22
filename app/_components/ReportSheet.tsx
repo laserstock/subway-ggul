@@ -29,10 +29,10 @@ const COPY = {
     ja: "位置情報を許可するか駅を検索すると投稿できます",
   },
   localNote: {
-    ko: "베타: 제보는 이 기기에만 저장돼요",
-    en: "Beta: reports are saved on this device only",
-    zh: "测试版：上报仅保存在本设备",
-    ja: "ベータ版：投稿はこの端末にのみ保存されます",
+    ko: "제보는 이 역을 보는 모든 이용자에게 실시간으로 공유돼요",
+    en: "Reports are shared live with everyone viewing this station",
+    zh: "上报会实时分享给所有查看此车站的用户",
+    ja: "投稿はこの駅を見ているすべての利用者にリアルタイムで共有されます",
   },
   close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
 };

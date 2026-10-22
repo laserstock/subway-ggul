@@ -1,0 +1,16 @@
+공식 역 안내도 출처
+
+- 지축역, 코레일-서울교통공사 환승역(홍대입구역, 강남구청역 제외): 공공데이터포털(https://www.data.go.kr/data/15004974/fileData.do)
+- 노량진역: 서울시메트로9호선(http://www.metro9.co.kr/site/program/station/info?menuid=001001002&station_code=917)
+- 부평역: 국토교통부 레일포털(https://data.kric.go.kr/rips/M_01_01/detail.do?id=228&servicetype=JPG&keywords=&lcd=&mcd=)
+- 판교역: 네오트랜스(https://www.shinbundang.co.kr/index.jsp?open_main=1&open_sub1=6&open_sub2=0&pageID=%2Fdxline%2Fdxline6.jsp&flag=)
+- 소사역: 서해철도(https://www.seohaerail.co.kr/jsp/front/m1/m1_s03.jsp)
+- 초지역: 서해철도(https://www.seohaerail.co.kr/jsp/front/m1/m1_s03_t10.jsp)
+- 의정부역, 과천선 역(범계역 제외), 일산선 역(대화역, 대곡역, 원당역, 원흥역, 삼송역, 지축역 제외): 서울교통공사 사이버스테이션(현재 삭제)(http://www.seoulmetro.co.kr/kr/cyberStation.do?action=info)
+- 강매역: 본체 - 국토교통부 레일포털(https://station.kric.go.kr/v2/altmInfoSys/index.do?areCd=01&lnCd=1&railOprIsttCd=KR&prprStinCd=0324) 타이틀, 범례 - 나무위키(최초 출처 미상)
+- 도봉역, 방학역, 월계역, 신이문역, 도화역, 배방역, 온양온천역, 기타 코레일 역(범례 O) : 나무위키 각역 문서(최초 출처 미상)
+- 기타 코레일 역(범례 X): 국토교통부 레일포털(https://station.kric.go.kr/v2/altmInfoSys/index.do?areCd=01&lnCd=1&railOprIsttCd=KR&prprStinCd=0324)
+- 사본: 본인 촬영
+
+대피요령(본인 제작 안내도 내) 출처: 
+소방청(2018 김성두)(https://www.nfa.go.kr/nfa/news/notice/?boardId=bbs_0000000000000009&mode=view&cntId=57&category=&pageIdx=1&searchCondition=all&searchKeyword=%ED%94%BC%EB%82%9C%EC%95%88%EB%82%B4%EB%8F%84)

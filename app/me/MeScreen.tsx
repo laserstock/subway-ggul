@@ -87,10 +87,10 @@ const COPY = {
   manageMy: { ko: "⭐ My 역 & 출퇴근 동선 관리", en: "⭐ Manage My Stations & routes", zh: "⭐ 管理 My 车站与路线", ja: "⭐ My 駅 & ルートを管理" },
   version: { ko: "버전", en: "Version", zh: "版本", ja: "バージョン" },
   savedNote: {
-    ko: "💾 프로필과 활동 기록은 이 기기에만 저장돼요",
-    en: "💾 Your profile and activity are stored on this device only",
-    zh: "💾 个人资料和活动记录仅保存在本设备",
-    ja: "💾 プロフィールと活動履歴はこの端末にのみ保存されます",
+    ko: "💾 프로필은 이 기기에, 글·제보는 이 기기의 익명 계정으로 서버에 저장돼요",
+    en: "💾 Your profile stays on this device; posts and reports are saved to the server under this device's anonymous account",
+    zh: "💾 个人资料保存在本设备，帖子和上报以本设备的匿名账号保存到服务器",
+    ja: "💾 プロフィールはこの端末に、投稿と報告はこの端末の匿名アカウントでサーバーに保存されます",
   },
   profileSaved: { ko: "프로필을 저장했어요", en: "Profile saved", zh: "已保存个人资料", ja: "プロフィールを保存しました" },
 } satisfies Record<string, Localized>;

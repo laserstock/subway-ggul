@@ -34,7 +34,7 @@ const en: Messages = {
     shareText: "Find restrooms, pharmacies and exit shops in 3 seconds on the subway",
     reset: "Reset to home screen",
     myReportsEmpty: "No reports yet. Post one from a station!",
-    myReportsNote: "Beta: reports are saved on this device only",
+    myReportsNote: "Your reports are tied to this device's anonymous account · clearing browser data removes delete access",
     delete: "Delete",
     feedbackIntro: "Tell us what's inconvenient or what you'd like. We read everything.",
     feedbackPlaceholder: "e.g. Please add Line 2 transfer tips",

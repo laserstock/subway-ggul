@@ -1115,6 +1115,18 @@ export function linesColor(lines: Localized) {
   return lineColor(lines.ko.split(" · ").filter(Boolean));
 }
 
+/** Korean station name without parentheses, always ending in 역 (e.g. "군자(능동)" → "군자역"). */
+export function stationKey(station: StationOption) {
+  const name = station.name.ko.replace(/\(.*?\)/g, "").trim();
+  return name.endsWith("역") ? name : `${name}역`;
+}
+
+/** Shared server key: same station, same feed, whether it came from the curated list, the index or Kakao. */
+export function stationFeedKey(station: StationOption) {
+  const line = station.key.match(/@(.+)$/)?.[1];
+  return line ? `${stationKey(station)}@${line}` : stationKey(station);
+}
+
 export function curatedOption(station: Station): StationOption {
   return {
     key: station.id,
