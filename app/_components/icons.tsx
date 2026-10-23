@@ -105,6 +105,16 @@ export function RestroomIcon({ size = 16, className = "" }: { size?: number; cla
   );
 }
 
+/** Door with an outward arrow, like station exit signage. */
+export function ExitIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M13 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H13" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M11 12h9M16.5 8.5 20 12l-3.5 3.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function StarIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>

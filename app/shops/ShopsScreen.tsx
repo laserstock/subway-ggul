@@ -5,6 +5,7 @@ import Image, { type StaticImageData } from "next/image";
 import oliveyoungIcon from "@/public/icons/oliveyoung.png";
 import daisoIcon from "@/public/icons/daiso.png";
 import cafeIcon from "@/public/icons/cafe.png";
+import convenienceIcon from "@/public/icons/convenience.svg";
 import KakaoMap, { type LatLng, type MapFit, type MapOverlay } from "../KakaoMap";
 import { useKakaoMaps } from "../kakao-sdk";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
@@ -123,6 +124,7 @@ const CATEGORIES: {
     id: "convenience",
     name: { ko: "편의점", en: "Store" },
     emoji: "🏪",
+    icon: convenienceIcon,
     nearby: { kind: "category", code: "CS2", radius: 500 },
   },
 ];

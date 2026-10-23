@@ -1,55 +1,87 @@
 "use client";
 
+import Image, { type StaticImageData } from "next/image";
 import { useEffect, useState } from "react";
+import cafeIcon from "@/public/icons/cafe.png";
+import convenienceIcon from "@/public/icons/convenience.svg";
+import daisoIcon from "@/public/icons/daiso.png";
+import oliveyoungIcon from "@/public/icons/oliveyoung.png";
+import pharmacyIcon from "@/public/icons/pharmacy.png";
+import starbucksIcon from "@/public/icons/starbucks.png";
 import type { LatLng } from "../KakaoMap";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
 import { loadKakaoMaps } from "../kakao-sdk";
+import { ExitIcon, PinIcon } from "../_components/icons";
 import { stationKeys, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 
 type StationExit = { label: string; position: LatLng };
 
-type ShopKind = { id: string; emoji: string; tint: string; label: Localized; query: NearbyQuery };
+type ShopKind = {
+  id: string;
+  icon: StaticImageData;
+  label: Localized;
+  query: NearbyQuery;
+  /** Drops places another row already covers, e.g. Starbucks from the generic cafe row. */
+  skip?: RegExp;
+};
 
 const SHOP_KINDS: ShopKind[] = [
   {
     id: "pharmacy",
-    emoji: "💊",
-    tint: "#fee2e2",
+    icon: pharmacyIcon,
     label: { ko: "약국", en: "Pharmacy", zh: "药店", ja: "薬局" },
     query: { kind: "category", code: "PM9", radius: 500 },
   },
   {
     id: "cafe",
-    emoji: "☕",
-    tint: "#f3e8dc",
+    icon: cafeIcon,
     label: { ko: "카페", en: "Cafe", zh: "咖啡店", ja: "カフェ" },
     query: { kind: "category", code: "CE7", radius: 300 },
-  },
-  {
-    id: "oliveyoung",
-    emoji: "💄",
-    tint: "#e7f6d5",
-    label: { ko: "올리브영", en: "Olive Young", zh: "Olive Young", ja: "オリーブヤング" },
-    query: { kind: "keyword", keyword: "올리브영", radius: 700 },
+    skip: /^스타벅스/,
   },
   {
     id: "starbucks",
-    emoji: "🧋",
-    tint: "#d9f0e4",
+    icon: starbucksIcon,
     label: { ko: "스타벅스", en: "Starbucks", zh: "星巴克", ja: "スターバックス" },
-    query: { kind: "keyword", keyword: "스타벅스", radius: 700 },
+    query: { kind: "keyword", keyword: "스타벅스", radius: 700, category: "CE7", brand: true },
+  },
+  {
+    id: "oliveyoung",
+    icon: oliveyoungIcon,
+    label: { ko: "올리브영", en: "Olive Young", zh: "Olive Young", ja: "オリーブヤング" },
+    query: { kind: "keyword", keyword: "올리브영", radius: 700, brand: true },
+  },
+  {
+    id: "daiso",
+    icon: daisoIcon,
+    label: { ko: "다이소", en: "Daiso", zh: "大创", ja: "ダイソー" },
+    query: { kind: "keyword", keyword: "다이소", radius: 700, brand: true },
   },
   {
     id: "store",
-    emoji: "🏪",
-    tint: "#e0ecff",
+    icon: convenienceIcon,
     label: { ko: "편의점", en: "Convenience store", zh: "便利店", ja: "コンビニ" },
     query: { kind: "category", code: "CS2", radius: 300 },
   },
 ];
 
 /** Walking speed used for the "N min" estimates. */
-const METERS_PER_MINUTE = 70;
+const METERS_PER_MINUTE = 67;
+/** Kakao distances are straight lines; streets, crossings and building entrances add roughly this much. */
+const DETOUR_FACTOR = 1.3;
+
+function walkMinutes(meters: number) {
+  return Math.max(1, Math.ceil((meters * DETOUR_FACTOR) / METERS_PER_MINUTE));
+}
+
+function point(name: string, position: LatLng) {
+  return `${encodeURIComponent(name.replace(/[,/]/g, " "))},${position.lat},${position.lng}`;
+}
+
+/** Kakao Map walking directions from the exit to the shop. */
+function walkUrl(from: { name: string; position: LatLng }, place: NearbyPlace) {
+  return `https://map.kakao.com/link/by/walk/${point(from.name, from.position)}/${point(place.name, place.position)}`;
+}
 
 const COPY = {
   title: { ko: "출구·길찾기", en: "Exits & directions", zh: "出口 · 导航", ja: "出口 · 道案内" },
@@ -68,7 +100,8 @@ const COPY = {
     zh: "暂无该站出口信息，为您显示车站周边店铺",
     ja: "この駅の出口情報はまだありません。駅周辺のお店を表示します",
   },
-  walk: { ko: "도보 {n}분", en: "{n} min walk", zh: "步行{n}分钟", ja: "徒歩{n}分" },
+  walk: { ko: "도보 약 {n}분", en: "~{n} min walk", zh: "步行约{n}分钟", ja: "徒歩約{n}分" },
+  route: { ko: "길찾기", en: "Directions", zh: "导航", ja: "ルート" },
   more: { ko: "외 {n}곳", en: "+{n} more", zh: "等{n}家", ja: "他{n}件" },
   none: { ko: "가까운 곳에 없어요", en: "None nearby", zh: "附近没有", ja: "近くにありません" },
   failed: {
@@ -109,21 +142,30 @@ async function loadShops(center: LatLng): Promise<ShopRow[] | null> {
   if (results.every((result) => result.status === "rejected")) return null;
   return SHOP_KINDS.map((kind, index) => {
     const result = results[index];
-    return { kind, places: result.status === "fulfilled" ? result.value : [] };
+    const places = result.status === "fulfilled" ? result.value : [];
+    return { kind, places: kind.skip ? places.filter((place) => !kind.skip?.test(place.name)) : places };
   });
 }
 
-function ShopRowItem({ row, locale }: { row: ShopRow; locale: Locale }) {
+function ShopRowItem({
+  row,
+  from,
+  locale,
+}: {
+  row: ShopRow;
+  from: { name: string; position: LatLng };
+  locale: Locale;
+}) {
   const [nearest, ...rest] = row.places;
   const body = (
     <>
-      <span
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[20px]"
-        style={{ backgroundColor: row.kind.tint }}
-        aria-hidden
-      >
-        {row.kind.emoji}
-      </span>
+      <Image
+        src={row.kind.icon}
+        alt=""
+        width={40}
+        height={40}
+        className="h-10 w-10 shrink-0 rounded-xl object-contain"
+      />
       <span className="min-w-0 flex-1">
         <span className="block text-[11.5px] font-bold text-neutral-500">{t(row.kind.label, locale)}</span>
         {nearest ? (
@@ -133,12 +175,17 @@ function ShopRowItem({ row, locale }: { row: ShopRow; locale: Locale }) {
         )}
       </span>
       {nearest ? (
-        <span className="shrink-0 text-right">
-          <span className="block text-[12.5px] font-extrabold text-[#2563eb]">
-            {fill(COPY.walk, locale, Math.max(1, Math.round(nearest.distance / METERS_PER_MINUTE)))}
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="text-right">
+            <span className="block text-[12.5px] font-extrabold text-[#2563eb]">
+              {fill(COPY.walk, locale, walkMinutes(nearest.distance))}
+            </span>
+            <span className="block text-[11px] font-semibold text-neutral-400">
+              {nearest.distance}m{rest.length > 0 ? ` · ${fill(COPY.more, locale, rest.length)}` : ""}
+            </span>
           </span>
-          <span className="block text-[11px] font-semibold text-neutral-400">
-            {nearest.distance}m{rest.length > 0 ? ` · ${fill(COPY.more, locale, rest.length)}` : ""}
+          <span className="rounded-lg bg-[#eef4ff] px-2 py-1.5 text-[11px] font-extrabold text-[#2563eb]">
+            {t(COPY.route, locale)}
           </span>
         </span>
       ) : null}
@@ -149,7 +196,7 @@ function ShopRowItem({ row, locale }: { row: ShopRow; locale: Locale }) {
     <li>
       {nearest ? (
         <a
-          href={nearest.url}
+          href={walkUrl(from, nearest)}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 px-3 py-2.5 transition active:bg-surface-muted"
@@ -204,11 +251,16 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
 
   const rows = shopKey in shops ? shops[shopKey] : undefined;
   const mapName = selected ? `${station.name.ko} ${selected.label}번 출구` : station.name.ko;
-  const kakaoUrl = `https://map.kakao.com/link/map/${encodeURIComponent(mapName)},${center.lat},${center.lng}`;
+  const kakaoUrl = `https://map.kakao.com/link/map/${point(mapName, center)}`;
 
   return (
     <section className="mt-5">
-      <h2 className="text-[16px] font-extrabold tracking-tight text-neutral-900">🗺️ {t(COPY.title, locale)}</h2>
+      <h2 className="flex items-center gap-1.5 text-[16px] font-extrabold tracking-tight text-neutral-900">
+        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-md bg-[#16a34a] text-white">
+          <ExitIcon size={15} />
+        </span>
+        {t(COPY.title, locale)}
+      </h2>
 
       {exitList === null ? (
         <div className="mt-2 flex gap-1.5" aria-busy>
@@ -273,7 +325,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
           ) : (
             <ul className="divide-y divide-line">
               {rows.map((row) => (
-                <ShopRowItem key={row.kind.id} row={row} locale={locale} />
+                <ShopRowItem key={row.kind.id} row={row} from={{ name: mapName, position: center }} locale={locale} />
               ))}
             </ul>
           )}
@@ -286,7 +338,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
         rel="noopener noreferrer"
         className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-[#fee500] px-3 py-3 text-[14px] font-extrabold text-[#191919] transition active:scale-[0.98]"
       >
-        <span aria-hidden>🗺️</span>
+        <PinIcon size={18} />
         {selected ? fill(COPY.kakaoExit, locale, selected.label) : t(COPY.kakaoStation, locale)}
         <span aria-hidden>↗</span>
       </a>

@@ -21,7 +21,15 @@ export type NearbyPlace = {
 
 export type NearbyQuery =
   | { kind: "category"; code: "PM9" | "CE7" | "CS2" | "HP8"; radius: number }
-  | { kind: "keyword"; keyword: string; radius: number };
+  | {
+      kind: "keyword";
+      keyword: string;
+      radius: number;
+      /** Restricts results to a Kakao category group, e.g. CE7 so "스타벅스" only finds the cafes. */
+      category?: "PM9" | "CE7" | "CS2" | "HP8";
+      /** Keep only places whose name starts with the keyword (brand stores, not "스타벅스 앞 주차장"). */
+      brand?: boolean;
+    };
 
 /** Seoul Metro signage palette (Pantone → hex) plus the commuter/light-rail lines. */
 const LINE_COLORS: [RegExp, string][] = [
@@ -186,7 +194,11 @@ export function searchNearby(query: NearbyQuery, center: LatLng): Promise<Nearby
       const items = status === kakao.maps.services.Status.OK ? result : [];
       resolve(
         items
-          .filter((item) => query.kind === "category" || item.place_name.includes(query.keyword))
+          .filter((item) => {
+            if (query.kind === "category") return true;
+            if (!query.brand) return item.place_name.includes(query.keyword);
+            return item.place_name.replace(/\s+/g, "").startsWith(query.keyword.replace(/\s+/g, ""));
+          })
           .map((item) => ({
             id: item.id,
             name: item.place_name,
@@ -209,6 +221,7 @@ export function searchNearby(query: NearbyQuery, center: LatLng): Promise<Nearby
     if (query.kind === "category") {
       places().categorySearch(query.code, callback, options);
     } else {
+      if (query.category) options.category_group_code = query.category;
       places().keywordSearch(query.keyword, callback, options);
     }
   });
