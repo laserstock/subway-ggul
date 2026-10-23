@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useState } from "react";
+import AuthorLine from "../_components/AuthorLine";
+import Sheet from "../_components/BottomSheet";
 import { t, type Locale, type Localized } from "../_lib/i18n";
-import { authorLabel } from "../_lib/profile";
+import { authorLabel, type AvatarId, type BadgeId } from "../_lib/profile";
 import { formatRelativeTime } from "../_lib/reports";
 import {
   addSpotComment,
@@ -62,51 +64,15 @@ export const CATEGORY_META: Record<SpotCategory, { emoji: string; label: Localiz
   free: { emoji: "💬", label: { ko: "자유", en: "Chat", zh: "闲聊", ja: "雑談" } },
 };
 
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  const titleId = useId();
+export type Author = { station: string; nickname: string; avatar: AvatarId; badge: BadgeId | null };
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
-  return (
-    <div className="absolute inset-0 z-[85]">
-      <button
-        type="button"
-        tabIndex={-1}
-        aria-hidden
-        onClick={onClose}
-        className="absolute inset-0 animate-[fade-in_200ms_ease-out] bg-black/40 backdrop-blur-[2px]"
-      />
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="absolute inset-x-0 bottom-0 flex max-h-[88%] animate-[sheet-up_300ms_cubic-bezier(0.22,1,0.36,1)] flex-col rounded-t-[28px] bg-surface pb-[max(16px,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_40px_rgba(15,23,42,0.18)]"
-      >
-        <div className="flex justify-center pb-3" aria-hidden>
-          <span className="h-[5px] w-11 rounded-full bg-neutral-300" />
-        </div>
-        <h2 id={titleId} className="px-5 text-[18px] font-extrabold tracking-tight text-ink">
-          {title}
-        </h2>
-        {children}
-      </section>
-    </div>
-  );
-}
-
-function AuthorChip({ station, nickname, locale }: { station: string | null; nickname: string; locale: Locale }) {
+function AuthorChip({ author, locale }: { author: Author; locale: Locale }) {
   return (
     <div className="flex items-center justify-between gap-2 rounded-2xl bg-honey-soft px-3.5 py-2.5">
       <div className="min-w-0">
         <p className="text-[11px] font-semibold text-ink-muted">{t(COPY.postAs, locale)}</p>
-        <p className="truncate text-[14px] font-extrabold text-ink">
-          [{authorLabel(station, nickname)}] <span aria-hidden>🐝</span>
+        <p className="text-[14px] font-extrabold text-ink">
+          <AuthorLine {...author} locale={locale} />
         </p>
       </div>
       <Link href="/me" className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[11px] font-bold text-honey-strong">
@@ -119,16 +85,14 @@ function AuthorChip({ station, nickname, locale }: { station: string | null; nic
 export function WriteSheet({
   line,
   plaza,
-  station,
-  nickname,
+  author,
   locale,
   onClose,
   onPosted,
 }: {
   line: string;
   plaza: string;
-  station: string | null;
-  nickname: string;
+  author: Author;
   locale: Locale;
   onClose: () => void;
   onPosted: () => void;
@@ -140,7 +104,16 @@ export function WriteSheet({
 
   function submit() {
     if (!ready) return;
-    addSpotPost({ line, station, author: nickname, category, title: title.trim(), body: body.trim() });
+    addSpotPost({
+      line,
+      station: author.station,
+      author: author.nickname,
+      avatar: author.avatar,
+      badge: author.badge,
+      category,
+      title: title.trim(),
+      body: body.trim(),
+    });
     onPosted();
   }
 
@@ -189,7 +162,7 @@ export function WriteSheet({
           {body.length}/{SPOT_BODY_MAX}
         </p>
         <div className="mt-1.5">
-          <AuthorChip station={station} nickname={nickname} locale={locale} />
+          <AuthorChip author={author} locale={locale} />
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-neutral-400">{t(COPY.rules, locale)}</p>
         <button
@@ -254,7 +227,15 @@ export function CommentSheet({
     <Sheet title={t(COPY.comments, locale).replace("{n}", String(post.commentCount))} onClose={onClose}>
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5">
         <article className="mt-3 border-b border-line pb-3">
-          <p className="text-[12px] font-bold text-ink-muted">{authorLabel(post.station, post.author)}</p>
+          <p className="text-[12px] font-bold text-ink-muted">
+            <AuthorLine
+              station={post.station}
+              nickname={post.author}
+              avatar={post.avatar}
+              badge={post.badge}
+              locale={locale}
+            />
+          </p>
           <h3 className="mt-1 text-[16px] font-extrabold leading-snug text-ink">{post.title}</h3>
           <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-neutral-600">{post.body}</p>
         </article>

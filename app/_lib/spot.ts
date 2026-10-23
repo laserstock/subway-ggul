@@ -14,6 +14,7 @@ import {
   tempId,
   useUserId,
 } from "./supabase";
+import { isAvatarId, isBadgeId, type AvatarId, type BadgeId } from "./profile";
 
 export const SPOT_CATEGORIES = ["commute", "food", "lost", "free"] as const;
 export type SpotCategory = (typeof SPOT_CATEGORIES)[number];
@@ -46,6 +47,8 @@ export type SpotPost = {
   line: string;
   station: string | null;
   author: string;
+  avatar: AvatarId | null;
+  badge: BadgeId | null;
   category: SpotCategory;
   title: string;
   body: string;
@@ -66,6 +69,9 @@ type PostRow = {
   line: string;
   station: string | null;
   author: string;
+  /** Missing on databases that haven't run the avatar/badge migration yet. */
+  avatar?: string | null;
+  badge?: string | null;
   category: SpotCategory;
   title: string;
   body: string;
@@ -98,10 +104,26 @@ type State = {
   myCommentCount: number;
 };
 
-const POST_COLUMNS =
+const BASE_POST_COLUMNS =
   "id, line, station, author, category, title, body, author_id, created_at, like_count, comment_count, view_count";
 const COMMENT_COLUMNS = "id, post_id, station, author, text, author_id, created_at";
-const WITH_COMMENTS = `${POST_COLUMNS}, spot_comments(${COMMENT_COLUMNS})`;
+/** Turned off when the database hasn't run the avatar/badge migration in supabase/schema.sql yet. */
+let profileColumns = true;
+
+function postColumns() {
+  return profileColumns ? `${BASE_POST_COLUMNS}, avatar, badge` : BASE_POST_COLUMNS;
+}
+
+function withComments() {
+  return `${postColumns()}, spot_comments(${COMMENT_COLUMNS})`;
+}
+
+/** Undefined column on select (42703) or on insert (PGRST204): fall back to the old columns. */
+function missingProfileColumns(error: { code?: string } | null) {
+  if (!profileColumns || !error || (error.code !== "42703" && error.code !== "PGRST204")) return false;
+  profileColumns = false;
+  return true;
+}
 const LINE_LIMIT = 100;
 const MY_LIMIT = 100;
 const REFRESH_MS = 60_000;
@@ -235,7 +257,7 @@ async function fetchLine(line: string) {
   fetchedAt.set(line, Date.now());
   const { data, error } = await supabase
     .from("spot_posts")
-    .select(WITH_COMMENTS)
+    .select(withComments())
     .eq("line", line)
     .order("created_at", { ascending: false })
     .order("created_at", { ascending: false, referencedTable: "spot_comments" })
@@ -243,9 +265,10 @@ async function fetchLine(line: string) {
     .limit(LINE_LIMIT);
   if (error) {
     fetchedAt.delete(line);
+    if (missingProfileColumns(error)) await fetchLine(line);
     return;
   }
-  const rows = data as PostWithComments[];
+  const rows = data as unknown as PostWithComments[];
   const { posts, comments } = mergePosts(rows);
   const pending = (state.lineIds[line] ?? []).filter((id) => id.startsWith(TEMP_PREFIX));
   setState({ posts, comments, lineIds: { ...state.lineIds, [line]: byNewest([...pending, ...rows.map((row) => row.id)], posts) } });
@@ -266,7 +289,7 @@ async function fetchOwn() {
   const [mine, scraps, likes, commentCount] = await Promise.all([
     supabase
       .from("spot_posts")
-      .select(WITH_COMMENTS)
+      .select(withComments())
       .eq("author_id", uid)
       .order("created_at", { ascending: false })
       .order("created_at", { ascending: false, referencedTable: "spot_comments" })
@@ -274,7 +297,7 @@ async function fetchOwn() {
       .limit(MY_LIMIT),
     supabase
       .from("spot_scraps")
-      .select(`post_id, spot_posts(${WITH_COMMENTS})`)
+      .select(`post_id, spot_posts(${withComments()})`)
       .order("created_at", { ascending: false })
       .limit(MY_LIMIT),
     supabase.from("spot_likes").select("post_id").order("created_at", { ascending: false }).limit(500),
@@ -282,12 +305,13 @@ async function fetchOwn() {
   ]);
   if (mine.error || scraps.error || likes.error || commentCount.error) {
     ownFor = null;
+    if (missingProfileColumns(mine.error ?? scraps.error)) await fetchOwn();
     return;
   }
   const scrapRows = (scraps.data as unknown as { post_id: string; spot_posts: PostWithComments | null }[]).flatMap(
     (row) => (row.spot_posts ? [row.spot_posts] : []),
   );
-  const myRows = mine.data as PostWithComments[];
+  const myRows = mine.data as unknown as PostWithComments[];
   const { posts, comments } = mergePosts([...myRows, ...scrapRows]);
   // Merge rather than replace: taps made while the first sign-in was in flight are already in state.
   setState({
@@ -325,6 +349,8 @@ function buildPost(snapshot: State, row: PostRow, uid: string | null): SpotPost 
     line: row.line,
     station: row.station,
     author: row.author,
+    avatar: isAvatarId(row.avatar) ? row.avatar : null,
+    badge: isBadgeId(row.badge) ? row.badge : null,
     category: row.category,
     title: row.title,
     body: row.body,
@@ -391,8 +417,10 @@ export function useSpotActivity(): SpotActivity {
 
 export async function addSpotPost(post: {
   line: string;
-  station: string | null;
+  station: string;
   author: string;
+  avatar: AvatarId;
+  badge: BadgeId | null;
   category: SpotCategory;
   title: string;
   body: string;
@@ -415,13 +443,23 @@ export async function addSpotPost(post: {
   const known = state.lineIds[post.line] ?? [];
   setState({ lineIds: { ...state.lineIds, [post.line]: [temp.id, ...known] } });
   putPost(temp);
-  const { data, error } = await supabase.from("spot_posts").insert(post).select(POST_COLUMNS).single();
+  const basic = {
+    line: post.line,
+    station: post.station,
+    author: post.author,
+    category: post.category,
+    title: post.title,
+    body: post.body,
+  };
+  const insert = (row: typeof basic) => supabase.from("spot_posts").insert(row).select(postColumns()).single();
+  let { data, error } = await insert(profileColumns ? post : basic);
+  if (missingProfileColumns(error)) ({ data, error } = await insert(basic));
   dropPost(temp.id);
   if (error || !data) {
     notifyServerError(error);
     return false;
   }
-  putPost(data as PostRow);
+  putPost(data as unknown as PostRow);
   return true;
 }
 

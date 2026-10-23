@@ -1,18 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import AppHeader from "../_components/AppHeader";
+import AuthorLine from "../_components/AuthorLine";
 import BottomNav from "../_components/BottomNav";
+import BottomSheet from "../_components/BottomSheet";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
+import PrimaryStationSheet from "../_components/PrimaryStationSheet";
 import { APP_VERSION } from "../_components/SideDrawer";
-import StationSearch from "../_components/StationSearch";
 import ThemePicker from "../_components/ThemePicker";
 import { Toast, useToast } from "../_components/Toast";
 import { LANGUAGES, LOCALES, t, type Locale, type Localized } from "../_lib/i18n";
 import { useLastStation } from "../_lib/lastStation";
 import { setLocale, useLocale } from "../_lib/locale";
-import { authorLabel, authorTag, NICKNAME_MAX, setHomeStation, setNickname, useProfile } from "../_lib/profile";
+import {
+  authorLabel,
+  AVATARS,
+  avatarEmoji,
+  BADGES,
+  NICKNAME_MAX,
+  setActiveBadge,
+  setAvatar,
+  setNickname,
+  setPrimaryStation,
+  syncReportCount,
+  useProfile,
+  type AvatarId,
+} from "../_lib/profile";
 import { deleteReport, formatRelativeTime, useMyReports, useNow } from "../_lib/reports";
 import { useDestinationStation } from "../_lib/selectedStation";
 import { deleteSpotPost, useSpotActivity, type SpotPost } from "../_lib/spot";
@@ -37,12 +52,19 @@ const COPY = {
     zh: "会像公司标签一样显示在昵称前",
     ja: "会社名タグのようにニックネームの前に表示されます",
   },
-  notSet: { ko: "아직 등록하지 않았어요", en: "Not set yet", zh: "尚未设置", ja: "まだ登録していません" },
+  notSet: { ko: "등록 안 됨", en: "Not set", zh: "未设置", ja: "未登録" },
   change: { ko: "변경", en: "Change", zh: "更改", ja: "変更" },
   register: { ko: "등록", en: "Set", zh: "登记", ja: "登録" },
   clear: { ko: "해제", en: "Clear", zh: "清除", ja: "解除" },
-  useHere: { ko: "📍 지금 {station}로 설정", en: "📍 Use {station}", zh: "📍 设为当前 {station}", ja: "📍 今の{station}に設定" },
-  searchStation: { ko: "역 이름 검색 (예: 장한평역)", en: "Search a station", zh: "搜索车站", ja: "駅名で検索" },
+  avatarTitle: { ko: "캐릭터 선택", en: "Choose a character", zh: "选择角色", ja: "キャラクターを選択" },
+  avatarHint: {
+    ko: "꿀스팟 글에 닉네임과 함께 표시돼요",
+    en: "Shown next to your nickname on Honey Spot posts",
+    zh: "会和昵称一起显示在蜜点帖子上",
+    ja: "ハニースポットの投稿でニックネームと一緒に表示されます",
+  },
+  avatarSaved: { ko: "캐릭터를 바꿨어요", en: "Character changed", zh: "已更换角色", ja: "キャラクターを変更しました" },
+  changeAvatar: { ko: "캐릭터 변경", en: "Change character", zh: "更换角色", ja: "キャラクター変更" },
   stats: {
     ko: "꿀스팟 글|댓글|스크랩|제보",
     en: "Posts|Comments|Saved|Reports",
@@ -75,12 +97,21 @@ const COPY = {
   deleted: { ko: "삭제했어요", en: "Deleted", zh: "已删除", ja: "削除しました" },
   benefits: { ko: "🎁 혜택함", en: "🎁 Rewards", zh: "🎁 福利箱", ja: "🎁 特典ボックス" },
   benefitsNote: {
-    ko: "베타: 지금은 활동 배지만 있어요. 새 혜택이 생기면 알려 드릴게요",
-    en: "Beta: activity badges only for now. We'll let you know when rewards arrive",
-    zh: "测试版：目前只有活动徽章，有新福利时会通知您",
-    ja: "ベータ：今は活動バッジのみです。新しい特典ができたらお知らせします",
+    ko: "달성한 배지를 누르면 대표 배지로 장착돼요 · 장착한 배지는 꿀스팟 새 글에 표시돼요",
+    en: "Tap an unlocked badge to wear it · It shows on your new Honey Spot posts",
+    zh: "点击已达成的徽章即可佩戴 · 会显示在新的蜜点帖子上",
+    ja: "達成したバッジをタップで装着 · 新しいハニースポット投稿に表示されます",
   },
-  unlocked: { ko: "달성!", en: "Unlocked!", zh: "已达成！", ja: "達成！" },
+  badgeGoal: { ko: "1초 제보 {n}회", en: "{n} quick reports", zh: "1秒上报 {n}次", ja: "1秒報告 {n}回" },
+  equip: { ko: "장착하기", en: "Wear", zh: "佩戴", ja: "装着する" },
+  equipped: { ko: "장착 중", en: "Wearing", zh: "佩戴中", ja: "装着中" },
+  badgeEquipped: {
+    ko: "{badge} 배지를 대표 배지로 장착했어요",
+    en: "Now wearing the {badge} badge",
+    zh: "已佩戴「{badge}」徽章",
+    ja: "「{badge}」バッジを装着しました",
+  },
+  badgeRemoved: { ko: "대표 배지를 해제했어요", en: "Badge removed", zh: "已取下徽章", ja: "バッジを外しました" },
   settings: { ko: "⚙️ 앱 설정", en: "⚙️ Settings", zh: "⚙️ 应用设置", ja: "⚙️ アプリ設定" },
   language: { ko: "언어", en: "Language", zh: "语言", ja: "言語" },
   theme: { ko: "화면 모드", en: "Display mode", zh: "显示模式", ja: "表示モード" },
@@ -94,30 +125,6 @@ const COPY = {
   },
   profileSaved: { ko: "프로필을 저장했어요", en: "Profile saved", zh: "已保存个人资料", ja: "プロフィールを保存しました" },
 } satisfies Record<string, Localized>;
-
-type Benefit = { id: string; emoji: string; title: Localized; goal: number; metric: "posts" | "reports" };
-
-const BENEFITS: Benefit[] = [
-  {
-    id: "first-report",
-    emoji: "🏅",
-    title: { ko: "첫 제보 달성 배지", en: "First report badge", zh: "首次上报徽章", ja: "初報告バッジ" },
-    goal: 1,
-    metric: "reports",
-  },
-  {
-    id: "reporter-10",
-    emoji: "🐝",
-    title: {
-      ko: "제보 10회 달성 시 꿀정보 지킴이 배지",
-      en: "10 reports: Honey Keeper badge",
-      zh: "上报10次：蜜信息守护者徽章",
-      ja: "報告10回でハチミツ情報キーパーバッジ",
-    },
-    goal: 10,
-    metric: "reports",
-  },
-];
 
 function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
@@ -166,6 +173,56 @@ function PostRow({
   );
 }
 
+function AvatarSheet({
+  locale,
+  current,
+  onClose,
+  onPick,
+}: {
+  locale: Locale;
+  current: AvatarId;
+  onClose: () => void;
+  onPick: (id: AvatarId) => void;
+}) {
+  return (
+    <BottomSheet title={t(COPY.avatarTitle, locale)} onClose={onClose}>
+      <p className="mt-1 px-5 text-[12px] text-ink-muted">{t(COPY.avatarHint, locale)}</p>
+      <ul className="mt-4 grid grid-cols-3 gap-2.5 px-5 pb-2">
+        {AVATARS.map((avatar) => {
+          const selected = avatar.id === current;
+          return (
+            <li key={avatar.id}>
+              <button
+                type="button"
+                onClick={() => onPick(avatar.id)}
+                aria-pressed={selected}
+                className={`relative flex w-full flex-col items-center gap-1 rounded-2xl py-3.5 transition active:scale-95 ${
+                  selected ? "bg-honey-soft ring-2 ring-honey" : "bg-surface-muted"
+                }`}
+              >
+                <span className="text-[36px] leading-none" aria-hidden>
+                  {avatar.emoji}
+                </span>
+                <span className={`text-[12px] font-bold ${selected ? "text-honey-strong" : "text-ink-muted"}`}>
+                  {t(avatar.label, locale)}
+                </span>
+                {selected ? (
+                  <span
+                    className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-honey text-[11px] font-extrabold text-white"
+                    aria-hidden
+                  >
+                    ✓
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </BottomSheet>
+  );
+}
+
 export default function MeScreen() {
   const locale = useLocale();
   const now = useNow();
@@ -177,14 +234,28 @@ export default function MeScreen() {
   const { toast, showToast } = useToast();
   const mainRef = useRef<HTMLElement>(null);
   const [nicknameDraft, setNicknameDraft] = useState<string | null>(null);
-  const [pickingStation, setPickingStation] = useState(false);
-  const [stationQuery, setStationQuery] = useState("");
+  const [stationSheetOpen, setStationSheetOpen] = useState(false);
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
 
   const here = destination ?? lastStation;
-  const tag = authorTag(profile, here);
+  const primary = profile.primaryStation;
   const statLabels = t(COPY.stats, locale).split("|");
-  const stats = [activity.posts.length, activity.commentCount, activity.scrapped.length, reports.length];
-  const progress = { posts: activity.posts.length, reports: reports.length };
+  const stats = [activity.posts.length, activity.commentCount, activity.scrapped.length, profile.reportCount];
+
+  useEffect(() => {
+    syncReportCount(reports.length);
+  }, [reports.length]);
+
+  function toggleBadge(id: (typeof BADGES)[number]["id"]) {
+    const wearing = profile.activeBadge === id;
+    if (!setActiveBadge(wearing ? null : id)) return;
+    const badge = BADGES.find((item) => item.id === id);
+    showToast(
+      wearing || !badge
+        ? t(COPY.badgeRemoved, locale)
+        : t(COPY.badgeEquipped, locale).replace("{badge}", `${badge.emoji}${t(badge.short, locale)}`),
+    );
+  }
 
   function saveNickname() {
     if (nicknameDraft === null) return;
@@ -201,15 +272,29 @@ export default function MeScreen() {
         <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-6">
           <section className="rounded-3xl bg-gradient-to-br from-[#fff6dc] to-[#fffdf6] px-4 py-4 ring-1 ring-[#f6e3a8]">
             <div className="flex items-center gap-3">
-              <span
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-[30px] shadow-[0_4px_12px_rgba(245,167,0,0.25)]"
-                aria-hidden
+              <button
+                type="button"
+                onClick={() => setAvatarSheetOpen(true)}
+                aria-label={t(COPY.changeAvatar, locale)}
+                className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white text-[34px] shadow-[0_4px_12px_rgba(245,167,0,0.25)] transition active:scale-95"
               >
-                🐝
-              </span>
+                <span aria-hidden>{avatarEmoji(profile.selectedAvatar)}</span>
+                <span
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#2b2418] px-2 py-[2px] text-[10px] font-bold text-white"
+                  aria-hidden
+                >
+                  {t(COPY.change, locale)}
+                </span>
+              </button>
               <div className="min-w-0">
-                <p className="truncate text-[19px] font-extrabold tracking-tight text-ink">
-                  [{authorLabel(tag.station, tag.nickname)}]
+                <p className="text-[19px] font-extrabold tracking-tight text-ink">
+                  <AuthorLine
+                    station={primary ? t(primary.name, locale) : null}
+                    nickname={profile.nickname}
+                    avatar={profile.selectedAvatar}
+                    badge={profile.activeBadge}
+                    locale={locale}
+                  />
                 </p>
                 <p className="mt-0.5 text-[12px] text-ink-muted">{t(COPY.profileHint, locale)}</p>
               </div>
@@ -264,19 +349,19 @@ export default function MeScreen() {
             <div className="mt-2 rounded-2xl bg-white/80 px-3.5 py-3">
               <p className="text-[12px] font-bold text-ink-muted">{t(COPY.homeStation, locale)}</p>
               <div className="mt-1 flex items-center justify-between gap-2">
-                {profile.homeStation ? (
+                {primary ? (
                   <p className="flex min-w-0 items-center gap-1.5 text-[16px] font-extrabold text-ink">
-                    <LineBadges station={profile.homeStation} locale={locale} size="md" />
-                    <span className="truncate">{t(profile.homeStation.name, locale)}</span>
+                    <LineBadges station={primary} locale={locale} size="md" />
+                    <span className="truncate">{t(primary.name, locale)}</span>
                   </p>
                 ) : (
                   <p className="text-[14px] font-semibold text-neutral-400">{t(COPY.notSet, locale)}</p>
                 )}
                 <div className="flex shrink-0 gap-1">
-                  {profile.homeStation ? (
+                  {primary ? (
                     <button
                       type="button"
-                      onClick={() => setHomeStation(null)}
+                      onClick={() => setPrimaryStation(null)}
                       className="rounded-full px-2.5 py-1 text-[12px] font-semibold text-neutral-400 active:bg-neutral-100"
                     >
                       {t(COPY.clear, locale)}
@@ -284,47 +369,15 @@ export default function MeScreen() {
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => setPickingStation((value) => !value)}
-                    aria-expanded={pickingStation}
+                    onClick={() => setStationSheetOpen(true)}
+                    aria-haspopup="dialog"
                     className="rounded-full bg-surface px-3 py-1 text-[12px] font-bold text-honey-strong ring-1 ring-[#f6e3a8] active:scale-95"
                   >
-                    {t(profile.homeStation ? COPY.change : COPY.register, locale)}
+                    {t(primary ? COPY.change : COPY.register, locale)}
                   </button>
                 </div>
               </div>
               <p className="mt-1 text-[11px] text-neutral-400">{t(COPY.homeStationHint, locale)}</p>
-              {pickingStation ? (
-                <div className="mt-2.5">
-                  {here && here.key !== profile.homeStation?.key ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHomeStation(here);
-                        setPickingStation(false);
-                        showToast(t(COPY.profileSaved, locale));
-                      }}
-                      className="mb-2 rounded-full bg-honey-soft px-3 py-1.5 text-[12px] font-bold text-honey-strong active:scale-95"
-                    >
-                      {t(COPY.useHere, locale).replace("{station}", t(here.name, locale))}
-                    </button>
-                  ) : null}
-                  <StationSearch
-                    locale={locale}
-                    query={stationQuery}
-                    onQueryChange={setStationQuery}
-                    onSelect={(station) => {
-                      setHomeStation(station);
-                      setStationQuery("");
-                      setPickingStation(false);
-                      showToast(t(COPY.profileSaved, locale));
-                    }}
-                    currentKey={profile.homeStation?.key ?? null}
-                    placeholder={t(COPY.searchStation, locale)}
-                    near={here?.center ?? null}
-                    inputClassName="rounded-xl border border-line bg-surface px-3 py-2.5"
-                  />
-                </div>
-              ) : null}
             </div>
           </section>
 
@@ -419,26 +472,64 @@ export default function MeScreen() {
 
           <Section title={t(COPY.benefits, locale)}>
             <ul className="mt-3 flex flex-col gap-2">
-              {BENEFITS.map((benefit) => {
-                const current = Math.min(progress[benefit.metric], benefit.goal);
-                const done = current >= benefit.goal;
+              {BADGES.map((badge) => {
+                const current = Math.min(profile.reportCount, badge.goal);
+                const unlocked = profile.unlockedBadges.includes(badge.id);
+                const wearing = profile.activeBadge === badge.id;
+                const body = (
+                  <>
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[22px] ${
+                          unlocked ? "bg-white shadow-[0_2px_8px_rgba(245,167,0,0.25)]" : "bg-white/70 grayscale"
+                        }`}
+                        aria-hidden
+                      >
+                        {badge.emoji}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[14px] font-extrabold leading-snug text-ink">{t(badge.title, locale)}</p>
+                        <p className="mt-0.5 text-[11px] font-semibold text-ink-muted">
+                          {t(COPY.badgeGoal, locale).replace("{n}", String(badge.goal))}
+                        </p>
+                      </div>
+                      {unlocked ? (
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-extrabold ${
+                            wearing ? "bg-[#2b2418] text-white" : "bg-white text-honey-strong ring-1 ring-[#f6e3a8]"
+                          }`}
+                        >
+                          {wearing ? `✓ ${t(COPY.equipped, locale)}` : t(COPY.equip, locale)}
+                        </span>
+                      ) : (
+                        <span className="shrink-0 text-[12px] font-extrabold text-ink-muted">
+                          {current}/{badge.goal}
+                        </span>
+                      )}
+                    </div>
+                    {unlocked ? null : (
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white" aria-hidden>
+                        <div className="h-full rounded-full bg-honey" style={{ width: `${(current / badge.goal) * 100}%` }} />
+                      </div>
+                    )}
+                  </>
+                );
                 return (
-                  <li
-                    key={benefit.id}
-                    className={`rounded-2xl px-3.5 py-3 ${done ? "bg-honey-soft ring-1 ring-[#f6e3a8]" : "bg-surface-muted"}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-[20px]" aria-hidden>
-                        {benefit.emoji}
-                      </span>
-                      <p className="min-w-0 flex-1 text-[13px] font-bold leading-snug text-ink">{t(benefit.title, locale)}</p>
-                      <span className={`shrink-0 text-[12px] font-extrabold ${done ? "text-honey-strong" : "text-ink-muted"}`}>
-                        {done ? t(COPY.unlocked, locale) : `${current}/${benefit.goal}`}
-                      </span>
-                    </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white" aria-hidden>
-                      <div className="h-full rounded-full bg-honey" style={{ width: `${(current / benefit.goal) * 100}%` }} />
-                    </div>
+                  <li key={badge.id}>
+                    {unlocked ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleBadge(badge.id)}
+                        aria-pressed={wearing}
+                        className={`block w-full rounded-2xl px-3.5 py-3 text-left transition active:scale-[0.99] ${
+                          wearing ? "bg-honey-soft ring-2 ring-honey" : "bg-honey-soft ring-1 ring-[#f6e3a8]"
+                        }`}
+                      >
+                        {body}
+                      </button>
+                    ) : (
+                      <div className="rounded-2xl bg-surface-muted px-3.5 py-3">{body}</div>
+                    )}
                   </li>
                 );
               })}
@@ -491,6 +582,32 @@ export default function MeScreen() {
         <BottomNav active="me" onReselect={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })} />
 
         <Toast message={toast} />
+
+        {avatarSheetOpen ? (
+          <AvatarSheet
+            locale={locale}
+            current={profile.selectedAvatar}
+            onClose={() => setAvatarSheetOpen(false)}
+            onPick={(id) => {
+              setAvatar(id);
+              setAvatarSheetOpen(false);
+              showToast(t(COPY.avatarSaved, locale));
+            }}
+          />
+        ) : null}
+
+        {stationSheetOpen ? (
+          <PrimaryStationSheet
+            locale={locale}
+            here={here}
+            current={primary}
+            onClose={() => setStationSheetOpen(false)}
+            onPicked={() => {
+              setStationSheetOpen(false);
+              showToast(t(COPY.profileSaved, locale));
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

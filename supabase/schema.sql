@@ -96,6 +96,11 @@ create table if not exists public.spot_posts (
   comment_count integer not null default 0,
   view_count integer not null default 0
 );
+-- Author's character and equipped badge, shown next to the nickname (self-declared, like the nickname).
+alter table public.spot_posts add column if not exists avatar text
+  check (avatar is null or avatar in ('bee', 'subway', 'frog', 'bear', 'cat', 'rabbit'));
+alter table public.spot_posts add column if not exists badge text
+  check (badge is null or badge in ('first-report', 'honey-keeper'));
 create index if not exists spot_posts_line_idx on public.spot_posts (line, created_at desc);
 create index if not exists spot_posts_author_idx on public.spot_posts (author_id, created_at desc);
 
@@ -214,7 +219,7 @@ grant select on public.report_confirmations, public.report_resolutions,
 
 grant insert (station_key, station_name, type, text) on public.reports to authenticated;
 grant insert (report_id) on public.report_confirmations, public.report_resolutions to authenticated;
-grant insert (line, station, author, category, title, body) on public.spot_posts to authenticated;
+grant insert (line, station, author, category, title, body, avatar, badge) on public.spot_posts to authenticated;
 grant insert (post_id, station, author, text) on public.spot_comments to authenticated;
 grant insert (post_id) on public.spot_likes, public.spot_scraps to authenticated;
 grant insert (post_id, viewer) on public.spot_views to anon, authenticated;

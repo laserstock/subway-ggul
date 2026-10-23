@@ -8,7 +8,9 @@ import { Toast, useToast } from "../_components/Toast";
 import { t, type Locale, type Localized } from "../_lib/i18n";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
-import { authorLabel, authorTag, DEFAULT_NICKNAME, useProfile } from "../_lib/profile";
+import AuthorLine from "../_components/AuthorLine";
+import PrimaryStationSheet from "../_components/PrimaryStationSheet";
+import { authorLabel, authorTag, useProfile } from "../_lib/profile";
 import { formatRelativeTime, useNow } from "../_lib/reports";
 import { useDestinationStation } from "../_lib/selectedStation";
 import {
@@ -65,6 +67,12 @@ const COPY = {
     ja: "まだ投稿がありません。最初の投稿をどうぞ！",
   },
   emptySearch: { ko: "'{q}' 검색 결과가 없어요", en: "No results for '{q}'", zh: "没有找到“{q}”", ja: "「{q}」の検索結果はありません" },
+  needStation: {
+    ko: "주 사용 역을 먼저 설정해 주세요!",
+    en: "Please set your home station first!",
+    zh: "请先设置常用车站！",
+    ja: "よく使う駅を先に設定してください！",
+  },
   posted: { ko: "광장에 글을 올렸어요 🐝", en: "Posted to the plaza 🐝", zh: "已发布到广场 🐝", ja: "広場に投稿しました 🐝" },
   scrapped: { ko: "스크랩했어요 · 마이에서 볼 수 있어요", en: "Saved · find it in Me", zh: "已收藏 · 可在我的中查看", ja: "保存しました · マイで確認できます" },
   unscrapped: { ko: "스크랩을 취소했어요", en: "Removed from saved", zh: "已取消收藏", ja: "保存を取り消しました" },
@@ -167,15 +175,20 @@ function PostCard({
   return (
     <article className="rounded-[20px] border border-line bg-surface px-4 pb-3 pt-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between gap-2 text-[12px]">
-        <p className="flex min-w-0 items-center gap-1 font-bold text-ink">
-          <span className="truncate">{authorLabel(post.station, post.author)}</span>
-          {post.author === DEFAULT_NICKNAME ? <span aria-hidden>🐝</span> : null}
+        <div className="flex min-w-0 items-center gap-1 font-bold text-ink">
+          <AuthorLine
+            station={post.station}
+            nickname={post.author}
+            avatar={post.avatar}
+            badge={post.badge}
+            locale={locale}
+          />
           {post.mine ? (
             <span className="shrink-0 rounded-full bg-honey-soft px-1.5 py-[1px] text-[10px] text-honey-strong">
               {t(COPY.mine, locale)}
             </span>
           ) : null}
-        </p>
+        </div>
         <p className="shrink-0 text-ink-muted">
           {now !== null ? `${formatRelativeTime(post.createdAt, now, locale)} · ` : ""}
           {fill(t(COPY.views, locale), { n: post.views })}
@@ -254,7 +267,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
   const destination = useDestinationStation();
   const lastStation = useLastStation();
   const here = destination ?? lastStation;
-  const lineSource = here ?? profile.homeStation;
+  const lineSource = here ?? profile.primaryStation;
   const hereLines = lineSource ? stationLines(lineSource) : [];
   const [pickedLine, setPickedLine] = useState(initialLine);
   const line = pickedLine ?? hereLines[0] ?? DEFAULT_PLAZA_LINE;
@@ -264,6 +277,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [writeOpen, setWriteOpen] = useState(false);
+  const [stationGateOpen, setStationGateOpen] = useState(false);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
   const { toast, showToast } = useToast();
   const mainRef = useRef<HTMLElement>(null);
@@ -275,8 +289,13 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
   const plaza = plazaName(line, locale);
   const visible = filterSpotPosts(posts, tab, searchOpen ? query : "");
   const openPost = openPostId ? (posts.find((post) => post.id === openPostId) ?? null) : null;
-  const homeLines = profile.homeStation ? stationLines(profile.homeStation) : [];
+  const homeLines = profile.primaryStation ? stationLines(profile.primaryStation) : [];
   const plazaLines = [...new Set([...hereLines, ...homeLines, ...PLAZA_LINES])];
+
+  function startWriting() {
+    if (profile.primaryStation) setWriteOpen(true);
+    else setStationGateOpen(true);
+  }
 
   function changeLine(next: string) {
     setPickedLine(next);
@@ -397,7 +416,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
             <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-24 pt-3">
               <button
                 type="button"
-                onClick={() => setWriteOpen(true)}
+                onClick={startWriting}
                 className="flex w-full items-center rounded-2xl border border-line bg-surface px-4 py-3 text-left text-[14px] text-neutral-400 shadow-[0_2px_10px_rgba(15,23,42,0.04)] transition active:scale-[0.99]"
               >
                 <span className="min-w-0 flex-1 truncate">
@@ -433,7 +452,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
 
             <button
               type="button"
-              onClick={() => setWriteOpen(true)}
+              onClick={startWriting}
               className="absolute bottom-[84px] right-4 z-30 flex items-center gap-1.5 rounded-full bg-[#2b2418] py-3 pl-3.5 pr-4 text-[14px] font-bold text-white shadow-[0_8px_20px_rgba(43,36,24,0.35)] transition active:scale-95"
             >
               <PencilIcon />
@@ -450,12 +469,30 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
 
         <Toast message={toast} />
 
-        {writeOpen ? (
+        {stationGateOpen ? (
+          <PrimaryStationSheet
+            locale={locale}
+            here={here}
+            current={null}
+            notice={t(COPY.needStation, locale)}
+            onClose={() => setStationGateOpen(false)}
+            onPicked={() => {
+              setStationGateOpen(false);
+              setWriteOpen(true);
+            }}
+          />
+        ) : null}
+
+        {writeOpen && profile.primaryStation ? (
           <WriteSheet
             line={line}
             plaza={plaza}
-            station={me.station}
-            nickname={me.nickname}
+            author={{
+              station: profile.primaryStation.name.ko,
+              nickname: profile.nickname,
+              avatar: profile.selectedAvatar,
+              badge: profile.activeBadge,
+            }}
             locale={locale}
             onClose={closeWrite}
             onPosted={() => {

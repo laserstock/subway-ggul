@@ -3,6 +3,7 @@
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { type Locale } from "./i18n";
+import { recordReport } from "./profile";
 import { stationFeedKey, type Localized, type StationOption } from "./stations";
 import {
   currentUserId,
@@ -335,6 +336,7 @@ export async function addReport(
     return false;
   }
   upsertRow(data as ReportRow);
+  recordReport();
   return true;
 }
 
