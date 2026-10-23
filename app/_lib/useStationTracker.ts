@@ -64,6 +64,8 @@ export function useStationTracker({
 } = {}) {
   const [tracking, setTracking] = useState(autoStart);
   const [position, setPosition] = useState<LatLng | null>(null);
+  /** Accuracy radius of `position` in metres. */
+  const [accuracy, setAccuracy] = useState<number | null>(null);
   const [nearest, setNearest] = useState<StationOption | null>(null);
   const [lookupPosition, setLookupPosition] = useState<LatLng | null>(null);
   const [issue, setIssue] = useState<LocationIssue | null>(null);
@@ -118,6 +120,7 @@ export function useStationTracker({
     const accuracy = result.coords.accuracy;
     positionRef.current = here;
     setPosition(here);
+    setAccuracy(accuracy);
     setIssue((current) => (current === "unavailable" ? null : current));
     const last = lastLookupRef.current;
     const sharper =
@@ -182,6 +185,7 @@ export function useStationTracker({
           const here = { lat: result.coords.latitude, lng: result.coords.longitude };
           positionRef.current = here;
           setPosition(here);
+          setAccuracy(result.coords.accuracy);
           setIssue(null);
           if (watchIdRef.current === null) {
             setTracking(true);
@@ -210,6 +214,7 @@ export function useStationTracker({
     clearWatch();
     setTracking(false);
     setPosition(null);
+    setAccuracy(null);
     setNearest(null);
     setLookupPosition(null);
     setIssue(null);
@@ -228,5 +233,5 @@ export function useStationTracker({
     return () => unmountTracker();
   }, []);
 
-  return { tracking, position, nearest, lookupPosition, issue, start, stop, relocate, dismissIssue };
+  return { tracking, position, accuracy, nearest, lookupPosition, issue, start, stop, relocate, dismissIssue };
 }

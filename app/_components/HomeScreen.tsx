@@ -17,7 +17,7 @@ import { Toast, useToast } from "./Toast";
 import { useHomeResetToken } from "../_lib/homeReset";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale, useMessages } from "../_lib/locale";
-import { useMyStations, type MyPlace } from "../_lib/myStations";
+import { useMyStations } from "../_lib/myStations";
 import {
   clearSelectedStation,
   selectStation,
@@ -27,7 +27,6 @@ import {
   useSelectedStation,
 } from "../_lib/selectedStation";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
-import { stationDesk, stationLockers } from "../_lib/luggage";
 import {
   distanceMeters,
   formatDistance,
@@ -60,19 +59,6 @@ const COPY = {
     ja: "現在地を確認できません",
   },
   retry: { ko: "다시 시도", en: "Retry", zh: "重试", ja: "再試行" },
-  lockerCount: {
-    ko: "🔐 또타라커 {n}곳",
-    en: "🔐 {n} T-Locker banks",
-    zh: "🔐 T-Locker {n}处",
-    ja: "🔐 T-Locker {n}か所",
-  },
-  deskHere: { ko: "또타러기지 있음", en: "T-Luggage desk", zh: "有T-Luggage", ja: "T-Luggageあり" },
-  facilityPending: {
-    ko: "실시간 시설 정보 준비 중 · 첫 제보를 남겨 주세요",
-    en: "Live facility info coming soon · Be the first to report",
-    zh: "实时设施信息准备中 · 欢迎第一个上报",
-    ja: "リアルタイム施設情報は準備中 · 最初の投稿をお願いします",
-  },
   search: {
     ko: "어느 역으로 가시나요? (예: 광화문역, 서울역)",
     en: "Where are you heading? (e.g. Gwanghwamun, Seoul Stn.)",
@@ -228,8 +214,8 @@ export default function HomeScreen() {
   const station = destination ?? current;
 
   useEffect(() => {
-    syncSelectedStation(tracker.position);
-  }, [tracker.position]);
+    syncSelectedStation({ position: tracker.position, accuracy: tracker.accuracy });
+  }, [tracker.position, tracker.accuracy]);
 
   useEffect(() => {
     if (window.location.hash !== "#search") return;
@@ -271,12 +257,6 @@ export default function HomeScreen() {
     if (!tracker.tracking) tracker.start();
   }
 
-  function pickMyPlace(place: MyPlace) {
-    setDestinationStation(place.station.key === current?.key ? null : place.station);
-    mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    showToast(t(COPY.switched, locale).replace("{station}", t(place.station.name, locale)));
-  }
-
   function actionHref(href: string) {
     const params = station ? stationParams(station) : new URLSearchParams();
     if (!destination && !isManual) params.set("near", "1");
@@ -285,7 +265,7 @@ export default function HomeScreen() {
 
   function pickCurrentStation(next: StationOption, source: "chip" | "search") {
     if (next.key === tracker.nearest?.key) clearSelectedStation();
-    else selectStation(next, source, tracker.position);
+    else selectStation(next, source, { position: tracker.position, accuracy: tracker.accuracy });
     setDestinationStation(null);
     setLocationOpen(false);
     showToast(t(COPY.switched, locale).replace("{station}", t(next.name, locale)));
@@ -311,7 +291,7 @@ export default function HomeScreen() {
       : null;
 
   let headline: ReactNode;
-  let detail: ReactNode;
+  let detail: ReactNode = null;
   if (station) {
     headline = (
       <>
@@ -322,21 +302,6 @@ export default function HomeScreen() {
         <LineBadges station={station} locale={locale} size="md" className="ml-1.5" />
       </>
     );
-    const lockers = stationLockers(station);
-    detail =
-      lockers.length > 0 ? (
-        <>
-          {t(COPY.lockerCount, locale).replace("{n}", String(lockers.length))}
-          {stationDesk(station) ? (
-            <>
-              <span className="mx-1 text-neutral-300">·</span>
-              {t(COPY.deskHere, locale)}
-            </>
-          ) : null}
-        </>
-      ) : (
-        t(COPY.facilityPending, locale)
-      );
   } else if (tracker.issue) {
     headline = (
       <>
@@ -389,7 +354,9 @@ export default function HomeScreen() {
                   </span>
                   <span className="sr-only">{t(COPY.correctLocation, locale)}</span>
                 </span>
-                <span className="mt-1.5 block pl-[26px] text-[12px] font-normal text-ink-muted">{detail}</span>
+                {detail ? (
+                  <span className="mt-1.5 block pl-[26px] text-[12px] font-normal text-ink-muted">{detail}</span>
+                ) : null}
               </button>
               {destination ? (
                 <button
@@ -451,7 +418,7 @@ export default function HomeScreen() {
                   <button
                     key={place.id}
                     type="button"
-                    onClick={() => pickMyPlace(place)}
+                    onClick={() => openDashboard(place.station)}
                     aria-pressed={active}
                     className="flex shrink-0 items-center gap-1.5 rounded-full bg-surface py-1 pl-1.5 pr-3 text-[12px] font-bold text-ink transition active:scale-95"
                     style={{
