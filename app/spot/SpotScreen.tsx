@@ -507,8 +507,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
         {openPost ? (
           <CommentSheet
             post={openPost}
-            station={me.station}
-            nickname={me.nickname}
+            author={{ ...me, avatar: profile.selectedAvatar, badge: profile.activeBadge }}
             now={now}
             locale={locale}
             onClose={closeComments}

@@ -97,10 +97,15 @@ create table if not exists public.spot_posts (
   view_count integer not null default 0
 );
 -- Author's character and equipped badge, shown next to the nickname (self-declared, like the nickname).
-alter table public.spot_posts add column if not exists avatar text
-  check (avatar is null or avatar in ('bee', 'subway', 'frog', 'bear', 'cat', 'rabbit'));
-alter table public.spot_posts add column if not exists badge text
-  check (badge is null or badge in ('first-report', 'honey-keeper'));
+-- Ids are checked by shape only, so new characters and badges don't need a migration.
+alter table public.spot_posts add column if not exists avatar text;
+alter table public.spot_posts add column if not exists badge text;
+alter table public.spot_posts drop constraint if exists spot_posts_avatar_check;
+alter table public.spot_posts add constraint spot_posts_avatar_check
+  check (avatar is null or avatar ~ '^[a-z][a-z0-9-]{0,23}$');
+alter table public.spot_posts drop constraint if exists spot_posts_badge_check;
+alter table public.spot_posts add constraint spot_posts_badge_check
+  check (badge is null or badge ~ '^[a-z][a-z0-9-]{0,23}$');
 create index if not exists spot_posts_line_idx on public.spot_posts (line, created_at desc);
 create index if not exists spot_posts_author_idx on public.spot_posts (author_id, created_at desc);
 
@@ -113,6 +118,14 @@ create table if not exists public.spot_comments (
   author_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   created_at timestamptz not null default now()
 );
+alter table public.spot_comments add column if not exists avatar text;
+alter table public.spot_comments add column if not exists badge text;
+alter table public.spot_comments drop constraint if exists spot_comments_avatar_check;
+alter table public.spot_comments add constraint spot_comments_avatar_check
+  check (avatar is null or avatar ~ '^[a-z][a-z0-9-]{0,23}$');
+alter table public.spot_comments drop constraint if exists spot_comments_badge_check;
+alter table public.spot_comments add constraint spot_comments_badge_check
+  check (badge is null or badge ~ '^[a-z][a-z0-9-]{0,23}$');
 create index if not exists spot_comments_post_idx on public.spot_comments (post_id, created_at);
 create index if not exists spot_comments_author_idx on public.spot_comments (author_id);
 
@@ -220,7 +233,7 @@ grant select on public.report_confirmations, public.report_resolutions,
 grant insert (station_key, station_name, type, text) on public.reports to authenticated;
 grant insert (report_id) on public.report_confirmations, public.report_resolutions to authenticated;
 grant insert (line, station, author, category, title, body, avatar, badge) on public.spot_posts to authenticated;
-grant insert (post_id, station, author, text) on public.spot_comments to authenticated;
+grant insert (post_id, station, author, text, avatar, badge) on public.spot_comments to authenticated;
 grant insert (post_id) on public.spot_likes, public.spot_scraps to authenticated;
 grant insert (post_id, viewer) on public.spot_views to anon, authenticated;
 grant insert (facility_id, vote) on public.facility_votes to authenticated;

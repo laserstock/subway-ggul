@@ -3,7 +3,7 @@
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { type Locale } from "./i18n";
-import { recordReport } from "./profile";
+import { recordActivity, syncActivity } from "./profile";
 import { stationFeedKey, type Localized, type StationOption } from "./stations";
 import {
   currentUserId,
@@ -213,7 +213,7 @@ async function fetchOwn() {
   const [mine, confirmed, resolved] = await Promise.all([
     supabase
       .from("reports")
-      .select(COLUMNS)
+      .select(COLUMNS, { count: "exact" })
       .eq("author_id", uid)
       .order("created_at", { ascending: false })
       .limit(MY_LIMIT),
@@ -231,6 +231,7 @@ async function fetchOwn() {
     confirmed: new Set([...state.confirmed, ...ids(confirmed.data as { report_id: string }[])]),
     resolved: new Set([...state.resolved, ...ids(resolved.data as { report_id: string }[])]),
   });
+  syncActivity({ reports: mine.count ?? mine.data.length });
 }
 
 function useOwnData() {
@@ -336,7 +337,7 @@ export async function addReport(
     return false;
   }
   upsertRow(data as ReportRow);
-  recordReport();
+  recordActivity("reports");
   return true;
 }
 

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import AppHeader from "../_components/AppHeader";
-import AuthorLine from "../_components/AuthorLine";
+import BadgeMedal, { TIER_PILL } from "../_components/BadgeMedal";
+import BeeAvatar from "../_components/BeeAvatar";
 import BottomNav from "../_components/BottomNav";
 import BottomSheet from "../_components/BottomSheet";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
@@ -17,16 +18,18 @@ import { setLocale, useLocale } from "../_lib/locale";
 import {
   authorLabel,
   AVATARS,
-  avatarEmoji,
+  BADGE_TRACKS,
   BADGES,
+  badgeById,
+  isAvatarUnlocked,
   NICKNAME_MAX,
   setActiveBadge,
   setAvatar,
   setNickname,
   setPrimaryStation,
-  syncReportCount,
   useProfile,
   type AvatarId,
+  type BadgeId,
 } from "../_lib/profile";
 import { deleteReport, formatRelativeTime, useMyReports, useNow } from "../_lib/reports";
 import { useDestinationStation } from "../_lib/selectedStation";
@@ -58,18 +61,25 @@ const COPY = {
   clear: { ko: "해제", en: "Clear", zh: "清除", ja: "解除" },
   avatarTitle: { ko: "캐릭터 선택", en: "Choose a character", zh: "选择角色", ja: "キャラクターを選択" },
   avatarHint: {
-    ko: "꿀스팟 글에 닉네임과 함께 표시돼요",
-    en: "Shown next to your nickname on Honey Spot posts",
-    zh: "会和昵称一起显示在蜜点帖子上",
-    ja: "ハニースポットの投稿でニックネームと一緒に表示されます",
+    ko: "꿀벌 패밀리 12종 · 꿀스팟 글과 댓글에 닉네임과 함께 표시돼요",
+    en: "12 bee family characters · Shown next to your nickname on posts and comments",
+    zh: "12种蜜蜂家族角色 · 会和昵称一起显示在帖子和评论上",
+    ja: "ミツバチファミリー12種 · 投稿とコメントでニックネームと一緒に表示されます",
+  },
+  avatarLocked: { ko: "💎 배지 필요", en: "💎 badge needed", zh: "需💎徽章", ja: "💎バッジが必要" },
+  avatarLockedToast: {
+    ko: "💎 다이아몬드 등급 배지를 달성하면 열려요",
+    en: "Unlocks with any 💎 diamond-tier badge",
+    zh: "获得任意💎钻石级徽章后解锁",
+    ja: "💎ダイヤモンド級バッジを獲得すると解放されます",
   },
   avatarSaved: { ko: "캐릭터를 바꿨어요", en: "Character changed", zh: "已更换角色", ja: "キャラクターを変更しました" },
   changeAvatar: { ko: "캐릭터 변경", en: "Change character", zh: "更换角色", ja: "キャラクター変更" },
   stats: {
-    ko: "꿀스팟 글|댓글|스크랩|제보",
-    en: "Posts|Comments|Saved|Reports",
-    zh: "帖子|评论|收藏|上报",
-    ja: "投稿|コメント|保存|報告",
+    ko: "꿀스팟 글|댓글|받은 공감|제보",
+    en: "Posts|Comments|Likes|Reports",
+    zh: "帖子|评论|获赞|上报",
+    ja: "投稿|コメント|いいね|報告",
   },
   myPosts: { ko: "✏️ 내가 쓴 꿀스팟 글", en: "✏️ My Honey Spot posts", zh: "✏️ 我的蜜点帖子", ja: "✏️ 自分の投稿" },
   myPostsEmpty: {
@@ -97,12 +107,15 @@ const COPY = {
   deleted: { ko: "삭제했어요", en: "Deleted", zh: "已删除", ja: "削除しました" },
   benefits: { ko: "🎁 혜택함", en: "🎁 Rewards", zh: "🎁 福利箱", ja: "🎁 特典ボックス" },
   benefitsNote: {
-    ko: "달성한 배지를 누르면 대표 배지로 장착돼요 · 장착한 배지는 꿀스팟 새 글에 표시돼요",
-    en: "Tap an unlocked badge to wear it · It shows on your new Honey Spot posts",
-    zh: "点击已达成的徽章即可佩戴 · 会显示在新的蜜点帖子上",
-    ja: "達成したバッジをタップで装着 · 新しいハニースポット投稿に表示されます",
+    ko: "장착한 배지는 꿀스팟 새 글·댓글의 닉네임 옆에 표시돼요 · 💎 등급 배지를 달성하면 다이아몬드 꿀벌 캐릭터가 열려요",
+    en: "Your badge shows next to your name on new posts and comments · Any 💎 badge unlocks the Diamond Bee",
+    zh: "佩戴的徽章会显示在新帖子和评论的昵称旁 · 获得💎徽章可解锁钻石蜜蜂",
+    ja: "装着したバッジは新しい投稿・コメントの名前の横に表示 · 💎バッジでダイヤモンドバチが解放",
   },
-  badgeGoal: { ko: "1초 제보 {n}회", en: "{n} quick reports", zh: "1秒上报 {n}次", ja: "1秒報告 {n}回" },
+  collected: { ko: "획득 {n}/{total}", en: "{n}/{total} earned", zh: "已获得 {n}/{total}", ja: "獲得 {n}/{total}" },
+  wearingNow: { ko: "대표 배지", en: "Wearing", zh: "代表徽章", ja: "代表バッジ" },
+  noBadge: { ko: "없음", en: "None", zh: "无", ja: "なし" },
+  total: { ko: "누적 {n}{unit}", en: "{n} so far", zh: "累计 {n}{unit}", ja: "累計 {n}{unit}" },
   equip: { ko: "장착하기", en: "Wear", zh: "佩戴", ja: "装着する" },
   equipped: { ko: "장착 중", en: "Wearing", zh: "佩戴中", ja: "装着中" },
   badgeEquipped: {
@@ -176,50 +189,140 @@ function PostRow({
 function AvatarSheet({
   locale,
   current,
+  unlockedBadges,
   onClose,
   onPick,
 }: {
   locale: Locale;
   current: AvatarId;
+  unlockedBadges: BadgeId[];
   onClose: () => void;
   onPick: (id: AvatarId) => void;
 }) {
+  const [lockedTapped, setLockedTapped] = useState(false);
+
   return (
     <BottomSheet title={t(COPY.avatarTitle, locale)} onClose={onClose}>
       <p className="mt-1 px-5 text-[12px] text-ink-muted">{t(COPY.avatarHint, locale)}</p>
-      <ul className="mt-4 grid grid-cols-3 gap-2.5 px-5 pb-2">
-        {AVATARS.map((avatar) => {
-          const selected = avatar.id === current;
-          return (
-            <li key={avatar.id}>
-              <button
-                type="button"
-                onClick={() => onPick(avatar.id)}
-                aria-pressed={selected}
-                className={`relative flex w-full flex-col items-center gap-1 rounded-2xl py-3.5 transition active:scale-95 ${
-                  selected ? "bg-honey-soft ring-2 ring-honey" : "bg-surface-muted"
-                }`}
-              >
-                <span className="text-[36px] leading-none" aria-hidden>
-                  {avatar.emoji}
-                </span>
-                <span className={`text-[12px] font-bold ${selected ? "text-honey-strong" : "text-ink-muted"}`}>
-                  {t(avatar.label, locale)}
-                </span>
-                {selected ? (
-                  <span
-                    className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-honey text-[11px] font-extrabold text-white"
-                    aria-hidden
-                  >
-                    ✓
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-2 pt-4">
+        <ul className="grid grid-cols-3 gap-2.5">
+          {AVATARS.map((avatar) => {
+            const selected = avatar.id === current;
+            const unlocked = isAvatarUnlocked(avatar, unlockedBadges);
+            const premium = "requires" in avatar;
+            return (
+              <li key={avatar.id}>
+                <button
+                  type="button"
+                  onClick={() => (unlocked ? onPick(avatar.id) : setLockedTapped(true))}
+                  aria-pressed={selected}
+                  aria-disabled={!unlocked}
+                  className={`relative flex w-full flex-col items-center gap-1 rounded-2xl pb-2.5 pt-3 transition active:scale-95 ${
+                    selected
+                      ? "bg-honey-soft ring-2 ring-honey"
+                      : premium
+                        ? "bg-gradient-to-br from-[#22d3ee]/12 to-[#a855f7]/15 ring-1 ring-[#a5b4fc]/60"
+                        : "bg-surface-muted"
+                  }`}
+                >
+                  <span className={unlocked ? "" : "opacity-40 grayscale"}>
+                    <BeeAvatar id={avatar.id} size={56} />
                   </span>
-                ) : null}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+                  <span
+                    className={`px-1 text-center text-[12px] font-bold leading-tight ${
+                      selected ? "text-honey-strong" : premium ? "text-[#6d5df5]" : "text-ink-muted"
+                    }`}
+                  >
+                    {t(avatar.label, locale)}
+                  </span>
+                  {unlocked ? null : (
+                    <span className="absolute inset-x-2 top-[38%] rounded-full bg-[#2b2418]/85 py-0.5 text-[10px] font-bold text-white">
+                      🔒 {t(COPY.avatarLocked, locale)}
+                    </span>
+                  )}
+                  {selected ? (
+                    <span
+                      className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-honey text-[11px] font-extrabold text-white"
+                      aria-hidden
+                    >
+                      ✓
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {lockedTapped ? (
+          <p className="mt-3 rounded-2xl bg-gradient-to-r from-[#22d3ee]/15 to-[#a855f7]/15 px-3.5 py-2.5 text-center text-[12px] font-bold text-[#6d5df5]">
+            {t(COPY.avatarLockedToast, locale)}
+          </p>
+        ) : null}
+      </div>
     </BottomSheet>
+  );
+}
+
+function BadgeRow({
+  badge,
+  value,
+  unit,
+  goalText,
+  unlocked,
+  wearing,
+  locale,
+  onToggle,
+}: {
+  badge: (typeof BADGES)[number];
+  value: number;
+  unit: string;
+  goalText: string;
+  unlocked: boolean;
+  wearing: boolean;
+  locale: Locale;
+  onToggle: () => void;
+}) {
+  const current = Math.min(value, badge.goal);
+  return (
+    <li
+      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 ${
+        wearing ? "bg-honey-soft ring-2 ring-honey" : unlocked ? "bg-honey-soft/60 ring-1 ring-[#f6e3a8]" : "bg-surface-muted"
+      }`}
+    >
+      <BadgeMedal badge={badge} size={42} locked={!unlocked} />
+      <div className="min-w-0 flex-1">
+        <p className={`truncate text-[14px] font-extrabold ${unlocked ? "text-ink" : "text-ink-muted"}`}>
+          {t(badge.short, locale)}
+        </p>
+        <p className="mt-0.5 truncate text-[11px] font-semibold text-ink-muted">{goalText}</p>
+        {unlocked ? null : (
+          <div className="mt-1.5 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line" aria-hidden>
+              <div className="h-full rounded-full bg-honey" style={{ width: `${(current / badge.goal) * 100}%` }} />
+            </div>
+            <span className="shrink-0 text-[11px] font-extrabold tabular-nums text-ink-muted">
+              {current}/{badge.goal}
+              {unit}
+            </span>
+          </div>
+        )}
+      </div>
+      <button
+        type="button"
+        disabled={!unlocked}
+        onClick={onToggle}
+        aria-pressed={wearing}
+        className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-extrabold transition active:scale-95 disabled:active:scale-100 ${
+          wearing
+            ? "bg-[#2b2418] text-white"
+            : unlocked
+              ? "bg-surface text-honey-strong ring-1 ring-honey"
+              : "bg-transparent text-neutral-400 ring-1 ring-line"
+        }`}
+      >
+        {wearing ? `✓ ${t(COPY.equipped, locale)}` : unlocked ? t(COPY.equip, locale) : "🔒"}
+      </button>
+    </li>
   );
 }
 
@@ -240,16 +343,13 @@ export default function MeScreen() {
   const here = destination ?? lastStation;
   const primary = profile.primaryStation;
   const statLabels = t(COPY.stats, locale).split("|");
-  const stats = [activity.posts.length, activity.commentCount, activity.scrapped.length, profile.reportCount];
+  const stats = [profile.stats.posts, profile.stats.comments, profile.stats.likes, profile.stats.reports];
+  const equipped = badgeById(profile.activeBadge);
 
-  useEffect(() => {
-    syncReportCount(reports.length);
-  }, [reports.length]);
-
-  function toggleBadge(id: (typeof BADGES)[number]["id"]) {
+  function toggleBadge(id: BadgeId) {
     const wearing = profile.activeBadge === id;
     if (!setActiveBadge(wearing ? null : id)) return;
-    const badge = BADGES.find((item) => item.id === id);
+    const badge = badgeById(id);
     showToast(
       wearing || !badge
         ? t(COPY.badgeRemoved, locale)
@@ -276,9 +376,9 @@ export default function MeScreen() {
                 type="button"
                 onClick={() => setAvatarSheetOpen(true)}
                 aria-label={t(COPY.changeAvatar, locale)}
-                className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white text-[34px] shadow-[0_4px_12px_rgba(245,167,0,0.25)] transition active:scale-95"
+                className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(245,167,0,0.25)] transition active:scale-95"
               >
-                <span aria-hidden>{avatarEmoji(profile.selectedAvatar)}</span>
+                <BeeAvatar id={profile.selectedAvatar} size={60} />
                 <span
                   className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#2b2418] px-2 py-[2px] text-[10px] font-bold text-white"
                   aria-hidden
@@ -286,17 +386,20 @@ export default function MeScreen() {
                   {t(COPY.change, locale)}
                 </span>
               </button>
-              <div className="min-w-0">
-                <p className="text-[19px] font-extrabold tracking-tight text-ink">
-                  <AuthorLine
-                    station={primary ? t(primary.name, locale) : null}
-                    nickname={profile.nickname}
-                    avatar={profile.selectedAvatar}
-                    badge={profile.activeBadge}
-                    locale={locale}
-                  />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[19px] font-extrabold tracking-tight text-ink">
+                  {authorLabel(primary ? t(primary.name, locale) : null, profile.nickname)}
                 </p>
-                <p className="mt-0.5 text-[12px] text-ink-muted">{t(COPY.profileHint, locale)}</p>
+                {equipped ? (
+                  <p className="mt-1 flex">
+                    <span
+                      className={`min-w-0 truncate rounded-full px-2 py-0.5 text-[12px] font-extrabold ${TIER_PILL[equipped.tier]}`}
+                    >
+                      {equipped.emoji} {t(equipped.short, locale)}
+                    </span>
+                  </p>
+                ) : null}
+                <p className="mt-1 text-[12px] text-ink-muted">{t(COPY.profileHint, locale)}</p>
               </div>
             </div>
 
@@ -470,71 +573,58 @@ export default function MeScreen() {
             )}
           </Section>
 
-          <Section title={t(COPY.benefits, locale)}>
-            <ul className="mt-3 flex flex-col gap-2">
-              {BADGES.map((badge) => {
-                const current = Math.min(profile.reportCount, badge.goal);
-                const unlocked = profile.unlockedBadges.includes(badge.id);
-                const wearing = profile.activeBadge === badge.id;
-                const body = (
-                  <>
-                    <div className="flex items-center gap-2.5">
-                      <span
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[22px] ${
-                          unlocked ? "bg-white shadow-[0_2px_8px_rgba(245,167,0,0.25)]" : "bg-white/70 grayscale"
-                        }`}
-                        aria-hidden
-                      >
-                        {badge.emoji}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-extrabold leading-snug text-ink">{t(badge.title, locale)}</p>
-                        <p className="mt-0.5 text-[11px] font-semibold text-ink-muted">
-                          {t(COPY.badgeGoal, locale).replace("{n}", String(badge.goal))}
-                        </p>
-                      </div>
-                      {unlocked ? (
-                        <span
-                          className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-extrabold ${
-                            wearing ? "bg-[#2b2418] text-white" : "bg-white text-honey-strong ring-1 ring-[#f6e3a8]"
-                          }`}
-                        >
-                          {wearing ? `✓ ${t(COPY.equipped, locale)}` : t(COPY.equip, locale)}
-                        </span>
-                      ) : (
-                        <span className="shrink-0 text-[12px] font-extrabold text-ink-muted">
-                          {current}/{badge.goal}
-                        </span>
-                      )}
-                    </div>
-                    {unlocked ? null : (
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white" aria-hidden>
-                        <div className="h-full rounded-full bg-honey" style={{ width: `${(current / badge.goal) * 100}%` }} />
-                      </div>
-                    )}
-                  </>
-                );
-                return (
-                  <li key={badge.id}>
-                    {unlocked ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleBadge(badge.id)}
-                        aria-pressed={wearing}
-                        className={`block w-full rounded-2xl px-3.5 py-3 text-left transition active:scale-[0.99] ${
-                          wearing ? "bg-honey-soft ring-2 ring-honey" : "bg-honey-soft ring-1 ring-[#f6e3a8]"
-                        }`}
-                      >
-                        {body}
-                      </button>
-                    ) : (
-                      <div className="rounded-2xl bg-surface-muted px-3.5 py-3">{body}</div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="mt-2 text-[11px] text-neutral-400">{t(COPY.benefitsNote, locale)}</p>
+          <Section
+            title={t(COPY.benefits, locale)}
+            action={
+              <span className="shrink-0 rounded-full bg-honey-soft px-2.5 py-1 text-[12px] font-extrabold text-honey-strong">
+                {t(COPY.collected, locale)
+                  .replace("{n}", String(profile.unlockedBadges.length))
+                  .replace("{total}", String(BADGES.length))}
+              </span>
+            }
+          >
+            <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-ink-muted">
+              {t(COPY.wearingNow, locale)}
+              {equipped ? (
+                <span className={`rounded-full px-2 py-0.5 font-extrabold ${TIER_PILL[equipped.tier]}`}>
+                  {equipped.emoji} {t(equipped.short, locale)}
+                </span>
+              ) : (
+                <span className="text-neutral-400">{t(COPY.noBadge, locale)}</span>
+              )}
+            </p>
+            {BADGE_TRACKS.map((track) => {
+              const value = profile.stats[track.metric];
+              const unit = t(track.unit, locale);
+              return (
+                <div key={track.metric} className="mt-4">
+                  <div className="flex items-baseline justify-between gap-2 px-0.5">
+                    <h3 className="text-[14px] font-extrabold text-ink">
+                      <span aria-hidden>{track.emoji}</span> {t(track.title, locale)}
+                    </h3>
+                    <span className="shrink-0 text-[11px] font-bold text-ink-muted">
+                      {t(COPY.total, locale).replace("{n}", value.toLocaleString()).replace("{unit}", unit)}
+                    </span>
+                  </div>
+                  <ul className="mt-2 flex flex-col gap-1.5">
+                    {BADGES.filter((badge) => badge.metric === track.metric).map((badge) => (
+                      <BadgeRow
+                        key={badge.id}
+                        badge={badge}
+                        value={value}
+                        unit={unit}
+                        goalText={t(track.goal, locale).replace("{n}", String(badge.goal))}
+                        unlocked={profile.unlockedBadges.includes(badge.id)}
+                        wearing={profile.activeBadge === badge.id}
+                        locale={locale}
+                        onToggle={() => toggleBadge(badge.id)}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+            <p className="mt-3 text-[11px] leading-relaxed text-neutral-400">{t(COPY.benefitsNote, locale)}</p>
           </Section>
 
           <Section title={t(COPY.settings, locale)}>
@@ -587,9 +677,10 @@ export default function MeScreen() {
           <AvatarSheet
             locale={locale}
             current={profile.selectedAvatar}
+            unlockedBadges={profile.unlockedBadges}
             onClose={() => setAvatarSheetOpen(false)}
             onPick={(id) => {
-              setAvatar(id);
+              if (!setAvatar(id)) return;
               setAvatarSheetOpen(false);
               showToast(t(COPY.avatarSaved, locale));
             }}

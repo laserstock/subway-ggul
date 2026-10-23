@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import AuthorLine from "../_components/AuthorLine";
+import BeeAvatar from "../_components/BeeAvatar";
 import Sheet from "../_components/BottomSheet";
 import { t, type Locale, type Localized } from "../_lib/i18n";
 import { authorLabel, type AvatarId, type BadgeId } from "../_lib/profile";
@@ -64,7 +65,7 @@ export const CATEGORY_META: Record<SpotCategory, { emoji: string; label: Localiz
   free: { emoji: "💬", label: { ko: "자유", en: "Chat", zh: "闲聊", ja: "雑談" } },
 };
 
-export type Author = { station: string; nickname: string; avatar: AvatarId; badge: BadgeId | null };
+export type Author = { station: string | null; nickname: string; avatar: AvatarId; badge: BadgeId | null };
 
 function AuthorChip({ author, locale }: { author: Author; locale: Locale }) {
   return (
@@ -92,7 +93,7 @@ export function WriteSheet({
 }: {
   line: string;
   plaza: string;
-  author: Author;
+  author: Author & { station: string };
   locale: Locale;
   onClose: () => void;
   onPosted: () => void;
@@ -180,8 +181,15 @@ export function WriteSheet({
 function CommentRow({ comment, now, locale }: { comment: SpotComment; now: number | null; locale: Locale }) {
   return (
     <li className="rounded-2xl bg-surface-muted px-3.5 py-2.5">
-      <p className="flex items-center gap-1.5 text-[12px] font-bold text-ink">
-        {authorLabel(comment.station, comment.author)}
+      <div className="flex items-center gap-1.5 text-[12px] font-bold text-ink">
+        <AuthorLine
+          station={comment.station}
+          nickname={comment.author}
+          avatar={comment.avatar}
+          badge={comment.badge}
+          locale={locale}
+          avatarSize={16}
+        />
         {comment.mine ? (
           <span className="rounded-full bg-honey-soft px-1.5 py-[1px] text-[10px] text-honey-strong">
             {t(COPY.me, locale)}
@@ -192,7 +200,7 @@ function CommentRow({ comment, now, locale }: { comment: SpotComment; now: numbe
             {formatRelativeTime(comment.createdAt, now, locale)}
           </span>
         ) : null}
-      </p>
+      </div>
       <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{comment.text}</p>
     </li>
   );
@@ -200,15 +208,13 @@ function CommentRow({ comment, now, locale }: { comment: SpotComment; now: numbe
 
 export function CommentSheet({
   post,
-  station,
-  nickname,
+  author,
   now,
   locale,
   onClose,
 }: {
   post: SpotPost;
-  station: string | null;
-  nickname: string;
+  author: Author;
   now: number | null;
   locale: Locale;
   onClose: () => void;
@@ -219,7 +225,13 @@ export function CommentSheet({
   function send() {
     const text = draft.trim();
     if (!text) return;
-    addSpotComment(post.id, { station, author: nickname, text });
+    addSpotComment(post.id, {
+      station: author.station,
+      author: author.nickname,
+      avatar: author.avatar,
+      badge: author.badge,
+      text,
+    });
     setDraft("");
   }
 
@@ -261,8 +273,9 @@ export function CommentSheet({
           send();
         }}
       >
-        <span className="max-w-[38%] shrink-0 truncate rounded-full bg-honey-soft px-2 py-1 text-[11px] font-bold text-honey-strong">
-          {authorLabel(station, nickname)}
+        <span className="flex max-w-[38%] shrink-0 items-center gap-1 rounded-full bg-honey-soft py-1 pl-1 pr-2 text-[11px] font-bold text-honey-strong">
+          <BeeAvatar id={author.avatar} size={18} />
+          <span className="truncate">{authorLabel(author.station, author.nickname)}</span>
         </span>
         <input
           value={draft}

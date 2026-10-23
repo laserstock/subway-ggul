@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import ArrivalAlarmRunner from "./_components/ArrivalAlarmRunner";
+import BadgeCelebration from "./_components/BadgeCelebration";
 import PreloadResources from "./_components/PreloadResources";
 import ServerErrorToast from "./_components/ServerErrorToast";
 import SplashScreen from "./_components/SplashScreen";
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <ArrivalAlarmRunner />
         <ServerErrorToast />
+        <BadgeCelebration />
         <SplashScreen />
       </body>
     </html>

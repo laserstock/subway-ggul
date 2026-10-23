@@ -14,7 +14,7 @@ import {
   tempId,
   useUserId,
 } from "./supabase";
-import { isAvatarId, isBadgeId, type AvatarId, type BadgeId } from "./profile";
+import { isAvatarId, isBadgeId, recordActivity, syncActivity, type AvatarId, type BadgeId } from "./profile";
 
 export const SPOT_CATEGORIES = ["commute", "food", "lost", "free"] as const;
 export type SpotCategory = (typeof SPOT_CATEGORIES)[number];
@@ -37,6 +37,8 @@ export type SpotComment = {
   id: string;
   station: string | null;
   author: string;
+  avatar: AvatarId | null;
+  badge: BadgeId | null;
   text: string;
   createdAt: number;
   mine: boolean;
@@ -87,6 +89,8 @@ type CommentRow = {
   post_id: string;
   station: string | null;
   author: string;
+  avatar?: string | null;
+  badge?: string | null;
   text: string;
   author_id: string;
   created_at: string;
@@ -106,7 +110,7 @@ type State = {
 
 const BASE_POST_COLUMNS =
   "id, line, station, author, category, title, body, author_id, created_at, like_count, comment_count, view_count";
-const COMMENT_COLUMNS = "id, post_id, station, author, text, author_id, created_at";
+const BASE_COMMENT_COLUMNS = "id, post_id, station, author, text, author_id, created_at";
 /** Turned off when the database hasn't run the avatar/badge migration in supabase/schema.sql yet. */
 let profileColumns = true;
 
@@ -114,8 +118,12 @@ function postColumns() {
   return profileColumns ? `${BASE_POST_COLUMNS}, avatar, badge` : BASE_POST_COLUMNS;
 }
 
+function commentColumns() {
+  return profileColumns ? `${BASE_COMMENT_COLUMNS}, avatar, badge` : BASE_COMMENT_COLUMNS;
+}
+
 function withComments() {
-  return `${postColumns()}, spot_comments(${COMMENT_COLUMNS})`;
+  return `${postColumns()}, spot_comments(${commentColumns()})`;
 }
 
 /** Undefined column on select (42703) or on insert (PGRST204): fall back to the old columns. */
@@ -123,6 +131,20 @@ function missingProfileColumns(error: { code?: string } | null) {
   if (!profileColumns || !error || (error.code !== "42703" && error.code !== "PGRST204")) return false;
   profileColumns = false;
   return true;
+}
+
+/** Insert failed because of the avatar/badge columns: missing, or an older check constraint rejecting a new id. */
+function rejectedProfileColumns(error: { code?: string } | null) {
+  return missingProfileColumns(error) || error?.code === "23514";
+}
+
+/** like_count of the user's own posts, for the "likes received" badges. */
+const myLikeCounts = new Map<string, number>();
+
+function syncReceivedLikes() {
+  let total = 0;
+  for (const [id, likes] of myLikeCounts) total += likes - (state.liked.has(id) ? 1 : 0);
+  syncActivity({ likes: total });
 }
 const LINE_LIMIT = 100;
 const MY_LIMIT = 100;
@@ -226,8 +248,12 @@ function dropComment(id: string) {
 function onPostChange(payload: RealtimePostgresChangesPayload<PostRow>) {
   if (payload.eventType === "DELETE") {
     if (payload.old.id) dropPost(payload.old.id);
-  } else if (payload.eventType === "UPDATE" || state.lineIds[payload.new.line]) {
-    putPost(payload.new);
+  } else {
+    if (payload.eventType === "UPDATE" || state.lineIds[payload.new.line]) putPost(payload.new);
+    if (myLikeCounts.has(payload.new.id) && myLikeCounts.get(payload.new.id) !== payload.new.like_count) {
+      myLikeCounts.set(payload.new.id, payload.new.like_count);
+      syncReceivedLikes();
+    }
   }
 }
 
@@ -286,10 +312,10 @@ async function fetchOwn() {
   const uid = currentUserId();
   if (!supabase || !uid || ownFor === uid) return;
   ownFor = uid;
-  const [mine, scraps, likes, commentCount] = await Promise.all([
+  const [mine, scraps, likes, commentCount, likeCounts] = await Promise.all([
     supabase
       .from("spot_posts")
-      .select(withComments())
+      .select(withComments(), { count: "exact" })
       .eq("author_id", uid)
       .order("created_at", { ascending: false })
       .order("created_at", { ascending: false, referencedTable: "spot_comments" })
@@ -302,8 +328,9 @@ async function fetchOwn() {
       .limit(MY_LIMIT),
     supabase.from("spot_likes").select("post_id").order("created_at", { ascending: false }).limit(500),
     supabase.from("spot_comments").select("id", { count: "exact", head: true }).eq("author_id", uid),
+    supabase.from("spot_posts").select("id, like_count").eq("author_id", uid).limit(1000),
   ]);
-  if (mine.error || scraps.error || likes.error || commentCount.error) {
+  if (mine.error || scraps.error || likes.error || commentCount.error || likeCounts.error) {
     ownFor = null;
     if (missingProfileColumns(mine.error ?? scraps.error)) await fetchOwn();
     return;
@@ -322,6 +349,10 @@ async function fetchOwn() {
     liked: new Set([...state.liked, ...(likes.data as { post_id: string }[]).map((row) => row.post_id)]),
     myCommentCount: Math.max(state.myCommentCount, commentCount.count ?? 0),
   });
+  myLikeCounts.clear();
+  for (const row of likeCounts.data as { id: string; like_count: number }[]) myLikeCounts.set(row.id, row.like_count);
+  syncActivity({ posts: mine.count ?? myRows.length, comments: commentCount.count ?? 0 });
+  syncReceivedLikes();
 }
 
 function useOwnData() {
@@ -336,6 +367,8 @@ function toComment(row: CommentRow, uid: string | null): SpotComment {
     id: row.id,
     station: row.station,
     author: row.author,
+    avatar: isAvatarId(row.avatar) ? row.avatar : null,
+    badge: isBadgeId(row.badge) ? row.badge : null,
     text: row.text,
     createdAt: Date.parse(row.created_at),
     mine: uid !== null && row.author_id === uid,
@@ -453,13 +486,16 @@ export async function addSpotPost(post: {
   };
   const insert = (row: typeof basic) => supabase.from("spot_posts").insert(row).select(postColumns()).single();
   let { data, error } = await insert(profileColumns ? post : basic);
-  if (missingProfileColumns(error)) ({ data, error } = await insert(basic));
+  if (profileColumns && rejectedProfileColumns(error)) ({ data, error } = await insert(basic));
   dropPost(temp.id);
   if (error || !data) {
     notifyServerError(error);
     return false;
   }
-  putPost(data as unknown as PostRow);
+  const row = data as unknown as PostRow;
+  putPost(row);
+  myLikeCounts.set(row.id, row.like_count);
+  recordActivity("posts");
   return true;
 }
 
@@ -551,7 +587,10 @@ export function markSpotViewed(id: string) {
     });
 }
 
-export async function addSpotComment(postId: string, comment: { station: string | null; author: string; text: string }) {
+export async function addSpotComment(
+  postId: string,
+  comment: { station: string | null; author: string; avatar: AvatarId; badge: BadgeId | null; text: string },
+) {
   const supabase = getSupabase();
   if (postId.startsWith(TEMP_PREFIX)) return false;
   const uid = await ensureUser();
@@ -561,18 +600,19 @@ export async function addSpotComment(postId: string, comment: { station: string 
   }
   const temp: CommentRow = { ...comment, id: tempId(), post_id: postId, author_id: uid, created_at: new Date().toISOString() };
   putComment(temp);
-  const { data, error } = await supabase
-    .from("spot_comments")
-    .insert({ post_id: postId, ...comment })
-    .select(COMMENT_COLUMNS)
-    .single();
+  const basic = { post_id: postId, station: comment.station, author: comment.author, text: comment.text };
+  const full = { ...basic, avatar: comment.avatar, badge: comment.badge };
+  const insert = (row: typeof basic) => supabase.from("spot_comments").insert(row).select(commentColumns()).single();
+  let { data, error } = await insert(profileColumns ? full : basic);
+  if (profileColumns && rejectedProfileColumns(error)) ({ data, error } = await insert(basic));
   dropComment(temp.id);
   if (error || !data) {
     notifyServerError(error);
     return false;
   }
-  putComment(data as CommentRow);
+  putComment(data as unknown as CommentRow);
   setState({ myCommentCount: state.myCommentCount + 1 });
+  recordActivity("comments");
   return true;
 }
 
