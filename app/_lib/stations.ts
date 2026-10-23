@@ -1121,6 +1121,22 @@ export function stationKey(station: StationOption) {
   return name.endsWith("역") ? name : `${name}역`;
 }
 
+/** Old names still used by Seoul Metro's open data, and the 이수/총신대입구 transfer pair. */
+const STATION_ALIASES: Record<string, string[]> = {
+  이수역: ["총신대입구역"],
+  총신대입구역: ["이수역"],
+  자양역: ["뚝섬유원지역"],
+  뚝섬유원지역: ["자양역"],
+  불암산역: ["당고개역"],
+  당고개역: ["불암산역"],
+};
+
+/** `stationKey` plus the names the same station goes by in Seoul Metro's data sets. */
+export function stationKeys(station: StationOption) {
+  const key = stationKey(station);
+  return [key, ...(STATION_ALIASES[key] ?? [])];
+}
+
 /** Shared server key: same station, same feed, whether it came from the curated list, the index or Kakao. */
 export function stationFeedKey(station: StationOption) {
   const line = station.key.match(/@(.+)$/)?.[1];

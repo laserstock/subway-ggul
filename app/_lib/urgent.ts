@@ -4,7 +4,7 @@ import { loadKakaoMaps } from "../kakao-sdk";
 import { searchNearby, type NearbyPlace } from "../kakao-places";
 import { stationKey, stepFreeMaps } from "./stepFree";
 import { STATION_ADDRESSES, STATION_TOILETS, type StationToilet } from "./stationToilets";
-import { formatDistance, type Localized, type StationOption } from "./stations";
+import { formatDistance, stationKeys, type Localized, type StationOption } from "./stations";
 import { lineLabel, sameLine } from "./subwayLine";
 
 export type UrgentKind = "restroom" | "pharmacy" | "clinic";
@@ -47,16 +47,6 @@ const CLINIC_EXCLUDE =
 const CLINIC_PRIMARY = /내과|가정의학|이비인후과|소아청소년과|소아과|응급|종합병원|대학병원/;
 const CLINIC_OTHER = /의원|병원|외과|산부인과|여성/;
 
-/** Old names still used by Seoul Metro's toilet data, and the 이수/총신대입구 transfer pair. */
-const STATION_ALIASES: Record<string, string[]> = {
-  이수역: ["총신대입구역"],
-  총신대입구역: ["이수역"],
-  자양역: ["뚝섬유원지역"],
-  뚝섬유원지역: ["자양역"],
-  불암산역: ["당고개역"],
-  당고개역: ["불암산역"],
-};
-
 const TAP_IN: Localized = { ko: "카드 안 찍고 바로 이용", en: "No need to tap out" };
 const TAP_OUT: Localized = { ko: "카드 찍고 나가야 해요", en: "Tap out at the gate first" };
 
@@ -77,11 +67,6 @@ function joinParts(parts: (Localized | null)[]): Localized {
     ko: present.map((part) => part.ko).join(" · "),
     en: present.map((part) => part.en).join(" · "),
   };
-}
-
-function stationKeys(station: StationOption) {
-  const key = stationKey(station);
-  return [key, ...(STATION_ALIASES[key] ?? [])];
 }
 
 /** "B3" → -3, "2F" → 2. */

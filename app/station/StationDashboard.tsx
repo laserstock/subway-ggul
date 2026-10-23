@@ -48,12 +48,6 @@ const COPY = {
     ja: "まだ情報がありません。最初の情報を投稿しましょう！",
   },
   tipCta: { ko: "나도 꿀팁 제보하기", en: "Share a tip", zh: "我也来分享", ja: "情報を投稿する" },
-  comingSoon: {
-    ko: "곧 열려요! 조금만 기다려 주세요",
-    en: "Coming soon!",
-    zh: "即将开放！敬请期待",
-    ja: "まもなく公開！少々お待ちください",
-  },
   reportDone: {
     ko: "제보가 등록됐어요. 고마워요!",
     en: "Report posted. Thank you!",
@@ -71,7 +65,7 @@ type Tile = {
   id: ActionKind;
   title: Localized;
   sub: Localized;
-  href?: "/urgent" | "/shops" | "/transfer";
+  href: "/urgent" | "/shops" | "/transfer" | "/luggage";
 };
 
 const TILES: Tile[] = [
@@ -116,7 +110,13 @@ const TILES: Tile[] = [
   {
     id: "luggage",
     title: { ko: "짐보관 & 외국인", en: "Lockers & Travelers", zh: "行李寄存 & 外国游客", ja: "荷物預け & 旅行者" },
-    sub: { ko: "T-Locker · 환전", en: "T-Locker · Exchange", zh: "T-Locker · 换汇", ja: "T-Locker · 両替" },
+    sub: {
+      ko: "또타라커 · 러기지 · 스토리지",
+      en: "T-Locker · T-Luggage · Storage",
+      zh: "T-Locker · T-Luggage · 仓储",
+      ja: "T-Locker · T-Luggage · ストレージ",
+    },
+    href: "/luggage",
   },
 ];
 
@@ -237,8 +237,7 @@ export default function StationDashboard({ station }: { station: StationOption |
                     kind={tile.id}
                     title={t(tile.title, locale)}
                     sub={t(tile.sub, locale)}
-                    href={tile.href ? `${tile.href}?${stationParams(station)}` : undefined}
-                    onClick={tile.href ? undefined : () => showToast(t(COPY.comingSoon, locale))}
+                    href={`${tile.href}?${stationParams(station)}`}
                   >
                     {tile.id === "urgent" && urgentLines.length > 0 ? (
                       <span className="mt-1.5 flex flex-col gap-0.5 text-[11px] font-semibold text-neutral-700">

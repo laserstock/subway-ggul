@@ -27,6 +27,7 @@ import {
   useSelectedStation,
 } from "../_lib/selectedStation";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
+import { stationDesk, stationLockers } from "../_lib/luggage";
 import {
   distanceMeters,
   formatDistance,
@@ -59,14 +60,13 @@ const COPY = {
     ja: "現在地を確認できません",
   },
   retry: { ko: "다시 시도", en: "Retry", zh: "重试", ja: "再試行" },
-  restroomInside: { ko: "개찰구 안 화장실", en: "Restroom inside gate", zh: "闸机内卫生间", ja: "改札内トイレ" },
-  normal: { ko: "정상", en: "OK", zh: "正常", ja: "正常" },
-  lockerFree: {
-    ko: "T-Locker 빈자리 있음",
-    en: "T-Locker available",
-    zh: "T-Locker 有空位",
-    ja: "T-Locker 空きあり",
+  lockerCount: {
+    ko: "🔐 또타라커 {n}곳",
+    en: "🔐 {n} T-Locker banks",
+    zh: "🔐 T-Locker {n}处",
+    ja: "🔐 T-Locker {n}か所",
   },
+  deskHere: { ko: "또타러기지 있음", en: "T-Luggage desk", zh: "有T-Luggage", ja: "T-Luggageあり" },
   facilityPending: {
     ko: "실시간 시설 정보 준비 중 · 첫 제보를 남겨 주세요",
     en: "Live facility info coming soon · Be the first to report",
@@ -92,12 +92,6 @@ const COPY = {
     ja: "降車前に役立つ緊急ルートお助け",
   },
   reportCta: { ko: "나도 1초 제보하기", en: "Report in 1 second", zh: "1秒快速上报", ja: "1秒で投稿する" },
-  comingSoon: {
-    ko: "곧 열려요! 조금만 기다려 주세요",
-    en: "Coming soon!",
-    zh: "即将开放！敬请期待",
-    ja: "まもなく公開！少々お待ちください",
-  },
   reportDone: {
     ko: "제보가 등록됐어요. 고마워요!",
     en: "Report posted. Thank you!",
@@ -126,7 +120,7 @@ type MainAction = {
   title: Localized;
   detail?: Localized;
   sub: Localized;
-  href?: "/urgent" | "/shops" | "/transfer";
+  href: "/urgent" | "/shops" | "/transfer" | "/luggage";
 };
 
 const MAIN_ACTIONS: MainAction[] = [
@@ -178,11 +172,12 @@ const MAIN_ACTIONS: MainAction[] = [
     kind: "luggage",
     title: { ko: "짐보관 & 외국인", en: "Lockers & Travelers", zh: "行李寄存 & 外国游客", ja: "荷物預け & 旅行者" },
     sub: {
-      ko: "T-Locker·환전·KTX",
-      en: "T-Locker·Exchange·KTX",
-      zh: "T-Locker·换汇·KTX",
-      ja: "T-Locker·両替·KTX",
+      ko: "또타라커·러기지·스토리지",
+      en: "T-Locker·T-Luggage·Storage",
+      zh: "T-Locker·T-Luggage·仓储",
+      ja: "T-Locker·T-Luggage·ストレージ",
     },
+    href: "/luggage",
   },
 ];
 
@@ -327,18 +322,21 @@ export default function HomeScreen() {
         <LineBadges station={station} locale={locale} size="md" className="ml-1.5" />
       </>
     );
-    detail = station.curated ? (
-      <>
-        {t(COPY.restroomInside, locale)}{" "}
-        <span className="rounded-full bg-[#22c55e] px-1.5 py-[1px] text-[10px] font-bold text-white">
-          {t(COPY.normal, locale)}
-        </span>
-        <span className="mx-1 text-neutral-300">·</span>
-        {t(COPY.lockerFree, locale)}
-      </>
-    ) : (
-      t(COPY.facilityPending, locale)
-    );
+    const lockers = stationLockers(station);
+    detail =
+      lockers.length > 0 ? (
+        <>
+          {t(COPY.lockerCount, locale).replace("{n}", String(lockers.length))}
+          {stationDesk(station) ? (
+            <>
+              <span className="mx-1 text-neutral-300">·</span>
+              {t(COPY.deskHere, locale)}
+            </>
+          ) : null}
+        </>
+      ) : (
+        t(COPY.facilityPending, locale)
+      );
   } else if (tracker.issue) {
     headline = (
       <>
@@ -496,8 +494,7 @@ export default function HomeScreen() {
                 title={t(action.title, locale)}
                 detail={action.detail ? t(action.detail, locale) : undefined}
                 sub={t(action.sub, locale)}
-                href={action.href ? actionHref(action.href) : undefined}
-                onClick={action.href ? undefined : () => showToast(t(COPY.comingSoon, locale))}
+                href={actionHref(action.href)}
               />
             ))}
           </div>
