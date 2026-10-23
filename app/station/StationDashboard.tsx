@@ -109,7 +109,7 @@ const TILES: Tile[] = [
   },
   {
     id: "luggage",
-    title: { ko: "짐보관 & 외국인", en: "Lockers & Travelers", zh: "行李寄存 & 外国游客", ja: "荷物預け & 旅行者" },
+    title: { ko: "짐보관", en: "Luggage", zh: "行李寄存", ja: "荷物預け" },
     sub: {
       ko: "또타라커 · 러기지 · 스토리지",
       en: "T-Locker · T-Luggage · Storage",

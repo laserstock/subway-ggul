@@ -75,10 +75,10 @@ const COPY = {
   deleted: { ko: "삭제했어요", en: "Deleted", zh: "已删除", ja: "削除しました" },
   benefits: { ko: "🎁 혜택함", en: "🎁 Rewards", zh: "🎁 福利箱", ja: "🎁 特典ボックス" },
   benefitsNote: {
-    ko: "베타: 조건을 채운 혜택은 정식 오픈 때 지급돼요",
-    en: "Beta: rewards you unlock are paid out at launch",
-    zh: "测试版：达成条件的福利将在正式上线时发放",
-    ja: "ベータ：達成した特典は正式オープン時に付与されます",
+    ko: "베타: 지금은 활동 배지만 있어요. 새 혜택이 생기면 알려 드릴게요",
+    en: "Beta: activity badges only for now. We'll let you know when rewards arrive",
+    zh: "测试版：目前只有活动徽章，有新福利时会通知您",
+    ja: "ベータ：今は活動バッジのみです。新しい特典ができたらお知らせします",
   },
   unlocked: { ko: "달성!", en: "Unlocked!", zh: "已达成！", ja: "達成！" },
   settings: { ko: "⚙️ 앱 설정", en: "⚙️ Settings", zh: "⚙️ 应用设置", ja: "⚙️ アプリ設定" },
@@ -104,18 +104,6 @@ const BENEFITS: Benefit[] = [
     title: { ko: "첫 제보 달성 배지", en: "First report badge", zh: "首次上报徽章", ja: "初報告バッジ" },
     goal: 1,
     metric: "reports",
-  },
-  {
-    id: "spot-coffee",
-    emoji: "☕",
-    title: {
-      ko: "꿀스팟 글 5개 작성 시 편의점 커피 쿠폰",
-      en: "Write 5 posts: convenience-store coffee",
-      zh: "发布5篇帖子：便利店咖啡券",
-      ja: "5件投稿でコンビニコーヒー券",
-    },
-    goal: 5,
-    metric: "posts",
   },
   {
     id: "reporter-10",
