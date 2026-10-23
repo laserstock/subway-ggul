@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
+import ArrivalAlarmRunner from "./_components/ArrivalAlarmRunner";
 import PreloadResources from "./_components/PreloadResources";
 import ServerErrorToast from "./_components/ServerErrorToast";
 import SplashScreen from "./_components/SplashScreen";
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className={`${notoSansKr.className} min-h-full flex flex-col`}>
         <PreloadResources />
         {children}
+        <ArrivalAlarmRunner />
         <ServerErrorToast />
         <SplashScreen />
       </body>

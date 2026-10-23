@@ -12,6 +12,7 @@ import SideDrawer from "./SideDrawer";
 export default function AppHeader({
   backHref,
   title,
+  titlePrefix,
   subtitle,
   icon = <TrainLogo />,
   action,
@@ -19,6 +20,8 @@ export default function AppHeader({
 }: {
   backHref?: string;
   title?: Localized;
+  /** Shown before the title text, e.g. line badges. */
+  titlePrefix?: ReactNode;
   subtitle?: ReactNode;
   icon?: ReactNode;
   /** Extra button shown left of the language switch. */
@@ -80,9 +83,18 @@ export default function AppHeader({
           <h1
             className={`truncate tracking-tight ${
               title ? "font-bold text-ink" : "font-extrabold text-honey-strong"
-            } ${subtitle ? "text-[16px] leading-tight" : title ? "text-[18px]" : "text-[21px]"}`}
+            } ${subtitle ? "text-[16px] leading-tight" : title ? "text-[18px]" : "text-[21px]"} ${
+              titlePrefix ? "flex items-center gap-1.5" : ""
+            }`}
           >
-            {title ? t(title, locale) : m.app.name}
+            {titlePrefix}
+            {titlePrefix ? (
+              <span className="truncate">{title ? t(title, locale) : m.app.name}</span>
+            ) : title ? (
+              t(title, locale)
+            ) : (
+              m.app.name
+            )}
           </h1>
           {subtitle ? (
             <div className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-[12px] font-semibold leading-tight text-neutral-500">

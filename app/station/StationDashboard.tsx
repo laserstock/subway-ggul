@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
-import KakaoMap from "../KakaoMap";
 import ActionTile, { type ActionKind } from "../_components/ActionTile";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
@@ -18,11 +17,13 @@ import { setDestinationStation } from "../_lib/selectedStation";
 import { STATION_TIPS } from "../_lib/stationTips";
 import { stationParams, t, type Localized, type StationOption } from "../_lib/stations";
 import { bestSpot, loadUrgent, type StationUrgent } from "../_lib/urgent";
-import { DASHBOARD_TITLE } from "./header";
+import AlarmBanner from "./AlarmBanner";
+import ExitGuide from "./ExitGuide";
+import { DASHBOARD_TITLE, stationTitle } from "./header";
 
 const COPY = {
-  selected: { ko: "선택한 역", en: "Selected station", zh: "已选车站", ja: "選択した駅" },
   searchOther: { ko: "다른 역 검색", en: "Search another", zh: "搜索其他车站", ja: "他の駅を検索" },
+  otherShort: { ko: "다른 역", en: "Other", zh: "其他", ja: "他の駅" },
   notFound: {
     ko: "역 정보를 찾지 못했어요. 다시 검색해 주세요",
     en: "Couldn't find that station. Please search again",
@@ -30,14 +31,6 @@ const COPY = {
     ja: "駅情報が見つかりません。もう一度検索してください",
   },
   tilesTitle: { ko: "3초 요약", en: "3-second summary", zh: "3秒速览", ja: "3秒サマリー" },
-  mapTitle: { ko: "지도 · 출구 정보", en: "Map & exits", zh: "地图 · 出口信息", ja: "地図 · 出口情報" },
-  openMap: { ko: "카카오맵에서 크게 보기", en: "Open in Kakao Map", zh: "在Kakao地图中查看", ja: "カカオマップで開く" },
-  exitsPending: {
-    ko: "출구별 정보는 준비 중이에요 · 카카오맵에서 확인해 주세요",
-    en: "Exit details coming soon · Check Kakao Map",
-    zh: "出口信息准备中 · 请在Kakao地图中查看",
-    ja: "出口情報は準備中です · カカオマップでご確認ください",
-  },
   tipTitle: { ko: "1초 꿀팁", en: "1-second tip", zh: "1秒小贴士", ja: "1秒お役立ち情報" },
   tipSample: { ko: "베타 샘플", en: "Beta sample", zh: "测试样例", ja: "ベータ版サンプル" },
   tipLive: { ko: "실시간 제보", en: "Live report", zh: "实时上报", ja: "リアルタイム投稿" },
@@ -140,12 +133,6 @@ function urgentSummary(urgent: StationUrgent): Localized[] {
   return lines;
 }
 
-function exitLabels(station: StationOption): Localized[] {
-  const exits = station.curated?.exits ?? [];
-  const unique = new Map(exits.map((exit) => [exit.label.ko, exit.label]));
-  return [...unique.values()].sort((a, b) => (parseInt(a.ko, 10) || 0) - (parseInt(b.ko, 10) || 0));
-}
-
 export default function StationDashboard({ station }: { station: StationOption | null }) {
   const locale = useLocale();
   const router = useRouter();
@@ -183,49 +170,36 @@ export default function StationDashboard({ station }: { station: StationOption |
     router.push(`/station?${stationParams(next)}`);
   }
 
-  const name = station ? t(station.name, locale) : "";
-  const lines = station ? t(station.lines, locale) : "";
   const curatedTip = station ? STATION_TIPS[station.name.ko] : undefined;
   const liveTip = reports[0];
-  const exits = station ? exitLabels(station) : [];
   const urgentLines = urgent ? urgentSummary(urgent) : [];
-  const mapUrl = station
-    ? `https://map.kakao.com/link/map/${encodeURIComponent(station.name.ko)},${station.center.lat},${station.center.lng}`
-    : "";
 
   return (
     <div className="flex min-h-dvh justify-center bg-frame">
       <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
-        <AppHeader backHref="/" title={DASHBOARD_TITLE} />
+        <AppHeader
+          backHref="/"
+          title={station ? stationTitle(station) : DASHBOARD_TITLE}
+          titlePrefix={station ? <LineBadges station={station} locale={locale} size="md" /> : null}
+          action={
+            station ? (
+              <button
+                type="button"
+                onClick={openSearch}
+                aria-label={t(COPY.searchOther, locale)}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] font-bold text-neutral-700 transition active:scale-95"
+              >
+                <span aria-hidden>🔍</span>
+                {t(COPY.otherShort, locale)}
+              </button>
+            ) : null
+          }
+        />
 
         <main className="no-scrollbar flex-1 overflow-y-auto px-4 pb-6">
           {station ? (
             <>
-              <section
-                className="relative overflow-hidden rounded-3xl px-5 pb-4 pt-4 text-white shadow-[0_8px_24px_rgba(15,23,42,0.16)]"
-                style={{ background: `linear-gradient(135deg, ${station.color}, #1e3a8a)` }}
-              >
-                <p className="text-[12px] font-semibold text-white/80">📍 {t(COPY.selected, locale)}</p>
-                <h1 className="mt-1 flex flex-wrap items-center gap-2 text-[24px] font-extrabold leading-tight tracking-tight">
-                  {name}
-                  <LineBadges
-                    station={station}
-                    locale={locale}
-                    size="md"
-                    className="gap-1 [&>span]:ring-2 [&>span]:ring-white/90"
-                  />
-                </h1>
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-[12px] font-semibold text-white/85">{lines}</span>
-                  <button
-                    type="button"
-                    onClick={openSearch}
-                    className="flex items-center gap-1 rounded-full bg-white/20 px-3 py-1.5 text-[12px] font-bold backdrop-blur transition active:scale-95"
-                  >
-                    🔍 {t(COPY.searchOther, locale)}
-                  </button>
-                </div>
-              </section>
+              <AlarmBanner station={station} locale={locale} />
 
               <h2 className="mb-2.5 mt-5 text-[16px] font-extrabold tracking-tight text-neutral-900">
                 ⏱️ {t(COPY.tilesTitle, locale)}
@@ -252,66 +226,9 @@ export default function StationDashboard({ station }: { station: StationOption |
                 ))}
               </div>
 
-              <section className="mt-4 overflow-hidden rounded-2xl border border-neutral-200/70 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
-                <h2 className="px-4 pb-2.5 pt-3.5 text-[14px] font-extrabold text-neutral-900">
-                  🗺️ {t(COPY.mapTitle, locale)}
-                </h2>
-                <div className="relative h-[170px]">
-                  <KakaoMap
-                    center={station.center}
-                    level={4}
-                    overlays={[
-                      {
-                        key: "station",
-                        position: station.center,
-                        yAnchor: 1.2,
-                        content: (
-                          <span
-                            className="flex items-center gap-1 whitespace-nowrap rounded-full border-2 bg-white py-0.5 pl-0.5 pr-2.5 text-[12px] font-bold text-neutral-900 shadow-md"
-                            style={{ borderColor: station.color }}
-                          >
-                            <LineBadges station={station} locale={locale} size="sm" />
-                            {name}
-                          </span>
-                        ),
-                      },
-                    ]}
-                  />
-                  <a
-                    href={mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={t(COPY.openMap, locale)}
-                    className="absolute inset-0 z-10"
-                  />
-                </div>
-                <div className="px-4 pb-3.5 pt-3">
-                  {exits.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {exits.map((exit) => (
-                        <span
-                          key={exit.ko}
-                          className="rounded-lg bg-[#fff6cc] px-2 py-1 text-[12px] font-bold text-[#7a5b00]"
-                        >
-                          🚪 {t(exit, locale)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[12px] text-neutral-500">{t(COPY.exitsPending, locale)}</p>
-                  )}
-                  <a
-                    href={mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-bold text-[#2563eb]"
-                  >
-                    {t(COPY.openMap, locale)} ↗
-                  </a>
-                </div>
-              </section>
+              <ExitGuide station={station} locale={locale} />
 
-              <section className="mt-3 rounded-2xl bg-gradient-to-br from-[#fff7e6] to-[#fffdf8] px-4 py-3.5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
+              <section className="mt-4 rounded-2xl bg-gradient-to-br from-[#fff7e6] to-[#fffdf8] px-4 py-3.5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
                 <div className="flex items-center justify-between">
                   <h2 className="text-[14px] font-extrabold text-neutral-900">🍯 {t(COPY.tipTitle, locale)}</h2>
                   {curatedTip || liveTip ? (

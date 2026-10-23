@@ -173,6 +173,44 @@ export function findLineStations(line: string, center: LatLng): Promise<KakaoSta
   });
 }
 
+export type StationExit = { label: string; position: LatLng };
+
+const EXIT_NUMBER = /(\d+(?:-\d+)?)\s*번\s*출구/;
+const MAX_EXIT_PAGES = 3;
+
+function exitOrder(label: string) {
+  const [main, sub = "0"] = label.split("-");
+  return Number(main) * 100 + Number(sub);
+}
+
+/** Exit POIs Kakao lists for a station ("강남역 11번출구"), one per exit number, in number order. */
+export function findStationExits(stationName: string, center: LatLng): Promise<StationExit[]> {
+  const prefix = stationName.endsWith("역") ? stationName : `${stationName}역`;
+  return new Promise((resolve, reject) => {
+    const found = new Map<string, StationExit>();
+    places().keywordSearch(
+      `${prefix} 출구`,
+      (result, status, pagination) => {
+        if (status === kakao.maps.services.Status.ERROR) {
+          reject(new Error("Kakao exit search failed"));
+          return;
+        }
+        for (const item of status === kakao.maps.services.Status.OK ? result : []) {
+          if (!item.place_name.replace(/\s+/g, "").startsWith(prefix)) continue;
+          const label = item.place_name.match(EXIT_NUMBER)?.[1];
+          if (label && !found.has(label)) found.set(label, { label, position: toLatLng(item) });
+        }
+        if (status === kakao.maps.services.Status.OK && pagination.hasNextPage && pagination.current < MAX_EXIT_PAGES) {
+          pagination.nextPage();
+          return;
+        }
+        resolve([...found.values()].sort((a, b) => exitOrder(a.label) - exitOrder(b.label)));
+      },
+      { location: new kakao.maps.LatLng(center.lat, center.lng), radius: 800, size: 15 },
+    );
+  });
+}
+
 export function searchNearby(query: NearbyQuery, center: LatLng): Promise<NearbyPlace[]> {
   return new Promise((resolve, reject) => {
     const callback = (
