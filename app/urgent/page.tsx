@@ -13,7 +13,11 @@ type SearchParams = PageProps<"/urgent">["searchParams"];
 
 async function UrgentContent({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  return <UrgentScreen initialStation={stationFromParams(params)} follow={params.near === "1"} />;
+  const station = stationFromParams(params);
+  const follow = params.near === "1";
+  return (
+    <UrgentScreen key={`${station?.key ?? "none"}:${follow ? "near" : "pin"}`} initialStation={station} follow={follow} />
+  );
 }
 
 function UrgentShell() {

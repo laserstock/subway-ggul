@@ -13,7 +13,11 @@ type SearchParams = PageProps<"/luggage">["searchParams"];
 
 async function LuggageContent({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  return <LuggageScreen initialStation={stationFromParams(params)} follow={params.near === "1"} />;
+  const station = stationFromParams(params);
+  const follow = params.near === "1";
+  return (
+    <LuggageScreen key={`${station?.key ?? "none"}:${follow ? "near" : "pin"}`} initialStation={station} follow={follow} />
+  );
 }
 
 function LuggageShell() {

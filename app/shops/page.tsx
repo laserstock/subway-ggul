@@ -15,11 +15,14 @@ type SearchParams = PageProps<"/shops">["searchParams"];
 async function ShopsContent({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const category = typeof params.category === "string" ? params.category : null;
+  const station = stationFromParams(params);
+  const follow = params.near === "1";
   return (
     <ShopsScreen
-      initialStation={stationFromParams(params)}
+      key={`${station?.key ?? "none"}:${follow ? "near" : "pin"}:${category ?? ""}`}
+      initialStation={station}
       initialCategory={CATEGORY_IDS.find((id) => id === category) ?? null}
-      follow={params.near === "1"}
+      follow={follow}
     />
   );
 }
