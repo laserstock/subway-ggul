@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ActionTile, { type ActionKind } from "../_components/ActionTile";
 import AppHeader from "../_components/AppHeader";
-import BottomNav from "../_components/BottomNav";
+import BottomNav, { HoneyPotIcon } from "../_components/BottomNav";
 import LineBadges from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import SearchOverlay from "../_components/SearchOverlay";
@@ -19,7 +19,7 @@ import { stationParams, t, type Localized, type StationOption } from "../_lib/st
 import { bestSpot, loadUrgent, type StationUrgent } from "../_lib/urgent";
 import AlarmBanner from "./AlarmBanner";
 import ExitGuide from "./ExitGuide";
-import { DASHBOARD_TITLE, STATION_TITLE_SUFFIX, tilesTitle } from "./header";
+import { DASHBOARD_TITLE, tilesTitle } from "./header";
 
 const COPY = {
   searchOther: { ko: "다른 역 검색", en: "Search another", zh: "搜索其他车站", ja: "他の駅を検索" },
@@ -178,7 +178,6 @@ export default function StationDashboard({ station }: { station: StationOption |
         <AppHeader
           backHref="/"
           title={station ? station.name : DASHBOARD_TITLE}
-          titleSuffix={station ? STATION_TITLE_SUFFIX : undefined}
           titlePrefix={station ? <LineBadges station={station} locale={locale} size="md" /> : null}
           action={
             station ? (
@@ -203,8 +202,9 @@ export default function StationDashboard({ station }: { station: StationOption |
             <>
               <AlarmBanner station={station} locale={locale} />
 
-              <h2 className="mb-2.5 mt-5 text-[16px] font-extrabold tracking-tight text-neutral-900">
-                🍯 {t(tilesTitle(station, TILES.length), locale)}
+              <h2 className="mb-2.5 mt-5 flex items-center gap-1.5 text-[16px] font-extrabold tracking-tight text-neutral-900">
+                <HoneyPotIcon size={22} />
+                {t(tilesTitle(station, TILES.length), locale)}
               </h2>
               <div className="grid grid-cols-2 gap-2.5">
                 {TILES.map((tile) => (

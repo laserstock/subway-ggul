@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { ElevatorIcon, RestroomIcon } from "../_components/icons";
 import { armArrivalAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { elevatorTip, floorLabel, restroomTip, type ElevatorTip } from "../_lib/arrivalTips";
 import type { StationToilet } from "../_lib/stationToilets";
@@ -55,6 +57,14 @@ function restroomBrief(toilet: StationToilet, locale: Locale) {
   return `${t(toilet.gate === "inside" ? COPY.inside : COPY.outside, locale)} ${floorLabel(toilet.floor, locale)}`;
 }
 
+function TipIcon({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex h-[22px] w-[22px] items-center justify-center rounded-md bg-[#f5b800] text-white shadow-[0_1px_2px_rgba(146,64,14,0.25)]">
+      {children}
+    </span>
+  );
+}
+
 export default function AlarmBanner({ station, locale }: { station: StationOption; locale: Locale }) {
   const alarm = useArrivalAlarm();
   const on = alarm !== null && alarm.station.key === station.key;
@@ -106,15 +116,25 @@ export default function AlarmBanner({ station, locale }: { station: StationOptio
       {elevator || toilet ? (
         <dl className="mt-2.5 flex flex-col gap-1 border-t border-[#f5d76e]/70 pt-2 text-[12.5px]">
           {elevator ? (
-            <div className="flex gap-2">
-              <dt className="shrink-0 font-bold text-[#92400e]">🛗 {t(COPY.elevator, locale)}</dt>
-              <dd className="min-w-0 font-extrabold text-neutral-900">{elevatorBrief(elevator, locale)}</dd>
+            <div className="flex items-start gap-2">
+              <dt className="flex shrink-0 items-center gap-1.5 font-bold text-[#92400e]">
+                <TipIcon>
+                  <ElevatorIcon size={14} />
+                </TipIcon>
+                {t(COPY.elevator, locale)}
+              </dt>
+              <dd className="min-w-0 pt-[2px] font-extrabold text-neutral-900">{elevatorBrief(elevator, locale)}</dd>
             </div>
           ) : null}
           {toilet ? (
-            <div className="flex gap-2">
-              <dt className="shrink-0 font-bold text-[#92400e]">🚻 {t(COPY.restroom, locale)}</dt>
-              <dd className="min-w-0 font-extrabold text-neutral-900">{restroomBrief(toilet, locale)}</dd>
+            <div className="flex items-start gap-2">
+              <dt className="flex shrink-0 items-center gap-1.5 font-bold text-[#92400e]">
+                <TipIcon>
+                  <RestroomIcon size={14} />
+                </TipIcon>
+                {t(COPY.restroom, locale)}
+              </dt>
+              <dd className="min-w-0 pt-[2px] font-extrabold text-neutral-900">{restroomBrief(toilet, locale)}</dd>
             </div>
           ) : null}
         </dl>

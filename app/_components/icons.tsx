@@ -78,6 +78,33 @@ export function PinIcon({ size = 20, className = "" }: { size?: number; classNam
   );
 }
 
+export function ElevatorIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <rect x="3.5" y="3" width="17" height="18" rx="3.5" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M9 15.5V8.5M6.6 10.9 9 8.5l2.4 2.4M15 8.5v7M12.6 13.1 15 15.5l2.4-2.4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function RestroomIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <circle cx="7.5" cy="4.6" r="2" />
+      <path d="M5.6 8.2h3.8c.6 0 1.1.5 1.1 1.1V14H9.3v6.2H5.7V14H4.5V9.3c0-.6.5-1.1 1.1-1.1z" />
+      <circle cx="16.5" cy="4.6" r="2" />
+      <path d="M15.3 8.2h2.4l2.8 6.6h-2.1v5.4h-3.6v-5.4h-2.1z" />
+      <path d="M12 3.5v17" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.35" />
+    </svg>
+  );
+}
+
 export function StarIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>

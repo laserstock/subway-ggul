@@ -7,14 +7,6 @@ export const DASHBOARD_TITLE: Localized = {
   ja: "駅お役立ち情報",
 };
 
-/** Follows the station name in the header ("강남역 꿀정보") and never truncates. */
-export const STATION_TITLE_SUFFIX: Localized = {
-  ko: "꿀정보",
-  en: "tips",
-  zh: "攻略",
-  ja: "お役立ち情報",
-};
-
 /** "강남역 꿀정보 4가지" */
 export function tilesTitle(station: StationOption, count: number): Localized {
   return {
