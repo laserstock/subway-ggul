@@ -13,6 +13,7 @@ export default function AppHeader({
   backHref,
   title,
   titlePrefix,
+  titleSuffix,
   subtitle,
   icon = <TrainLogo />,
   action,
@@ -22,6 +23,8 @@ export default function AppHeader({
   title?: Localized;
   /** Shown before the title text, e.g. line badges. */
   titlePrefix?: ReactNode;
+  /** Kept whole after the title, which truncates first. */
+  titleSuffix?: Localized;
   subtitle?: ReactNode;
   icon?: ReactNode;
   /** Extra button shown left of the language switch. */
@@ -84,12 +87,15 @@ export default function AppHeader({
             className={`truncate tracking-tight ${
               title ? "font-bold text-ink" : "font-extrabold text-honey-strong"
             } ${subtitle ? "text-[16px] leading-tight" : title ? "text-[18px]" : "text-[21px]"} ${
-              titlePrefix ? "flex items-center gap-1.5" : ""
+              titlePrefix || titleSuffix ? "flex items-center gap-1.5" : ""
             }`}
           >
             {titlePrefix}
-            {titlePrefix ? (
-              <span className="truncate">{title ? t(title, locale) : m.app.name}</span>
+            {titlePrefix || titleSuffix ? (
+              <span className="flex min-w-0 items-baseline">
+                <span className="truncate">{title ? t(title, locale) : m.app.name}</span>
+                {titleSuffix ? <span className="ml-[0.3em] shrink-0">{t(titleSuffix, locale)}</span> : null}
+              </span>
             ) : title ? (
               t(title, locale)
             ) : (

@@ -53,7 +53,7 @@ export function restroomTip(station: StationOption, line: string | null): Statio
   return pool.find((toilet) => toilet.gate === "inside") ?? pool[0] ?? null;
 }
 
-function floorLabel(floor: string, locale: Locale) {
+export function floorLabel(floor: string, locale: Locale) {
   if (locale !== "ko") return floor;
   return /^\d+F$/.test(floor) ? `${floor.slice(0, -1)}층` : `${floor}층`;
 }

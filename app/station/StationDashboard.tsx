@@ -19,18 +19,16 @@ import { stationParams, t, type Localized, type StationOption } from "../_lib/st
 import { bestSpot, loadUrgent, type StationUrgent } from "../_lib/urgent";
 import AlarmBanner from "./AlarmBanner";
 import ExitGuide from "./ExitGuide";
-import { DASHBOARD_TITLE, stationTitle } from "./header";
+import { DASHBOARD_TITLE, STATION_TITLE_SUFFIX, tilesTitle } from "./header";
 
 const COPY = {
   searchOther: { ko: "다른 역 검색", en: "Search another", zh: "搜索其他车站", ja: "他の駅を検索" },
-  otherShort: { ko: "다른 역", en: "Other", zh: "其他", ja: "他の駅" },
   notFound: {
     ko: "역 정보를 찾지 못했어요. 다시 검색해 주세요",
     en: "Couldn't find that station. Please search again",
     zh: "未找到车站信息，请重新搜索",
     ja: "駅情報が見つかりません。もう一度検索してください",
   },
-  tilesTitle: { ko: "3초 요약", en: "3-second summary", zh: "3秒速览", ja: "3秒サマリー" },
   tipTitle: { ko: "1초 꿀팁", en: "1-second tip", zh: "1秒小贴士", ja: "1秒お役立ち情報" },
   tipSample: { ko: "베타 샘플", en: "Beta sample", zh: "测试样例", ja: "ベータ版サンプル" },
   tipLive: { ko: "실시간 제보", en: "Live report", zh: "实时上报", ja: "リアルタイム投稿" },
@@ -179,7 +177,8 @@ export default function StationDashboard({ station }: { station: StationOption |
       <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader
           backHref="/"
-          title={station ? stationTitle(station) : DASHBOARD_TITLE}
+          title={station ? station.name : DASHBOARD_TITLE}
+          titleSuffix={station ? STATION_TITLE_SUFFIX : undefined}
           titlePrefix={station ? <LineBadges station={station} locale={locale} size="md" /> : null}
           action={
             station ? (
@@ -187,10 +186,13 @@ export default function StationDashboard({ station }: { station: StationOption |
                 type="button"
                 onClick={openSearch}
                 aria-label={t(COPY.searchOther, locale)}
-                className="flex shrink-0 items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] font-bold text-neutral-700 transition active:scale-95"
+                title={t(COPY.searchOther, locale)}
+                className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition active:scale-95"
               >
-                <span aria-hidden>🔍</span>
-                {t(COPY.otherShort, locale)}
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="2.4" />
+                  <path d="M16 16l4.5 4.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+                </svg>
               </button>
             ) : null
           }
@@ -202,7 +204,7 @@ export default function StationDashboard({ station }: { station: StationOption |
               <AlarmBanner station={station} locale={locale} />
 
               <h2 className="mb-2.5 mt-5 text-[16px] font-extrabold tracking-tight text-neutral-900">
-                ⏱️ {t(COPY.tilesTitle, locale)}
+                🍯 {t(tilesTitle(station, TILES.length), locale)}
               </h2>
               <div className="grid grid-cols-2 gap-2.5">
                 {TILES.map((tile) => (

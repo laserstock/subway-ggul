@@ -9,7 +9,8 @@
     "lint": "eslint",
     "toilets:build": "node scripts/build-station-toilets.mjs",
     "stations:build": "node scripts/build-station-index.mjs",
-    "lockers:build": "node scripts/build-station-lockers.mjs"
+    "lockers:build": "node scripts/build-station-lockers.mjs",
+    "exits:build": "node scripts/build-station-exits.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
