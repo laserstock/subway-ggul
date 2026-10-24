@@ -12,7 +12,7 @@ const ja: Messages = {
   },
   nav: {
     home: "ホーム",
-    spot: "ハニースポット",
+    spot: "ハニートーク",
     station: "My 駅",
     me: "マイ",
   },

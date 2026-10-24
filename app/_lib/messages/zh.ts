@@ -12,7 +12,7 @@ const zh: Messages = {
   },
   nav: {
     home: "首页",
-    spot: "蜜点",
+    spot: "蜜聊",
     station: "My 车站",
     me: "我的",
   },

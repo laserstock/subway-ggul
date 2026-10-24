@@ -10,7 +10,7 @@ const ko = {
   },
   nav: {
     home: "홈",
-    spot: "꿀스팟",
+    spot: "꿀수다",
     station: "My 역",
     me: "마이",
   },

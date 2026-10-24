@@ -12,7 +12,7 @@ const en: Messages = {
   },
   nav: {
     home: "Home",
-    spot: "Honey Spot",
+    spot: "Honey Talk",
     station: "My Station",
     me: "Me",
   },
