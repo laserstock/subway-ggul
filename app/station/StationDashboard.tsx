@@ -19,6 +19,7 @@ import { stationParams, t, type Localized, type StationOption } from "../_lib/st
 import { bestSpot, loadUrgent, type StationUrgent } from "../_lib/urgent";
 import AlarmBanner from "./AlarmBanner";
 import ExitGuide from "./ExitGuide";
+import FacilitySearch from "./FacilitySearch";
 import { DASHBOARD_TITLE, tilesTitle } from "./header";
 
 const COPY = {
@@ -200,6 +201,8 @@ export default function StationDashboard({ station }: { station: StationOption |
         <main className="no-scrollbar flex-1 overflow-y-auto px-4 pb-6">
           {station ? (
             <>
+              <FacilitySearch station={station} urgent={urgent} locale={locale} />
+
               <AlarmBanner station={station} locale={locale} />
 
               <h2 className="mb-2.5 mt-5 flex items-center gap-1.5 text-[16px] font-extrabold tracking-tight text-neutral-900">

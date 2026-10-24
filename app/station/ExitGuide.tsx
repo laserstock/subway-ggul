@@ -12,10 +12,9 @@ import type { LatLng } from "../KakaoMap";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
 import { loadKakaoMaps } from "../kakao-sdk";
 import { ExitIcon, PinIcon } from "../_components/icons";
+import { loadExits, mapPoint, walkMinutes, walkUrl, type StationExit } from "../_lib/exits";
 import { HUB_TAGS, hubForExit, hubGuide, type HubRoute } from "../_lib/hubGuides";
-import { stationKeys, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
-
-type StationExit = { label: string; position: LatLng };
+import { t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 
 type ShopKind = {
   id: string;
@@ -65,24 +64,6 @@ const SHOP_KINDS: ShopKind[] = [
     query: { kind: "category", code: "CS2", radius: 300 },
   },
 ];
-
-/** Walking speed used for the "N min" estimates. */
-const METERS_PER_MINUTE = 67;
-/** Kakao distances are straight lines; streets, crossings and building entrances add roughly this much. */
-const DETOUR_FACTOR = 1.3;
-
-function walkMinutes(meters: number) {
-  return Math.max(1, Math.ceil((meters * DETOUR_FACTOR) / METERS_PER_MINUTE));
-}
-
-function point(name: string, position: LatLng) {
-  return `${encodeURIComponent(name.replace(/[,/]/g, " "))},${position.lat},${position.lng}`;
-}
-
-/** Kakao Map walking directions from the exit to the shop. */
-function walkUrl(from: { name: string; position: LatLng }, place: NearbyPlace) {
-  return `https://map.kakao.com/link/by/walk/${point(from.name, from.position)}/${point(place.name, place.position)}`;
-}
 
 const COPY = {
   title: { ko: "출구·길찾기", en: "Exits & directions", zh: "出口 · 导航", ja: "出口 · 道案内" },
@@ -211,15 +192,6 @@ function fill(template: Localized, locale: Locale, n: string | number) {
   return t(template, locale).replace("{n}", String(n));
 }
 
-async function loadExits(station: StationOption): Promise<StationExit[]> {
-  const { STATION_EXITS } = await import("../_lib/stationExits");
-  for (const key of stationKeys(station)) {
-    const list = STATION_EXITS[key];
-    if (list?.length) return list.map(([label, lat, lng]) => ({ label, position: { lat, lng } }));
-  }
-  return [];
-}
-
 type ShopRow = { kind: ShopKind; places: NearbyPlace[] };
 
 /** One row per kind, nearest first; null when Kakao couldn't be reached at all. */
@@ -340,7 +312,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
 
   const rows = shopKey in shops ? shops[shopKey] : undefined;
   const mapName = selected ? `${station.name.ko} ${selected.label}번 출구` : station.name.ko;
-  const kakaoUrl = `https://map.kakao.com/link/map/${point(mapName, center)}`;
+  const kakaoUrl = `https://map.kakao.com/link/map/${mapPoint({ name: mapName, position: center })}`;
   const highlight = hubForExit(hub, selected?.label ?? null);
 
   function pickHubExit(exit: string) {
@@ -349,7 +321,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
   }
 
   return (
-    <section className="mt-5">
+    <section id="exit-guide" className="mt-5 scroll-mt-3">
       <h2 className="flex items-center gap-1.5 text-[16px] font-extrabold tracking-tight text-neutral-900">
         <span className="flex h-[22px] w-[22px] items-center justify-center rounded-md bg-[#16a34a] text-white">
           <ExitIcon size={15} />

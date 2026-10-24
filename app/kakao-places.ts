@@ -19,14 +19,17 @@ export type NearbyPlace = {
   position: LatLng;
 };
 
+/** Kakao category groups: pharmacy, cafe, convenience store, hospital, bank, restaurant. */
+export type KakaoCategory = "PM9" | "CE7" | "CS2" | "HP8" | "BK9" | "FD6";
+
 export type NearbyQuery =
-  | { kind: "category"; code: "PM9" | "CE7" | "CS2" | "HP8"; radius: number }
+  | { kind: "category"; code: KakaoCategory; radius: number }
   | {
       kind: "keyword";
       keyword: string;
       radius: number;
       /** Restricts results to a Kakao category group, e.g. CE7 so "스타벅스" only finds the cafes. */
-      category?: "PM9" | "CE7" | "CS2" | "HP8";
+      category?: KakaoCategory;
       /** Keep only places whose name starts with the keyword (brand stores, not "스타벅스 앞 주차장"). */
       brand?: boolean;
     };
