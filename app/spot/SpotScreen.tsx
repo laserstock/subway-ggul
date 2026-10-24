@@ -29,7 +29,8 @@ import {
 import { lineLabel, stationLines } from "../_lib/subwayLine";
 import { SERVER_CONFIGURED } from "../_lib/supabase";
 import { SpotIcon } from "./header";
-import { CATEGORY_META, CommentSheet, WriteSheet } from "./SpotSheets";
+import { usePostTranslation } from "../_lib/translate";
+import { CATEGORY_META, CommentSheet, postTexts, TranslateToggle, WriteSheet } from "./SpotSheets";
 
 const COPY = {
   plaza: { ko: "{line} 광장", en: "{line} Plaza", zh: "{line}广场", ja: "{line}広場" },
@@ -172,6 +173,7 @@ function PostCard({
   onScrap: () => void;
 }) {
   const category = CATEGORY_META[post.category];
+  const translation = usePostTranslation(post.id, postTexts(post), locale);
   return (
     <article className="rounded-[20px] border border-line bg-surface px-4 pb-3 pt-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between gap-2 text-[12px]">
@@ -200,9 +202,12 @@ function PostCard({
             {category.emoji} {t(category.label, locale)}
           </span>
         ) : null}
-        <h3 className="text-[17px] font-extrabold leading-snug tracking-tight text-ink">{post.title}</h3>
-        <p className="mt-1 line-clamp-3 whitespace-pre-line text-[14px] leading-relaxed text-neutral-600">{post.body}</p>
+        <h3 className="text-[17px] font-extrabold leading-snug tracking-tight text-ink">{translation.show(post.title)}</h3>
+        <p className="mt-1 line-clamp-3 whitespace-pre-line text-[14px] leading-relaxed text-neutral-600">
+          {translation.show(post.body)}
+        </p>
       </button>
+      <TranslateToggle translation={translation} locale={locale} />
       {post.bestReply ? (
         <button
           type="button"
@@ -212,7 +217,7 @@ function PostCard({
           <span aria-hidden>💬</span>
           <span className="line-clamp-2">
             <b className="font-bold text-neutral-700">{authorLabel(post.bestReply.station, post.bestReply.author)}:</b>{" "}
-            {post.bestReply.text}
+            {translation.show(post.bestReply.text)}
           </span>
         </button>
       ) : null}

@@ -8,6 +8,7 @@ import Sheet from "../_components/BottomSheet";
 import { t, type Locale, type Localized } from "../_lib/i18n";
 import { authorLabel, type AvatarId, type BadgeId } from "../_lib/profile";
 import { formatRelativeTime } from "../_lib/reports";
+import { usePostTranslation } from "../_lib/translate";
 import {
   addSpotComment,
   addSpotPost,
@@ -56,7 +57,72 @@ const COPY = {
   commentPlaceholder: { ko: "댓글 달기…", en: "Add a comment…", zh: "写评论…", ja: "コメントする…" },
   send: { ko: "등록", en: "Send", zh: "发送", ja: "送信" },
   me: { ko: "나", en: "Me", zh: "我", ja: "自分" },
+  translate: {
+    ko: "🌐 번역",
+    en: "🌐 Translate to English / 번역",
+    zh: "🌐 翻译成中文 / 번역",
+    ja: "🌐 日本語に翻訳 / 번역",
+  },
+  original: { ko: "🌐 원문 보기", en: "🌐 Show original", zh: "🌐 查看原文", ja: "🌐 原文を表示" },
+  translating: { ko: "번역 중…", en: "Translating…", zh: "翻译中…", ja: "翻訳中…" },
+  translated: { ko: "번역됨", en: "Translated", zh: "已翻译", ja: "翻訳済み" },
+  translateFailed: {
+    ko: "번역하지 못했어요 · 다시 시도",
+    en: "Couldn't translate · Retry",
+    zh: "翻译失败 · 重试",
+    ja: "翻訳できませんでした · 再試行",
+  },
 } satisfies Record<string, Localized>;
+
+/** Title, body and loaded comments: everything the translated view of a post covers. */
+export function postTexts(post: SpotPost) {
+  return [post.title, post.body, ...post.comments.map((comment) => comment.text)];
+}
+
+/** "[🌐 Translate to English / 번역]" under a post body; only rendered when the app language isn't Korean. */
+export function TranslateToggle({
+  translation,
+  locale,
+}: {
+  translation: ReturnType<typeof usePostTranslation>;
+  locale: Locale;
+}) {
+  if (!translation.available) return null;
+  const { on, status } = translation;
+  const label =
+    status === "loading"
+      ? COPY.translating
+      : status === "error"
+        ? COPY.translateFailed
+        : on
+          ? COPY.original
+          : COPY.translate;
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          translation.toggle();
+        }}
+        disabled={status === "loading"}
+        aria-pressed={on && status === "done"}
+        className={`rounded-full px-2.5 py-1 text-[12px] font-bold transition active:scale-95 disabled:opacity-60 ${
+          status === "error"
+            ? "bg-[#fee2e2] text-[#b91c1c]"
+            : on
+              ? "bg-surface-muted text-ink-muted ring-1 ring-line"
+              : "bg-[#eef4ff] text-[#2563eb]"
+        }`}
+      >
+        {t(label, locale)}
+      </button>
+      {on && status === "done" ? (
+        <span className="text-[11px] font-semibold text-neutral-400">{t(COPY.translated, locale)}</span>
+      ) : null}
+    </div>
+  );
+}
 
 export const CATEGORY_META: Record<SpotCategory, { emoji: string; label: Localized }> = {
   commute: { emoji: "🚃", label: { ko: "출퇴근", en: "Commute", zh: "通勤", ja: "通勤" } },
@@ -178,7 +244,18 @@ export function WriteSheet({
   );
 }
 
-function CommentRow({ comment, now, locale }: { comment: SpotComment; now: number | null; locale: Locale }) {
+function CommentRow({
+  comment,
+  text,
+  now,
+  locale,
+}: {
+  comment: SpotComment;
+  /** Shown text: the comment itself or its translation. */
+  text: string;
+  now: number | null;
+  locale: Locale;
+}) {
   return (
     <li className="rounded-2xl bg-surface-muted px-3.5 py-2.5">
       <div className="flex items-center gap-1.5 text-[12px] font-bold text-ink">
@@ -201,7 +278,7 @@ function CommentRow({ comment, now, locale }: { comment: SpotComment; now: numbe
           </span>
         ) : null}
       </div>
-      <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{comment.text}</p>
+      <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{text}</p>
     </li>
   );
 }
@@ -221,6 +298,7 @@ export function CommentSheet({
 }) {
   const [draft, setDraft] = useState("");
   const hidden = post.commentCount > post.comments.length;
+  const translation = usePostTranslation(post.id, postTexts(post), locale);
 
   function send() {
     const text = draft.trim();
@@ -248,15 +326,24 @@ export function CommentSheet({
               locale={locale}
             />
           </p>
-          <h3 className="mt-1 text-[16px] font-extrabold leading-snug text-ink">{post.title}</h3>
-          <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-neutral-600">{post.body}</p>
+          <h3 className="mt-1 text-[16px] font-extrabold leading-snug text-ink">{translation.show(post.title)}</h3>
+          <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-neutral-600">
+            {translation.show(post.body)}
+          </p>
+          <TranslateToggle translation={translation} locale={locale} />
         </article>
         {post.comments.length === 0 ? (
           <p className="py-6 text-center text-[13px] text-neutral-400">{t(COPY.noComments, locale)}</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-2">
             {post.comments.map((comment) => (
-              <CommentRow key={comment.id} comment={comment} now={now} locale={locale} />
+              <CommentRow
+                key={comment.id}
+                comment={comment}
+                text={translation.show(comment.text)}
+                now={now}
+                locale={locale}
+              />
             ))}
           </ul>
         )}

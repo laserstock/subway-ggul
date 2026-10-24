@@ -1,7 +1,7 @@
 "use client";
 
 import Image, { type StaticImageData } from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import cafeIcon from "@/public/icons/cafe.png";
 import convenienceIcon from "@/public/icons/convenience.svg";
 import daisoIcon from "@/public/icons/daiso.png";
@@ -12,6 +12,7 @@ import type { LatLng } from "../KakaoMap";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
 import { loadKakaoMaps } from "../kakao-sdk";
 import { ExitIcon, PinIcon } from "../_components/icons";
+import { HUB_TAGS, hubForExit, hubGuide, type HubRoute } from "../_lib/hubGuides";
 import { stationKeys, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 
 type StationExit = { label: string; position: LatLng };
@@ -118,7 +119,93 @@ const COPY = {
   },
   kakaoStation: { ko: "카카오맵에서 보기", en: "Open in Kakao Map", zh: "在Kakao地图查看", ja: "カカオマップで見る" },
   credit: { ko: "출구 위치 © OpenStreetMap", en: "Exit locations © OpenStreetMap" },
+  hubTitle: {
+    ko: "✈️ 공항 & 주요 거점 3초 연결",
+    en: "✈️ Airport & hotspot quick exits",
+    zh: "✈️ 机场 & 热门地点 3秒直达",
+    ja: "✈️ 空港 & 主要スポット 3秒案内",
+  },
+  hubHint: {
+    ko: "출구 칩을 누르면 그 출구 정보를 바로 보여 드려요",
+    en: "Tap an exit chip to jump to that exit",
+    zh: "点击出口标签即可查看该出口信息",
+    ja: "出口チップをタップするとその出口の情報を表示します",
+  },
+  hubNote: {
+    ko: "베타 안내예요 · 역 안 표지판을 함께 확인해 주세요",
+    en: "Beta guide · Please also follow the signs in the station",
+    zh: "测试版指南 · 请同时留意站内指示牌",
+    ja: "ベータ版の案内です · 駅構内の案内表示もご確認ください",
+  },
+  hubExit: { ko: "{n}번 출구", en: "Exit {n}", zh: "{n}号出口", ja: "{n}番出口" },
 } satisfies Record<string, Localized>;
+
+function HubCard({
+  routes,
+  exitLabels,
+  activeExit,
+  locale,
+  onPickExit,
+}: {
+  routes: HubRoute[];
+  /** Exits this station actually has; null while they load. */
+  exitLabels: string[] | null;
+  activeExit: string | null;
+  locale: Locale;
+  onPickExit: (exit: string) => void;
+}) {
+  return (
+    <div className="mt-2 overflow-hidden rounded-2xl bg-gradient-to-br from-[#eef4ff] to-[#f5f0ff] ring-1 ring-[#d6e2ff]">
+      <div className="px-3.5 pb-1 pt-3">
+        <p className="text-[14px] font-extrabold tracking-tight text-[#1e3a8a]">{t(COPY.hubTitle, locale)}</p>
+        <p className="mt-0.5 text-[11px] font-semibold text-[#4b5d8f]">{t(COPY.hubHint, locale)}</p>
+      </div>
+      <ul className="flex flex-col gap-1.5 px-2.5 pb-2.5 pt-1.5">
+        {routes.map((route) => (
+          <li key={route.to.ko} className="flex items-center gap-2.5 rounded-xl bg-white/85 px-2.5 py-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef4ff] text-[19px]" aria-hidden>
+              {route.emoji}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-extrabold leading-snug text-neutral-900">{t(route.to, locale)}</span>
+              {route.via ? (
+                <span className="mt-0.5 block text-[11px] font-semibold leading-snug text-neutral-500">{t(route.via, locale)}</span>
+              ) : null}
+            </span>
+            {route.exits.length > 0 ? (
+              <span className="flex shrink-0 items-center gap-1">
+                <span className="text-[12px] font-black text-[#2563eb]" aria-hidden>
+                  ➔
+                </span>
+                {route.exits.map((exit) => {
+                  const known = exitLabels === null || exitLabels.includes(exit);
+                  const active = exit === activeExit;
+                  return (
+                    <button
+                      key={exit}
+                      type="button"
+                      disabled={!known}
+                      onClick={() => onPickExit(exit)}
+                      aria-pressed={active}
+                      className={`rounded-lg px-2 py-1.5 text-[12px] font-black tabular-nums transition active:scale-95 disabled:opacity-40 ${
+                        active
+                          ? "bg-[#f5b800] text-neutral-900 shadow-[0_2px_6px_rgba(245,184,0,0.4)]"
+                          : "bg-[#2563eb] text-white"
+                      }`}
+                    >
+                      {fill(COPY.hubExit, locale, exit)}
+                    </button>
+                  );
+                })}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      <p className="px-3.5 pb-2.5 text-[10px] font-semibold text-[#6b7aa6]">{t(COPY.hubNote, locale)}</p>
+    </div>
+  );
+}
 
 function fill(template: Localized, locale: Locale, n: string | number) {
   return t(template, locale).replace("{n}", String(n));
@@ -215,6 +302,8 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
   const [picked, setPicked] = useState<string | null>(null);
   /** Shop rows per exit label ("" for the station centre); null when the lookup failed. */
   const [shops, setShops] = useState<Record<string, ShopRow[] | null>>({});
+  const panelRef = useRef<HTMLDivElement>(null);
+  const hub = hubGuide(station.name.ko);
 
   useEffect(() => {
     let alive = true;
@@ -252,6 +341,12 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
   const rows = shopKey in shops ? shops[shopKey] : undefined;
   const mapName = selected ? `${station.name.ko} ${selected.label}번 출구` : station.name.ko;
   const kakaoUrl = `https://map.kakao.com/link/map/${point(mapName, center)}`;
+  const highlight = hubForExit(hub, selected?.label ?? null);
+
+  function pickHubExit(exit: string) {
+    setPicked(exit);
+    requestAnimationFrame(() => panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+  }
 
   return (
     <section className="mt-5">
@@ -261,6 +356,16 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
         </span>
         {t(COPY.title, locale)}
       </h2>
+
+      {hub ? (
+        <HubCard
+          routes={hub}
+          exitLabels={exitList ? exitList.map((exit) => exit.label) : null}
+          activeExit={picked !== null ? (selected?.label ?? null) : null}
+          locale={locale}
+          onPickExit={pickHubExit}
+        />
+      ) : null}
 
       {exitList === null ? (
         <div className="mt-2 flex gap-1.5" aria-busy>
@@ -273,9 +378,10 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
       ) : (
         <>
           <p className="mt-0.5 text-[12px] font-semibold text-neutral-500">{t(COPY.pick, locale)}</p>
-          <div className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1" role="group">
+          <div className="no-scrollbar -mx-4 mt-1 flex gap-1.5 overflow-x-auto px-4 pb-1 pt-1.5" role="group">
             {exitList.map((exit) => {
               const active = exit.label === selected?.label;
+              const hubTag = hubForExit(hub, exit.label).tags[0];
               return (
                 <button
                   key={exit.label}
@@ -283,13 +389,18 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
                   onClick={() => setPicked(exit.label)}
                   aria-pressed={active}
                   aria-label={fill(COPY.exit, locale, exit.label)}
-                  className={`flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl px-2 text-[15px] font-black tabular-nums transition active:scale-95 ${
+                  className={`relative flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl px-2 text-[15px] font-black tabular-nums transition active:scale-95 ${
                     active
                       ? "bg-[#f5b800] text-neutral-900 shadow-[0_2px_6px_rgba(245,184,0,0.4)]"
                       : "bg-surface-muted text-neutral-600 ring-1 ring-line"
                   }`}
                 >
                   {exit.label}
+                  {hubTag ? (
+                    <span className="absolute -right-1 -top-1 text-[11px] leading-none" aria-hidden>
+                      {HUB_TAGS[hubTag].emoji}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
@@ -298,7 +409,29 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
       )}
 
       {exitList ? (
-        <div className="mt-2.5 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+        <div ref={panelRef} className="mt-2.5 scroll-mt-3 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+          {highlight.tags.length > 0 ? (
+            <div className="border-b border-[#d6e2ff] bg-gradient-to-r from-[#eef4ff] to-[#f5f0ff] px-3 py-2.5">
+              <div className="flex flex-wrap gap-1.5">
+                {highlight.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-[#2563eb] px-2.5 py-1 text-[12px] font-extrabold text-white shadow-[0_2px_6px_rgba(37,99,235,0.3)]"
+                  >
+                    {HUB_TAGS[tag].emoji} {t(HUB_TAGS[tag].label, locale)}
+                  </span>
+                ))}
+              </div>
+              <ul className="mt-1.5 flex flex-col gap-0.5">
+                {highlight.routes.map((route) => (
+                  <li key={route.to.ko} className="text-[12px] font-bold text-[#1e3a8a]">
+                    {route.emoji} {t(route.to, locale)}
+                    {route.via ? <span className="font-semibold text-[#4b5d8f]"> · {t(route.via, locale)}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <p className="border-b border-line px-3 py-2 text-[13px] font-extrabold text-neutral-900">
             {selected ? (
               <>
