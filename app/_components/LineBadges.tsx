@@ -86,31 +86,21 @@ export default function LineBadges({
   station,
   locale,
   size = "sm",
-  max,
   className = "",
 }: {
   station: StationOption;
   locale: Locale;
   size?: LineIconSize;
-  /** Shows only the first `max` lines followed by "+N", for one-line layouts. */
-  max?: number;
   className?: string;
 }) {
   const lines = station.lines.ko.split(" · ").filter(Boolean);
   if (lines.length === 0) return null;
   const labels = t(station.lines, locale).split(" · ");
-  const shown = max ? lines.slice(0, max) : lines;
-  const hidden = lines.length - shown.length;
   return (
     <span className={`inline-flex shrink-0 items-center gap-0.5 ${className}`}>
-      {shown.map((line, index) => (
+      {lines.map((line, index) => (
         <LineIcon key={line} line={line} locale={locale} label={labels[index] ?? line} size={size} />
       ))}
-      {hidden > 0 ? (
-        <span className="text-[10.5px] font-extrabold text-neutral-500" title={labels.slice(shown.length).join(" · ")}>
-          +{hidden}
-        </span>
-      ) : null}
     </span>
   );
 }

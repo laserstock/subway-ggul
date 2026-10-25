@@ -9,9 +9,11 @@ import { distanceMeters, kakaoOption, restoreStation, t, type Locale, type Local
 import { lineNeighbors, loadLineStations, sameLine, stationLines } from "../_lib/subwayLine";
 
 const COPY = {
-  change: { ko: "목적지 변경", en: "Change", zh: "更改目的地", ja: "目的地変更" },
-  pick: { ko: "목적지 선택", en: "Choose", zh: "选择目的地", ja: "目的地選択" },
-  noDestination: { ko: "목적지", en: "Destination", zh: "目的地", ja: "目的地" },
+  from: { ko: "출발", en: "From", zh: "出发", ja: "出発" },
+  to: { ko: "도착", en: "To", zh: "到达", ja: "到着" },
+  change: { ko: "변경", en: "Change", zh: "更改", ja: "変更" },
+  pick: { ko: "선택", en: "Choose", zh: "选择", ja: "選択" },
+  noDestination: { ko: "목적지를 골라 주세요", en: "Pick a stop", zh: "请选择目的地", ja: "目的地を選択" },
   locating: { ko: "위치 찾는 중…", en: "Locating…", zh: "定位中…", ja: "位置を検索中…" },
   noLocation: { ko: "위치 확인", en: "Set location", zh: "确认位置", ja: "位置を確認" },
   correctLocation: { ko: "위치 교정하기", en: "Correct my station", zh: "校正我的车站", ja: "現在の駅を修正" },
@@ -54,13 +56,28 @@ const COPY = {
   toggle: { ko: "하차 알림", en: "Arrival alert", zh: "下车提醒", ja: "降車通知" },
 } satisfies Record<string, Localized>;
 
+/** Hollow honey ring with a pin: where the rider is now. */
+function OriginIcon({ pulse }: { pulse: boolean }) {
+  return (
+    <span
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-[1.5px] border-[#f5b800] bg-white text-[#e0a100] ${
+        pulse ? "animate-pulse" : ""
+      }`}
+      aria-hidden
+    >
+      <PinIcon size={12} />
+    </span>
+  );
+}
+
+/** Solid honey tile with a flag: where the rider gets off. */
 function DestinationIcon() {
   return (
     <span
-      className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] bg-gradient-to-br from-[#ffc83d] to-[#f59e0b] text-white shadow-[0_1px_3px_rgba(146,64,14,0.3)]"
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] bg-gradient-to-br from-[#ffc83d] to-[#f59e0b] text-white shadow-[0_1px_3px_rgba(146,64,14,0.3)]"
       aria-hidden
     >
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
         <path d="M5.5 21V4" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
         <path d="M5.5 4.5h11.2l-2.6 4 2.6 4H5.5z" fill="currentColor" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
@@ -132,54 +149,58 @@ export default function DestinationAlarm({
 
   return (
     <section className="mt-4 rounded-[20px] border border-[#f5d76e] bg-gradient-to-br from-[#fff8db] to-[#fffdf3] px-4 py-3 shadow-[0_2px_10px_rgba(15,23,42,0.05)]">
-      <div className="flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[14px] font-extrabold tracking-tight text-ink">
+      <div className="rounded-2xl border border-[#f5d76e]/70 bg-white/70 px-3">
+        <div className="flex items-center justify-between gap-2 border-b border-dashed border-[#f0d58a] py-2">
           <button
             type="button"
             onClick={onOrigin}
             aria-haspopup="dialog"
             title={t(COPY.correctLocation, locale)}
-            className="flex min-w-0 shrink items-center gap-1 rounded-lg transition active:scale-[0.97]"
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg text-left text-sm text-gray-700 transition active:scale-[0.98]"
           >
-            <PinIcon
-              size={16}
-              className={`shrink-0 ${current ? "text-honey" : locating ? "animate-pulse text-honey" : "text-neutral-400"}`}
-            />
-            <span className={`truncate ${current ? "" : "text-[13px] font-bold text-ink-muted"}`}>
-              {current ? t(current.name, locale) : t(locating ? COPY.locating : COPY.noLocation, locale)}
-            </span>
-            {current ? <LineBadges station={current} locale={locale} size="chip" max={2} /> : null}
-          </button>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-[#d4a72c]" aria-hidden>
-            <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="flex min-w-0 shrink items-center gap-1">
-            <DestinationIcon />
-            {destination ? (
-              <>
-                <span className="truncate">{name}</span>
-                <LineBadges station={destination} locale={locale} size="chip" max={2} />
-              </>
+            <OriginIcon pulse={!current && locating} />
+            <span className="whitespace-nowrap font-semibold text-gray-500">{t(COPY.from, locale)} :</span>
+            {current ? (
+              <span className="flex flex-wrap items-center gap-1">
+                <span className="whitespace-nowrap font-bold">{t(current.name, locale)}</span>
+                <LineBadges station={current} locale={locale} size="chip" />
+              </span>
             ) : (
-              <span className="truncate text-[13px] font-bold text-ink-muted">{t(COPY.noDestination, locale)}</span>
+              <span className="whitespace-nowrap text-gray-400">
+                {t(locating ? COPY.locating : COPY.noLocation, locale)}
+              </span>
             )}
-          </span>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onChange}
-          aria-haspopup="dialog"
-          className="flex shrink-0 items-center gap-0.5 rounded-full border border-[#f5d76e] bg-white px-2 py-1 text-[11px] font-extrabold text-[#b45309] transition active:scale-95"
-        >
-          {t(destination ? COPY.change : COPY.pick, locale)}
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        <div className="flex items-center justify-between gap-2 py-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1 text-base font-bold text-gray-900">
+            <DestinationIcon />
+            <span className="whitespace-nowrap text-sm font-semibold text-gray-500">{t(COPY.to, locale)} :</span>
+            {destination ? (
+              <span className="flex flex-wrap items-center gap-1">
+                <span className="whitespace-nowrap">{name}</span>
+                <LineBadges station={destination} locale={locale} size="chip" />
+              </span>
+            ) : (
+              <span className="whitespace-nowrap text-sm font-semibold text-gray-400">{t(COPY.noDestination, locale)}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onChange}
+            aria-haspopup="dialog"
+            className="flex shrink-0 items-center gap-0.5 rounded-full border border-[#f5d76e] bg-white px-2.5 py-1 text-[12px] font-extrabold text-[#b45309] transition active:scale-95"
+          >
+            {t(destination ? COPY.change : COPY.pick, locale)}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-[#f5d76e]/70 pt-2.5">
-        <p className="min-w-0 truncate text-[16px] font-extrabold tracking-tight text-neutral-900">
+      <div className="mt-2.5 flex items-center justify-between gap-3">
+        <p className="min-w-0 text-[16px] font-extrabold leading-snug tracking-tight text-neutral-900">
           <span aria-hidden>🔔 </span>
           {destination ? t(COPY.title, locale).replace("{station}", name) : t(COPY.titleEmpty, locale)}
         </p>
