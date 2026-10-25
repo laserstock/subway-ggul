@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import AppHeader from "./AppHeader";
-import BottomNav from "./BottomNav";
-import { ActionChip, type ActionKind } from "./ActionTile";
+import BottomNav, { HoneyPotIcon } from "./BottomNav";
+import ActionTile, { type ActionKind } from "./ActionTile";
 import DestinationAlarm from "./DestinationAlarm";
 import { PinIcon, SearchIcon, StarIcon } from "./icons";
 import LineBadges from "./LineBadges";
@@ -39,12 +39,7 @@ import {
 } from "../_lib/stations";
 
 const COPY = {
-  riding: {
-    ko: "현재 {station} 탑승 중",
-    en: "Riding from {station}",
-    zh: "当前在{station}乘车",
-    ja: "現在 {station}から乗車中",
-  },
+  now: { ko: "지금", en: "Now at", zh: "当前", ja: "現在" },
   backToMine: { ko: "내 위치로", en: "My station", zh: "我的位置", ja: "現在地へ" },
   locating: {
     ko: "현재 위치를 찾는 중…",
@@ -71,12 +66,13 @@ const COPY = {
     zh: "您要去哪个站？（例：光化门站、首尔站）",
     ja: "どの駅へ行きますか？（例：光化門駅、ソウル駅）",
   },
-  mainTitle: {
-    ko: "3초 유틸리티 요약",
-    en: "3-second utilities",
-    zh: "3秒实用工具",
-    ja: "3秒ユーティリティ",
+  honeyTitle: {
+    ko: "{station} 꿀정보",
+    en: "{station} honey tips",
+    zh: "{station}攻略",
+    ja: "{station}お役立ち情報",
   },
+  honeyTitleEmpty: { ko: "역 꿀정보", en: "Station honey tips", zh: "车站攻略", ja: "駅お役立ち情報" },
   reportCta: { ko: "나도 1초 제보하기", en: "Report in 1 second", zh: "1秒快速上报", ja: "1秒で投稿する" },
   reportDone: {
     ko: "제보가 등록됐어요. 고마워요!",
@@ -280,7 +276,9 @@ export default function HomeScreen() {
     headline = (
       <>
         <PinIcon size={18} className="mr-1 shrink-0 text-honey" />
-        <span className="min-w-0 truncate">{t(COPY.riding, locale).replace("{station}", t(current.name, locale))}</span>
+        <span className="min-w-0 truncate">
+          {t(COPY.now, locale)} {t(current.name, locale)}
+        </span>
         <LineBadges station={current} locale={locale} size="sm" className="ml-1.5" />
       </>
     );
@@ -428,20 +426,17 @@ export default function HomeScreen() {
             />
           </section>
 
-          <header className="mb-2 mt-5 flex items-center gap-2">
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#ffe7c2] to-[#ffd6a0] text-[14px] shadow-[0_2px_6px_rgba(245,158,11,0.25)]"
-              aria-hidden
-            >
-              ✨
+          <h2 className="mb-2.5 mt-5 flex items-center gap-1.5 text-[16px] font-extrabold tracking-tight text-neutral-900">
+            <span className="min-w-0 truncate">
+              {station
+                ? t(COPY.honeyTitle, locale).replace("{station}", t(station.name, locale))
+                : t(COPY.honeyTitleEmpty, locale)}
             </span>
-            <h2 className="text-[15px] font-bold leading-tight tracking-tight text-neutral-900">
-              {t(COPY.mainTitle, locale)}
-            </h2>
-          </header>
-          <nav className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1" aria-label={t(COPY.mainTitle, locale)}>
+            <HoneyPotIcon size={22} />
+          </h2>
+          <div className="grid grid-cols-2 gap-2.5">
             {MAIN_ACTIONS.map((action) => (
-              <ActionChip
+              <ActionTile
                 key={action.kind}
                 kind={action.kind}
                 title={t(action.title, locale)}
@@ -449,7 +444,7 @@ export default function HomeScreen() {
                 href={actionHref(action.href)}
               />
             ))}
-          </nav>
+          </div>
 
           <LiveFeed station={station} onToast={showToast} />
 

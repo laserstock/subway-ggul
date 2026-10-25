@@ -66,16 +66,14 @@ function LuggageArt({ color }: { color: string }) {
   );
 }
 
-function Badge({ color, small = false, children }: { color: string; small?: boolean; children: ReactNode }) {
+function Badge({ color, children }: { color: string; children: ReactNode }) {
   return (
     <span
-      className={`flex shrink-0 items-center justify-center rounded-full text-white ${
-        small ? "h-6 w-6 shadow-[0_2px_5px_rgba(15,23,42,0.15)]" : "h-9 w-9 shadow-[0_3px_8px_rgba(15,23,42,0.15)]"
-      }`}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-[0_3px_8px_rgba(15,23,42,0.15)]"
       style={{ backgroundColor: color }}
       aria-hidden
     >
-      <svg width={small ? 14 : 20} height={small ? 14 : 20} viewBox="0 0 24 24" fill="none">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
         {children}
       </svg>
     </span>
@@ -125,40 +123,10 @@ const TILE_THEMES: Record<ActionKind, TileTheme> = {
   },
 };
 
-/** Slim pill version of the tile for the home utility row: same badge, emoji, colors and link. */
-export function ActionChip({
-  kind,
-  title,
-  detail,
-  href,
-}: {
-  kind: ActionKind;
-  title: string;
-  detail?: string;
-  href: string;
-}) {
-  const theme = TILE_THEMES[kind];
-  return (
-    <Link
-      href={href}
-      className="flex shrink-0 items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-left shadow-[0_1px_4px_rgba(15,23,42,0.05)] transition active:scale-95"
-      style={{ backgroundColor: theme.bg, borderColor: `${theme.accent}40` }}
-    >
-      <Badge color={theme.accent} small>
-        {theme.badge}
-      </Badge>
-      <span className="whitespace-nowrap text-[13px] font-extrabold tracking-tight text-ink">
-        <span className="mr-0.5 text-[12px]" aria-hidden>
-          {theme.emoji}
-        </span>
-        {title}
-        {detail ? <span className="ml-0.5 text-[10.5px] font-bold text-ink-muted">{detail}</span> : null}
-      </span>
-    </Link>
-  );
-}
-
-/** Big 2x2 home/dashboard tile: colored badge + line illustration on top, title and accent subtitle below. */
+/**
+ * 2x2 home/dashboard tile: colored badge + line illustration on top, title and accent subtitle below.
+ * Without `sub` it renders the shorter home version (same artwork, title only).
+ */
 export default function ActionTile({
   kind,
   title,
@@ -171,35 +139,41 @@ export default function ActionTile({
   kind: ActionKind;
   title: string;
   detail?: string;
-  sub: string;
+  sub?: string;
   href?: string;
   onClick?: () => void;
   children?: ReactNode;
 }) {
   const theme = TILE_THEMES[kind];
+  const compact = !sub;
   const body = (
     <>
       <span className="flex items-start justify-between">
         <Badge color={theme.accent}>{theme.badge}</Badge>
         {theme.art}
       </span>
-      <span className="mt-3 block">
-        <span className="block text-[15px] font-extrabold leading-tight tracking-tight text-ink">
+      <span className={`block ${compact ? "mt-2" : "mt-3"}`}>
+        <span
+          className={`block font-extrabold leading-tight tracking-tight text-ink ${compact ? "text-[14px]" : "text-[15px]"}`}
+        >
           <span className="mr-1 text-[14px]" aria-hidden>
             {theme.emoji}
           </span>
           {title}
           {detail ? <span className="ml-0.5 text-[11px] font-bold text-ink-muted">{detail}</span> : null}
         </span>
-        <span className="mt-1 block text-[11.5px] font-bold" style={{ color: theme.accent }}>
-          {sub}
-        </span>
+        {sub ? (
+          <span className="mt-1 block text-[11.5px] font-bold" style={{ color: theme.accent }}>
+            {sub}
+          </span>
+        ) : null}
         {children}
       </span>
     </>
   );
-  const className =
-    "flex min-h-[140px] flex-col justify-between rounded-[22px] border p-3.5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition active:scale-[0.98]";
+  const className = `flex flex-col justify-between rounded-[22px] border text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition active:scale-[0.98] ${
+    compact ? "p-3" : "min-h-[140px] p-3.5"
+  }`;
   const style = { backgroundColor: theme.bg, borderColor: `${theme.accent}40` };
   return href ? (
     <Link href={href} className={className} style={style}>

@@ -50,6 +50,20 @@ const COPY = {
   toggle: { ko: "하차 알림", en: "Arrival alert", zh: "下车提醒", ja: "降車通知" },
 } satisfies Record<string, Localized>;
 
+function DestinationIcon() {
+  return (
+    <span
+      className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-[#ffc83d] to-[#f59e0b] text-white shadow-[0_1px_3px_rgba(146,64,14,0.3)]"
+      aria-hidden
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+        <path d="M5.5 21V4" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M5.5 4.5h11.2l-2.6 4 2.6 4H5.5z" fill="currentColor" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
 /** The stop before `destination` when riding from `from` on a shared line; null when it can't be told. */
 async function previousStop(destination: StationOption, from: StationOption | null): Promise<StationOption | null> {
   if (!from || bareStationName(from.name.ko) === bareStationName(destination.name.ko)) return null;
@@ -109,7 +123,7 @@ export default function DestinationAlarm({
   return (
     <div className="mt-3 border-t border-[#f5d76e]/70 pt-3">
       <div className="flex items-center gap-1.5 text-[13px] font-bold text-[#92400e]">
-        <span aria-hidden>🎯</span>
+        <DestinationIcon />
         <span className="shrink-0">{t(COPY.destination, locale)}:</span>
         {destination ? (
           <span className="flex min-w-0 items-center gap-1 font-extrabold text-neutral-900">
@@ -131,15 +145,10 @@ export default function DestinationAlarm({
       </div>
 
       <div className="mt-3 flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[18px] font-extrabold leading-snug tracking-tight text-neutral-900">
-            <span aria-hidden>🔔 </span>
-            {destination ? t(COPY.title, locale).replace("{station}", name) : t(COPY.titleEmpty, locale)}
-          </p>
-          <p className="mt-1 text-[12.5px] font-semibold leading-snug text-neutral-600">
-            {prev ? t(COPY.hintPrev, locale).replace("{prev}", t(prev.name, locale)) : t(COPY.hint, locale)}
-          </p>
-        </div>
+        <p className="min-w-0 flex-1 text-[18px] font-extrabold leading-snug tracking-tight text-neutral-900">
+          <span aria-hidden>🔔 </span>
+          {destination ? t(COPY.title, locale).replace("{station}", name) : t(COPY.titleEmpty, locale)}
+        </p>
         <button
           type="button"
           role="switch"
@@ -153,6 +162,9 @@ export default function DestinationAlarm({
           />
         </button>
       </div>
+      <p className="mt-1 truncate text-[12px] font-semibold tracking-tight text-neutral-600">
+        {prev ? t(COPY.hintPrev, locale).replace("{prev}", t(prev.name, locale)) : t(COPY.hint, locale)}
+      </p>
 
       {on ? <p className="mt-2 text-[12px] font-bold text-[#15803d]">{t(COPY.on, locale)}</p> : null}
       {on && !alarm.systemAlerts ? (
