@@ -114,7 +114,12 @@ const COPY = {
     ja: "カカオマップで{n}番出口を見る",
   },
   kakaoStation: { ko: "카카오맵에서 보기", en: "Open in Kakao Map", zh: "在Kakao地图查看", ja: "カカオマップで見る" },
-  credit: { ko: "출구 위치 © OpenStreetMap", en: "Exit locations © OpenStreetMap" },
+  credit: {
+    ko: "출구 위치 © OpenStreetMap",
+    en: "Exit locations © OpenStreetMap",
+    zh: "出口位置 © OpenStreetMap",
+    ja: "出口位置 © OpenStreetMap",
+  },
   hubTitle: {
     ko: "✈️ 공항 & 주요 거점 3초 연결",
     en: "✈️ Airport & hotspot quick exits",

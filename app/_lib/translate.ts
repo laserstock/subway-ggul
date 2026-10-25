@@ -79,6 +79,30 @@ async function fill(id: string, texts: string[], target: TranslateTarget) {
   emit();
 }
 
+/** Texts already sent once for a locale, so a failed request isn't retried on every render. */
+const requested = new Set<string>();
+
+/**
+ * Machine translation for Korean-only data (open-data locker spots, curated shop notes). Returns a lookup that
+ * gives the translation once it has loaded and the fallback until then.
+ */
+export function useAutoTranslation(texts: string[], locale: Locale) {
+  useSyncExternalStore(subscribe, () => version, () => 0);
+  const target = locale === "ko" ? null : locale;
+  const missing = target
+    ? [...new Set(texts.filter((text) => text.trim() && !requested.has(keyOf(target, text))))].join("\u0002")
+    : "";
+
+  useEffect(() => {
+    if (!target || !missing) return;
+    const list = missing.split("\u0002");
+    list.forEach((text) => requested.add(keyOf(target, text)));
+    request(list, target).then(emit, emit);
+  }, [target, missing]);
+
+  return (text: string, fallback = text) => (target ? (cache.get(keyOf(target, text)) ?? fallback) : text);
+}
+
 /**
  * Translated view of one post (title, body and comments). The state is shared by id, so the feed card and the
  * comment sheet flip together; comments that arrive while translated are translated too.

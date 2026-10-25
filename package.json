@@ -9,6 +9,7 @@
     "lint": "eslint",
     "toilets:build": "node scripts/build-station-toilets.mjs",
     "stations:build": "node scripts/build-station-index.mjs",
+    "stations:names": "node scripts/fetch-station-names.mjs",
     "lockers:build": "node scripts/build-station-lockers.mjs",
     "exits:build": "node scripts/build-station-exits.mjs"
   },
@@ -26,6 +27,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "kakao.maps.d.ts": "^0.1.40",
+    "opencc-js": "^1.4.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

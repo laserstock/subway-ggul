@@ -4,7 +4,7 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { type Locale } from "./i18n";
 import { recordActivity, syncActivity } from "./profile";
-import { stationFeedKey, type Localized, type StationOption } from "./stations";
+import { localizedStationName, stationFeedKey, type Localized, type StationOption } from "./stations";
 import {
   currentUserId,
   ensureUser,
@@ -278,7 +278,7 @@ export function useMyReports(): MyReport[] {
       snapshot.mine
         .map((row) => ({
           id: row.id,
-          stationName: row.station_name,
+          stationName: localizedStationName(row.station_name),
           text: row.text,
           createdAt: Date.parse(row.created_at),
         }))

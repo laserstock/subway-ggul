@@ -3,6 +3,7 @@
 import type { LatLng } from "../KakaoMap";
 import { loadKakaoMaps } from "../kakao-sdk";
 import { findLineStations, normalizeLine, type KakaoStation } from "../kakao-places";
+import { lineName } from "./lineNames";
 import { STATION_INDEX } from "./stationIndex";
 import { distanceMeters, type Localized, type StationOption } from "./stations";
 
@@ -108,10 +109,5 @@ export function sameLine(a: string, b: string) {
 }
 
 export function lineLabel(line: string): Localized {
-  return {
-    ko: line,
-    en: line.replace(/^(\d+)호선$/, "Line $1"),
-    zh: line.replace(/^(\d+)호선$/, "$1号线"),
-    ja: line.replace(/^(\d+)호선$/, "$1号線"),
-  };
+  return lineName(line);
 }

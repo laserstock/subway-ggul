@@ -1,10 +1,21 @@
 // Builds app/_lib/stationIndex.ts from Seoul's station master "지하철역_GEOM (역사마스터)"
 // (t-data.seoul.go.kr, data_id=36), saved as data/seoul-stations.csv.
+// Station names in other languages come from Seoul Metro's official list
+// (data.go.kr/data/15044232, data/station-names-seoulmetro.csv), then Wikidata
+// (data/station-names-wikidata.json, see fetch-station-names.mjs), then MANUAL_NAMES.
 // Usage: npm run stations:build
 import { readFileSync, writeFileSync } from "node:fs";
+import { Converter } from "opencc-js";
+
+/** Many Wikidata zh labels are Traditional (Hanja-based); the app's zh locale is Simplified. */
+const simplified = Converter({ from: "hk", to: "cn" });
 
 const SOURCE = "data/seoul-stations.csv";
+const OFFICIAL_NAMES = "data/station-names-seoulmetro.csv";
+const WIKIDATA_NAMES = "data/station-names-wikidata.json";
 const OUTPUT = "app/_lib/stationIndex.ts";
+/** Wikidata items further than this from the station master's point are a different station. */
+const NAME_MATCH_METERS = 1500;
 /** Same-name rows further apart than this are different stations (e.g. 양평 on Line 5 vs 경의중앙선). */
 const SAME_STATION_METERS = 600;
 
@@ -60,6 +71,32 @@ const EXTRA_LINES = {
 const RENAMED = { 뚝섬유원지: "자양" };
 /** Former names of stations the source already lists under the new name. */
 const FORMER_NAMES = { 불암산역: ["당고개"] };
+
+/** Stations neither name source covers: [English, Simplified Chinese, Japanese]. */
+const MANUAL_NAMES = {
+  백양리역: ["Baegyang-ri", "白杨里站", "白楊里駅"],
+  서구청역: ["Seo-gu Office", "西区厅站", "西区庁駅"],
+  "시청.용인대역": ["City Hall·Yongin Univ.", "市厅·龙仁大学站", "市庁・龍仁大駅"],
+  신갈역: ["Singal", "新葛站", "新葛駅"],
+  신길온천역: ["Singiloncheon", "新吉温泉站", "新吉温泉駅"],
+  "운동장.송담대역": ["Stadium·Songdam College", "运动场·松潭大学站", "運動場・松潭大駅"],
+  운정역: ["Unjeong", "云井站", "雲井駅"],
+  원곡역: ["Wongok", "元谷站", "元谷駅"],
+  원흥역: ["Wonheung", "元兴站", "元興駅"],
+  "전대.에버랜드역": ["Jeondae·Everland", "前垈·爱宝乐园站", "前垈・エバーランド駅"],
+  지제역: ["Jije", "芝制站", "芝制駅"],
+  청산역: ["Cheongsan", "青山站", "青山駅"],
+  화전역: ["Hwajeon", "花田站", "花田駅"],
+  건대입구역: ["Konkuk Univ.", "建国大学站", "建大入口駅"],
+  총신대입구역: ["Chongshin Univ.", "总神大学站", "総神大入口駅"],
+};
+
+/** English names too long for a one-line station chip. */
+const SHORT_EN = {
+  인천공항1터미널역: "Incheon Airport T1",
+  인천공항2터미널역: "Incheon Airport T2",
+  공항화물청사역: "Airport Cargo Terminal",
+};
 
 function serviceLine(section, base) {
   if (section === "경원선" && GYEONGWON_JUNGANG.has(base)) return "경의중앙선";
@@ -129,12 +166,63 @@ for (const [name, former] of Object.entries(FORMER_NAMES)) {
 for (const station of stations) {
   station.lines.sort((a, b) => lineOrder(a) - lineOrder(b));
 }
+
+const baseName = (name) => name.replace(/\s*\(.*?\)/g, "").trim().replace(/역$/, "");
+const tidy = (name) => name.replace(/[‘’]/g, "'").replace(/\s*\(.*?\)/g, "").replace(/\s+/g, " ").trim();
+const withSuffix = (name, suffix) => (name.endsWith(suffix) ? name : `${name}${suffix}`);
+
+const official = readFileSync(OFFICIAL_NAMES, "utf8")
+  .replace(/^\uFEFF/, "")
+  .split(/\r?\n/)
+  .slice(1)
+  .filter(Boolean)
+  .map((row) => {
+    const [, line, ko, , en, zh, ja] = row.split(",");
+    return {
+      line: line.trim(),
+      base: baseName(ko),
+      en: tidy(en.replace(/(\d)\(\w+\)ga/, "$1-ga")),
+      zh: withSuffix(tidy(zh), "站"),
+      ja: withSuffix(tidy(ja), "駅"),
+    };
+  });
+
+const wikidata = JSON.parse(readFileSync(WIKIDATA_NAMES, "utf8")).map((entry) => ({
+  base: baseName(entry.ko),
+  center: { lat: entry.c[0], lng: entry.c[1] },
+  en: entry.en && tidy(entry.en).replace(/ station$/i, ""),
+  ja: entry.ja && withSuffix(tidy(entry.ja).replace(/駅駅$/, "駅"), "駅"),
+  zh: (entry.zh ?? entry.zhHant) && withSuffix(simplified(tidy(entry.zh ?? entry.zhHant)), "站"),
+}));
+
+const unnamed = [];
+for (const station of stations) {
+  const base = baseName(station.name);
+  const seoulMetro = official.find((entry) => entry.base === base && station.lines.includes(entry.line));
+  const nearby = wikidata
+    .filter((entry) => entry.base === base && distanceMeters(entry.center, station.center) <= NAME_MATCH_METERS)
+    .sort((a, b) => distanceMeters(a.center, station.center) - distanceMeters(b.center, station.center));
+  const pick = (field) => nearby.find((entry) => entry[field])?.[field];
+  const [manualEn, manualZh, manualJa] = MANUAL_NAMES[station.name] ?? [];
+  station.en = SHORT_EN[station.name] ?? seoulMetro?.en ?? pick("en") ?? manualEn;
+  station.zh = seoulMetro?.zh ?? pick("zh") ?? manualZh;
+  station.ja = pick("ja") ?? manualJa ?? seoulMetro?.ja;
+  if (!station.en || !station.zh || !station.ja) unnamed.push(station.name);
+}
+if (unnamed.length) throw new Error(`No en/zh/ja name for: ${unnamed.join(", ")} — add them to MANUAL_NAMES.`);
 stations.sort((a, b) => a.name.localeCompare(b.name, "ko") || lineOrder(a.lines[0]) - lineOrder(b.lines[0]));
 
 const split = stations.filter((station, index) => stations.findIndex((other) => other.name === station.name) !== index);
 
-const entries = stations.map(({ name, aliases, lines: stationLines, center }) => {
-  const parts = [`n: ${JSON.stringify(name)}`, `l: ${JSON.stringify(stationLines)}`, `c: [${center.lat}, ${center.lng}]`];
+const entries = stations.map(({ name, en, zh, ja, aliases, lines: stationLines, center }) => {
+  const parts = [
+    `n: ${JSON.stringify(name)}`,
+    `e: ${JSON.stringify(en)}`,
+    `z: ${JSON.stringify(zh)}`,
+    `j: ${JSON.stringify(ja)}`,
+    `l: ${JSON.stringify(stationLines)}`,
+    `c: [${center.lat}, ${center.lng}]`,
+  ];
   if (aliases.length) parts.push(`a: ${JSON.stringify(aliases)}`);
   return `  { ${parts.join(", ")} },`;
 });
@@ -143,9 +231,12 @@ writeFileSync(
   OUTPUT,
   `// Generated by scripts/build-station-index.mjs — edit data/seoul-stations.csv and rerun \`npm run stations:build\`.
 
-/** n: name with 역, l: lines, c: [lat, lng], a: alternative names. */
+/** n: name with 역, e/z/j: English/Chinese/Japanese name, l: lines, c: [lat, lng], a: alternative names. */
 export type IndexedStation = {
   n: string;
+  e: string;
+  z: string;
+  j: string;
   l: readonly string[];
   c: readonly [number, number];
   a?: readonly string[];

@@ -1,6 +1,7 @@
 import type { LatLng } from "../KakaoMap";
 import { lineColor, type KakaoStation } from "../kakao-places";
 import { t, type Locale, type Localized } from "./i18n";
+import { lineName } from "./lineNames";
 import { STATION_INDEX } from "./stationIndex";
 
 export { t, type Locale, type Localized } from "./i18n";
@@ -55,7 +56,7 @@ export type StationOption = {
   aliases?: readonly string[];
 };
 
-export const STATIONS: Station[] = [
+const CURATED_STATIONS: Station[] = [
   {
     id: "hongdae",
     name: { ko: "홍대입구역", en: "Hongik Univ.", zh: "弘大入口站", ja: "弘大入口駅" },
@@ -1065,6 +1066,39 @@ export const STATIONS: Station[] = [
   },
 ];
 
+/** Adds zh/ja to the formulaic curated strings (walk time, hours, exit numbers, paid area). */
+function withPatternLocales(station: Station): Station {
+  const exit = (label: Localized): Localized => {
+    const number = label.ko.match(/^(\d+)번 출구$/)?.[1];
+    return number ? { ...label, zh: `${number}号出口`, ja: `${number}番出口` } : label;
+  };
+  const walk = (value: Localized): Localized => {
+    const match = value.ko.match(/^(현재 역에서 )?도보 (\d+)분$/);
+    if (!match) return value;
+    const [, fromHere, minutes] = match;
+    return {
+      ...value,
+      zh: `${fromHere ? "从本站" : ""}步行${minutes}分钟`,
+      ja: `${fromHere ? "この駅から" : ""}徒歩${minutes}分`,
+    };
+  };
+  const status = (value: Localized): Localized => {
+    const match = value.ko.match(/^영업중(?: \((.+)\))?$/);
+    if (!match) return value;
+    const hours = match[1];
+    const suffix = (allDay: string) => (hours ? ` (${hours === "24시간" ? allDay : hours})` : "");
+    return { ...value, zh: `营业中${suffix("24小时")}`, ja: `営業中${suffix("24時間")}` };
+  };
+  return {
+    ...station,
+    insidePaid: { ...station.insidePaid, zh: `${t(station.name, "zh")}内 (检票口内)`, ja: `${t(station.name, "ja")}構内 (改札内)` },
+    exits: station.exits.map((item) => ({ ...item, label: exit(item.label) })),
+    places: station.places.map((place) => ({ ...place, walk: walk(place.walk), status: status(place.status) })),
+  };
+}
+
+export const STATIONS: Station[] = CURATED_STATIONS.map(withPatternLocales);
+
 export function distanceMeters(a: LatLng, b: LatLng) {
   const rad = Math.PI / 180;
   const dLat = (b.lat - a.lat) * rad;
@@ -1164,10 +1198,23 @@ export function serializeStation({ key, name, lines, center, color }: StationOpt
 export function restoreStation(saved: SavedStation): StationOption {
   const curated = STATIONS.find((station) => station.id === saved.key);
   if (curated) return curatedOption(curated);
+  const popular = POPULAR_STATIONS.find((station) => station.key === saved.key);
+  if (popular) return popular;
   const indexed = indexedOption(saved.name.ko, saved.center);
   if (indexed) return indexed;
   const lineBased = linesColor(saved.lines);
   return { ...serializeStation(saved), color: lineBased === lineColor([]) ? saved.color : lineBased };
+}
+
+/** Every language's name for a Korean station name ("명동역"), for data that stores only the Korean. */
+export function stationName(ko: string): Localized {
+  const name = ko.endsWith("역") ? ko : `${ko}역`;
+  return ALL_STATIONS.find((station) => station.name.ko === name)?.name ?? { ko, en: ko };
+}
+
+/** Saved names from before the index had translations come back with the current ones. */
+export function localizedStationName(saved: Localized): Localized {
+  return saved.zh && saved.ja ? saved : stationName(saved.ko);
 }
 
 function popularOption(id: StationId): StationOption {
@@ -1195,12 +1242,9 @@ export const POPULAR_STATIONS: StationOption[] = [
 ];
 
 function localizedLines(lines: readonly string[]): Localized {
-  return {
-    ko: lines.join(" · "),
-    en: lines.map((line) => line.replace(/^(\d+)호선$/, "Line $1")).join(" · "),
-    zh: lines.map((line) => line.replace(/^(\d+)호선$/, "$1号线")).join(" · "),
-    ja: lines.map((line) => line.replace(/^(\d+)호선$/, "$1号線")).join(" · "),
-  };
+  const names = lines.map(lineName);
+  const join = (locale: Locale) => names.map((name) => t(name, locale)).join(" · ");
+  return { ko: join("ko"), en: join("en"), zh: join("zh"), ja: join("ja") };
 }
 
 /** Same-name stations far apart (양평 on Line 5 vs 경의중앙선) get the first line in their key. */
@@ -1208,7 +1252,7 @@ const INDEX_OPTIONS: StationOption[] = STATION_INDEX.map((entry, index) => {
   const duplicate = STATION_INDEX.findIndex((other) => other.n === entry.n) !== index;
   return {
     key: duplicate ? `kakao:${entry.n}@${entry.l[0]}` : `kakao:${entry.n}`,
-    name: { ko: entry.n, en: entry.n },
+    name: { ko: entry.n, en: entry.e, zh: entry.z, ja: entry.j },
     lines: localizedLines(entry.l),
     center: { lat: entry.c[0], lng: entry.c[1] },
     color: lineColor([...entry.l]),

@@ -1,14 +1,30 @@
 import { STATION_LOCKERS, type StationLocker } from "./stationLockers";
-import { stationKeys, type Localized, type StationOption } from "./stations";
+import { stationKeys, type Locale, type Localized, type StationOption } from "./stations";
 
-/** Fees and hours as published on each service's official site; shown with a "may change" note. */
+const PLAY_SEARCH = "https://play.google.com/store/search?q=%EB%98%90%ED%83%80%EB%9D%BC%EC%BB%A4&c=apps&hl=";
+const APP_STORE_SEARCH = "https://apps.apple.com/kr/search?term=%EB%98%90%ED%83%80%EB%9D%BC%EC%BB%A4";
+
+/**
+ * Each service in the reader's language: T-Locker's web app takes `?lang=` (zh-Hans for Simplified),
+ * T-Luggage has /kor, /eng, /chi and /jap sites. Fees and hours are as published there, with a "may change" note.
+ */
 export const LUGGAGE_LINKS = {
-  tLockerWeb: "https://tlocker.otpin.co/",
-  tLuggage: "https://www.tluggage.co.kr/kor",
-  appGooglePlay: "https://play.google.com/store/search?q=%EB%98%90%ED%83%80%EB%9D%BC%EC%BB%A4&c=apps",
-  appAppStore: "https://apps.apple.com/kr/search?term=%EB%98%90%ED%83%80%EB%9D%BC%EC%BB%A4",
+  tLockerWeb: {
+    ko: "https://tlocker.otpin.co/?lang=ko",
+    en: "https://tlocker.otpin.co/?lang=en",
+    zh: "https://tlocker.otpin.co/?lang=zh-Hans",
+    ja: "https://tlocker.otpin.co/?lang=ja",
+  },
+  tLuggage: {
+    ko: "https://www.tluggage.co.kr/kor",
+    en: "https://www.tluggage.co.kr/eng",
+    zh: "https://www.tluggage.co.kr/chi",
+    ja: "https://www.tluggage.co.kr/jap",
+  },
+  appGooglePlay: { ko: `${PLAY_SEARCH}ko`, en: `${PLAY_SEARCH}en`, zh: `${PLAY_SEARCH}zh-CN`, ja: `${PLAY_SEARCH}ja` },
+  appAppStore: { ko: APP_STORE_SEARCH, en: `${APP_STORE_SEARCH}&l=en-GB`, zh: `${APP_STORE_SEARCH}&l=zh-Hans-CN`, ja: `${APP_STORE_SEARCH}&l=ja` },
   callCenter: "tel:1877-1265",
-} as const;
+} as const satisfies Record<string, Localized | string>;
 
 export const LOCKER_HOURS = { open: 5, close: 24 } as const;
 export const LUGGAGE_HOURS = { open: 9, close: 22 } as const;
@@ -21,9 +37,9 @@ export type LuggageSize = "S" | "M" | "L" | "XL";
 type Fee = readonly [weekday: number, weekend: number];
 
 export const LOCKER_SIZES: Record<LockerSize, { label: Localized; dims: string; base: Fee; extra: number }> = {
-  S: { label: { ko: "소형", en: "Small" }, dims: "50×30×60cm", base: [2200, 3100], extra: 500 },
-  M: { label: { ko: "중형", en: "Medium" }, dims: "50×45×60cm", base: [3300, 4600], extra: 800 },
-  L: { label: { ko: "대형", en: "Large" }, dims: "50×90×60cm", base: [4400, 6100], extra: 1000 },
+  S: { label: { ko: "소형", en: "Small", zh: "小号", ja: "小型" }, dims: "50×30×60cm", base: [2200, 3100], extra: 500 },
+  M: { label: { ko: "중형", en: "Medium", zh: "中号", ja: "中型" }, dims: "50×45×60cm", base: [3300, 4600], extra: 800 },
+  L: { label: { ko: "대형", en: "Large", zh: "大号", ja: "大型" }, dims: "50×90×60cm", base: [4400, 6100], extra: 1000 },
 };
 
 export const LUGGAGE_SIZES: Record<
@@ -32,28 +48,28 @@ export const LUGGAGE_SIZES: Record<
 > = {
   S: {
     label: { ko: "S", en: "S" },
-    fits: { ko: "20인치 이하", en: "up to 20\"" },
+    fits: { ko: "20인치 이하", en: "up to 20\"", zh: "20英寸以下", ja: "20インチ以下" },
     base: [3000, 4000],
     city: [17000, 25000],
     airport: [20000, 29000],
   },
   M: {
     label: { ko: "M", en: "M" },
-    fits: { ko: "20~23인치", en: "20–23\"" },
+    fits: { ko: "20~23인치", en: "20–23\"", zh: "20~23英寸", ja: "20~23インチ" },
     base: [4000, 6000],
     city: [17000, 25000],
     airport: [20000, 29000],
   },
   L: {
     label: { ko: "L", en: "L" },
-    fits: { ko: "23~27인치", en: "23–27\"" },
+    fits: { ko: "23~27인치", en: "23–27\"", zh: "23~27英寸", ja: "23~27インチ" },
     base: [6000, 9000],
     city: [26000, 38000],
     airport: [26000, 38000],
   },
   XL: {
     label: { ko: "XL", en: "XL" },
-    fits: { ko: "27인치 이상", en: "27\"+" },
+    fits: { ko: "27인치 이상", en: "27\"+", zh: "27英寸以上", ja: "27インチ以上" },
     base: [9000, 13000],
     city: [31000, 45000],
     airport: [31000, 45000],
@@ -70,28 +86,74 @@ export function luggageFee(size: LuggageSize, hours: number, weekend: boolean) {
   return LUGGAGE_SIZES[size].base[weekend ? 1 : 0] + Math.max(0, Math.ceil(hours - BASE_HOURS)) * LUGGAGE_EXTRA;
 }
 
-export function formatWon(amount: number) {
-  return `${amount.toLocaleString("ko-KR")}원`;
+/** "3,300원" in Korean, "₩3,300" elsewhere. */
+export function formatWon(amount: number, locale: Locale = "ko") {
+  const number = amount.toLocaleString("ko-KR");
+  return locale === "ko" ? `${number}원` : `₩${number}`;
+}
+
+/** "B2 2번 출구" / "B1 3·4번 출구" in the reader's language. */
+export function exitText(where: string, locale: Locale) {
+  if (locale === "ko") return where;
+  return where.replace(/([\d·]+)번 출구/, (_, numbers: string) =>
+    locale === "en" ? `Exit ${numbers}` : locale === "zh" ? `${numbers}号出口` : `${numbers}番出口`,
+  );
 }
 
 export type LuggageDesk = { station: string; line: string; where: Localized };
 
 /** 또타러기지 staffed desks (storage + same-day delivery). */
 export const LUGGAGE_DESKS: LuggageDesk[] = [
-  { station: "서울역", line: "1호선", where: { ko: "B1 1번 출구 방면", en: "B1, toward Exit 1" } },
-  { station: "홍대입구역", line: "2호선", where: { ko: "B1 3·4번 출구 방면", en: "B1, toward Exits 3–4" } },
-  { station: "잠실역", line: "2호선", where: { ko: "B1 3·4번 출구 방면", en: "B1, toward Exits 3–4" } },
-  { station: "명동역", line: "4호선", where: { ko: "B1 9·10번 출구 방면", en: "B1, toward Exits 9–10" } },
-  { station: "김포공항역", line: "5호선", where: { ko: "B1 i-센터 방면", en: "B1, by the i-Center" } },
-  { station: "종로3가역", line: "5호선", where: { ko: "B1 6번 출구 방면", en: "B1, toward Exit 6" } },
+  {
+    station: "서울역",
+    line: "1호선",
+    where: { ko: "B1 1번 출구 방면", en: "B1, toward Exit 1", zh: "B1 1号出口方向", ja: "B1 1番出口方面" },
+  },
+  {
+    station: "홍대입구역",
+    line: "2호선",
+    where: { ko: "B1 3·4번 출구 방면", en: "B1, toward Exits 3–4", zh: "B1 3·4号出口方向", ja: "B1 3·4番出口方面" },
+  },
+  {
+    station: "잠실역",
+    line: "2호선",
+    where: { ko: "B1 3·4번 출구 방면", en: "B1, toward Exits 3–4", zh: "B1 3·4号出口方向", ja: "B1 3·4番出口方面" },
+  },
+  {
+    station: "명동역",
+    line: "4호선",
+    where: { ko: "B1 9·10번 출구 방면", en: "B1, toward Exits 9–10", zh: "B1 9·10号出口方向", ja: "B1 9·10番出口方面" },
+  },
+  {
+    station: "김포공항역",
+    line: "5호선",
+    where: { ko: "B1 i-센터 방면", en: "B1, by the i-Center", zh: "B1 i-中心方向", ja: "B1 iセンター方面" },
+  },
+  {
+    station: "종로3가역",
+    line: "5호선",
+    where: { ko: "B1 6번 출구 방면", en: "B1, toward Exit 6", zh: "B1 6号出口方向", ja: "B1 6番出口方面" },
+  },
 ];
 
 export type StorageRoom = "small" | "medium" | "large";
 
 export const STORAGE_ROOMS: Record<StorageRoom, { label: Localized; size: Localized; monthly: number }> = {
-  small: { label: { ko: "0.15평", en: "0.15 pyeong" }, size: { ko: "1×1×1.05m", en: "1×1×1.05 m" }, monthly: 49000 },
-  medium: { label: { ko: "0.3평", en: "0.3 pyeong" }, size: { ko: "1×1×2.1m", en: "1×1×2.1 m" }, monthly: 79000 },
-  large: { label: { ko: "0.5평", en: "0.5 pyeong" }, size: { ko: "1×1.5×2.1m", en: "1×1.5×2.1 m" }, monthly: 131000 },
+  small: {
+    label: { ko: "0.15평", en: "0.15 pyeong", zh: "0.5㎡", ja: "0.5㎡" },
+    size: { ko: "1×1×1.05m", en: "1×1×1.05 m" },
+    monthly: 49000,
+  },
+  medium: {
+    label: { ko: "0.3평", en: "0.3 pyeong", zh: "1㎡", ja: "1㎡" },
+    size: { ko: "1×1×2.1m", en: "1×1×2.1 m" },
+    monthly: 79000,
+  },
+  large: {
+    label: { ko: "0.5평", en: "0.5 pyeong", zh: "1.65㎡", ja: "1.65㎡" },
+    size: { ko: "1×1.5×2.1m", en: "1×1.5×2.1 m" },
+    monthly: 131000,
+  },
 };
 
 /** Discount for paying 3, 6 or 12 months up front. */

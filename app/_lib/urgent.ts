@@ -4,7 +4,7 @@ import { loadKakaoMaps } from "../kakao-sdk";
 import { searchNearby, type NearbyPlace } from "../kakao-places";
 import { stationKey, stepFreeMaps } from "./stepFree";
 import { STATION_ADDRESSES, STATION_TOILETS, type StationToilet } from "./stationToilets";
-import { formatDistance, stationKeys, type Localized, type StationOption } from "./stations";
+import { formatDistance, stationKeys, t, type Locale, type Localized, type StationOption } from "./stations";
 import { lineLabel, sameLine } from "./subwayLine";
 
 export type UrgentKind = "restroom" | "pharmacy" | "clinic";
@@ -47,8 +47,13 @@ const CLINIC_EXCLUDE =
 const CLINIC_PRIMARY = /내과|가정의학|이비인후과|소아청소년과|소아과|응급|종합병원|대학병원/;
 const CLINIC_OTHER = /의원|병원|외과|산부인과|여성/;
 
-const TAP_IN: Localized = { ko: "카드 안 찍고 바로 이용", en: "No need to tap out" };
-const TAP_OUT: Localized = { ko: "카드 찍고 나가야 해요", en: "Tap out at the gate first" };
+const TAP_IN: Localized = { ko: "카드 안 찍고 바로 이용", en: "No need to tap out", zh: "无需刷卡出站", ja: "改札を出ずに利用可" };
+const TAP_OUT: Localized = {
+  ko: "카드 찍고 나가야 해요",
+  en: "Tap out at the gate first",
+  zh: "需先刷卡出站",
+  ja: "改札を出る必要あり",
+};
 
 function spot(
   id: string,
@@ -63,10 +68,8 @@ function spot(
 
 function joinParts(parts: (Localized | null)[]): Localized {
   const present = parts.filter((part): part is Localized => part !== null);
-  return {
-    ko: present.map((part) => part.ko).join(" · "),
-    en: present.map((part) => part.en).join(" · "),
-  };
+  const join = (locale: Locale) => present.map((part) => t(part, locale)).join(" · ");
+  return { ko: join("ko"), en: join("en"), zh: join("zh"), ja: join("ja") };
 }
 
 /** "B3" → -3, "2F" → 2. */
@@ -88,14 +91,21 @@ function storeysBetween(a: string, b: string) {
 function toiletPath(toilet: StationToilet, platform: string, gate: string): Localized {
   if (toilet.gate === "inside") {
     return toilet.floor === platform
-      ? { ko: "승강장과 같은 층", en: "Same floor as the platform" }
-      : { ko: `승강장 ${platform} → ${toilet.floor}`, en: `Platform ${platform} → ${toilet.floor}` };
+      ? { ko: "승강장과 같은 층", en: "Same floor as the platform", zh: "与站台同层", ja: "ホームと同じ階" }
+      : {
+          ko: `승강장 ${platform} → ${toilet.floor}`,
+          en: `Platform ${platform} → ${toilet.floor}`,
+          zh: `站台 ${platform} → ${toilet.floor}`,
+          ja: `ホーム ${platform} → ${toilet.floor}`,
+        };
   }
   const gateStep = gate === platform ? "" : ` → ${gate}`;
   const after = toilet.floor === gate ? "" : ` → ${toilet.floor}`;
   return {
     ko: `승강장 ${platform}${gateStep} 개찰구 밖${after}`,
     en: `Platform ${platform}${gateStep} gate, tap out${after}`,
+    zh: `站台 ${platform}${gateStep} 检票口外${after}`,
+    ja: `ホーム ${platform}${gateStep} 改札外${after}`,
   };
 }
 
@@ -111,13 +121,13 @@ function restroomSpot(station: StationOption, toilet: StationToilet, index: numb
       ? 3
       : 2;
   const lineTag = showLine ? lineLabel(toilet.line) : null;
-  const exitHint =
-    toilet.exit && !/출구|출입구/.test(toilet.detail)
-      ? { ko: ` (${toilet.exit}번 출구 쪽)`, en: `, near Exit ${toilet.exit}` }
-      : { ko: "", en: toilet.exit ? `, near Exit ${toilet.exit}` : "" };
+  const exit = toilet.exit;
+  const prefix = (locale: Locale) => `${lineTag ? `${t(lineTag, locale)} ` : ""}${toilet.floor}`;
   const where: Localized = {
-    ko: `${lineTag ? `${lineTag.ko} ` : ""}${toilet.floor} ${toilet.detail}${exitHint.ko}`,
-    en: `${lineTag ? `${lineTag.en} ` : ""}${toilet.floor}${exitHint.en}`,
+    ko: `${prefix("ko")} ${toilet.detail}${exit && !/출구|출입구/.test(toilet.detail) ? ` (${exit}번 출구 쪽)` : ""}`,
+    en: `${prefix("en")}${exit ? `, near Exit ${exit}` : ""}`,
+    zh: `${prefix("zh")}${exit ? ` (${exit}号出口附近)` : ""}`,
+    ja: `${prefix("ja")}${exit ? ` (${exit}番出口付近)` : ""}`,
   };
   return spot(
     `${stationKey(station)}-wc-${index}`,
@@ -139,10 +149,20 @@ function mapRestroom(station: StationOption): UrgentSpot {
     "restroom",
     "unknown",
     mapNote
-      ? joinParts([mapNote.text, { ko: "개찰구 안/밖은 현장에서 확인해 주세요", en: "Check which side of the gate on site" }])
+      ? joinParts([
+          mapNote.text,
+          {
+            ko: "개찰구 안/밖은 현장에서 확인해 주세요",
+            en: "Check which side of the gate on site",
+            zh: "检票口内/外请在现场确认",
+            ja: "改札内/外は現地でご確認ください",
+          },
+        ])
       : {
           ko: "공식 화장실 정보가 없는 역이에요 (코레일·9호선 등) · 역 안내도를 확인해 주세요",
           en: "No official restroom data for this station · Check the station map",
+          zh: "本站没有官方洗手间信息 (韩国铁道公社·9号线等) · 请查看车站导览图",
+          ja: "公式トイレ情報がない駅です (KORAIL・9号線など) · 駅構内図をご確認ください",
         },
     null,
   );
@@ -179,6 +199,11 @@ function isInStation(place: NearbyPlace, station: StationOption) {
   );
 }
 
+function fromStation(distance: number): Localized {
+  const meters = formatDistance(distance);
+  return { ko: `역에서 ${meters}`, en: `${meters} from station`, zh: `距车站${meters}`, ja: `駅から${meters}` };
+}
+
 function walkFromStation(distance: number) {
   return Math.max(1, Math.round(distance / 70)) + 1;
 }
@@ -189,7 +214,11 @@ function pharmacySpot(place: NearbyPlace, station: StationOption): UrgentSpot {
       `kakao-${place.id}`,
       "pharmacy",
       "station",
-      joinParts([{ ko: place.name, en: place.name }, { ko: "역사 안 매장", en: "Shop inside the station" }, TAP_OUT]),
+      joinParts([
+        { ko: place.name, en: place.name },
+        { ko: "역사 안 매장", en: "Shop inside the station", zh: "站内店铺", ja: "駅構内の店舗" },
+        TAP_OUT,
+      ]),
       2,
       { url: place.url },
     );
@@ -200,7 +229,7 @@ function pharmacySpot(place: NearbyPlace, station: StationOption): UrgentSpot {
     "outside",
     joinParts([
       { ko: place.name, en: place.name },
-      { ko: `역에서 ${formatDistance(place.distance)}`, en: `${formatDistance(place.distance)} from station` },
+      fromStation(place.distance),
       TAP_OUT,
     ]),
     walkFromStation(place.distance),
@@ -223,10 +252,7 @@ function clinicSpot(place: NearbyPlace, kind: "primary" | "other"): UrgentSpot {
     `kakao-${place.id}`,
     "clinic",
     exitLinked ? "exit" : "outside",
-    {
-      ko: `${place.name}${label} · 역에서 ${formatDistance(place.distance)}`,
-      en: `${place.name}${label} · ${formatDistance(place.distance)} from station`,
-    },
+    joinParts([{ ko: `${place.name}${label}`, en: `${place.name}${label}` }, fromStation(place.distance)]),
     walkFromStation(place.distance),
     { url: place.url, exitLinked, secondary: kind === "other" },
   );

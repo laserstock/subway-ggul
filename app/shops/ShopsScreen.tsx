@@ -16,12 +16,14 @@ import { useLocale } from "../_lib/locale";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
 import { AT_STATION_METERS, findStoreJumps, type JumpCandidate } from "../_lib/storeJump";
 import { angleBetween, bearingDegrees, lineLabel } from "../_lib/subwayLine";
+import { useAutoTranslation } from "../_lib/translate";
 import {
   STATIONS,
   curatedOption,
   kakaoOption,
   distanceMeters,
   formatDistance,
+  stationName,
   t,
   type CategoryId,
   type Locale,
@@ -51,36 +53,83 @@ const COPY = {
   search: {
     ko: "역 주변이나 동선 상의 시설을 찾아보세요 (예: 홍대입구역)",
     en: "Search nearby or along your route (e.g. Hongik Univ.)",
+    zh: "搜索车站周边或路线上的设施 (例: 弘大入口站)",
+    ja: "駅周辺やルート上の施設を探す (例: 弘大入口駅)",
   },
-  smartList: { ko: "스마트 추천 목록", en: "Smart picks" },
-  sortHint: { ko: "현재 위치에서 가장 빠른 순", en: "Fastest from here" },
-  empty: { ko: "조건에 맞는 장소가 없어요", en: "No matching places" },
-  loading: { ko: "주변 장소를 불러오는 중…", en: "Loading nearby places…" },
+  smartList: { ko: "스마트 추천 목록", en: "Smart picks", zh: "智能推荐", ja: "スマートおすすめ" },
+  sortHint: { ko: "현재 위치에서 가장 빠른 순", en: "Fastest from here", zh: "按离当前位置最快排序", ja: "現在地から近い順" },
+  empty: { ko: "조건에 맞는 장소가 없어요", en: "No matching places", zh: "没有符合条件的地点", ja: "条件に合う場所がありません" },
+  loading: { ko: "주변 장소를 불러오는 중…", en: "Loading nearby places…", zh: "正在加载周边地点…", ja: "周辺の場所を読み込み中…" },
   loadFailed: {
     ko: "주변 장소를 불러오지 못했어요",
     en: "Couldn't load nearby places",
+    zh: "无法加载周边地点",
+    ja: "周辺の場所を読み込めませんでした",
   },
   gatePending: {
     ko: "이 역은 개찰구 안/밖 정보를 준비 중이에요",
     en: "Fare gate tips for this station are coming soon",
+    zh: "本站检票口内/外信息正在准备中",
+    ja: "この駅の改札内/外情報は準備中です",
   },
-  kakaoLink: { ko: "카카오맵에서 보기", en: "View on Kakao Map" },
-  myLocation: { ko: "내 위치로 가장 가까운 역 찾기", en: "Find the station nearest to me" },
-  locating: { ko: "현재 위치를 찾는 중…", en: "Finding your location…" },
-  nearestStation: { ko: "내 위치에서 가장 가까운 역", en: "Nearest station to you" },
-  stopTracking: { ko: "추적 끄기", en: "Stop" },
-  inside: { ko: "개찰구 안", en: "Inside fare gate" },
-  outside: { ko: "역외", en: "Outside station" },
-  unpaid: { ko: "개찰구 밖", en: "Unpaid area" },
-  nearby: { ko: "역 주변", en: "Near station" },
-  jumpTitle: { ko: "스마트 점핑 안내", en: "Smart station jump" },
-  jumpSearching: { ko: "앞뒤 역에서 찾는 중…", en: "Checking nearby stops…" },
+  kakaoLink: { ko: "카카오맵에서 보기", en: "View on Kakao Map", zh: "在Kakao地图查看", ja: "カカオマップで見る" },
+  myLocation: {
+    ko: "내 위치로 가장 가까운 역 찾기",
+    en: "Find the station nearest to me",
+    zh: "查找离我最近的车站",
+    ja: "現在地から最寄り駅を探す",
+  },
+  locating: { ko: "현재 위치를 찾는 중…", en: "Finding your location…", zh: "正在获取您的位置…", ja: "現在地を取得中…" },
+  nearestStation: { ko: "내 위치에서 가장 가까운 역", en: "Nearest station to you", zh: "离您最近的车站", ja: "現在地から最寄りの駅" },
+  stopTracking: { ko: "추적 끄기", en: "Stop", zh: "停止追踪", ja: "追跡をオフ" },
+  inside: { ko: "개찰구 안", en: "Inside fare gate", zh: "检票口内", ja: "改札内" },
+  outside: { ko: "역외", en: "Outside station", zh: "站外", ja: "駅の外" },
+  unpaid: { ko: "개찰구 밖", en: "Unpaid area", zh: "检票口外", ja: "改札外" },
+  nearby: { ko: "역 주변", en: "Near station", zh: "车站周边", ja: "駅周辺" },
+  jumpTitle: { ko: "스마트 점핑 안내", en: "Smart station jump", zh: "智能跳站指南", ja: "スマート駅ジャンプ" },
+  jumpSearching: { ko: "앞뒤 역에서 찾는 중…", en: "Checking nearby stops…", zh: "正在查找前后车站…", ja: "前後の駅を検索中…" },
   jumpNone: {
     ko: "앞뒤 3정거장 안에도 역 바로 앞 매장이 없어요",
     en: "No store right by a station within 3 stops either",
+    zh: "前后3站内车站附近也没有门店",
+    ja: "前後3駅以内にも駅前の店舗はありません",
   },
-  jumpGo: { ko: "이 역 매장 보기", en: "Show that station" },
+  jumpGo: { ko: "이 역 매장 보기", en: "Show that station", zh: "查看该站门店", ja: "この駅の店舗を見る" },
 };
+
+const JUMP_COPY = {
+  missing: {
+    ko: "현재 역에는 {brand}{particle} 없어요.",
+    en: "No {brand} at this station.",
+    zh: "本站没有{brand}。",
+    ja: "この駅には{brand}がありません。",
+  },
+  ahead: {
+    ko: "{n}정거장 뒤",
+    en: "{n} stop{s} ahead",
+    zh: "前方{n}站",
+    ja: "{n}駅先",
+  },
+  toward: {
+    ko: "{line} {toward} 방면 {n}정거장",
+    en: "{n} stop{s} toward {toward} ({line})",
+    zh: "{line} 往{toward}方向{n}站",
+    ja: "{line} {toward}方面 {n}駅",
+  },
+  suggestion: {
+    ko: "{where} [{stop} · {place} 도보 {minutes}분] 매장을 추천해요.",
+    en: "Try {where}: [{stop} · {place}, {minutes} min walk].",
+    zh: "推荐{where}：[{stop} · {place} 步行{minutes}分钟]。",
+    ja: "おすすめ：{where} [{stop} · {place} 徒歩{minutes}分]",
+  },
+};
+
+function fill(template: Localized, locale: Locale, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replaceAll(`{${key}}`, String(value)),
+    t(template, locale),
+  );
+}
 
 const HEADING_MIN_METERS = 100;
 
@@ -90,7 +139,7 @@ const ALL_PER_CATEGORY = 3;
 export type ShopCategoryId = Exclude<CategoryId, "pharmacy">;
 export type ShopFilter = "all" | ShopCategoryId;
 
-const ALL_FILTER: Localized = { ko: "전체", en: "All" };
+const ALL_FILTER: Localized = { ko: "전체", en: "All", zh: "全部", ja: "すべて" };
 
 const CATEGORIES: {
   id: ShopCategoryId;
@@ -101,28 +150,28 @@ const CATEGORIES: {
 }[] = [
   {
     id: "oliveyoung",
-    name: { ko: "올리브영", en: "Olive Young" },
+    name: { ko: "올리브영", en: "Olive Young", zh: "Olive Young", ja: "オリーブヤング" },
     emoji: "💄",
     icon: oliveyoungIcon,
     nearby: { kind: "keyword", keyword: "올리브영", radius: 1500 },
   },
   {
     id: "daiso",
-    name: { ko: "다이소", en: "Daiso" },
+    name: { ko: "다이소", en: "Daiso", zh: "大创", ja: "ダイソー" },
     emoji: "🛍️",
     icon: daisoIcon,
     nearby: { kind: "keyword", keyword: "다이소", radius: 1500 },
   },
   {
     id: "cafe",
-    name: { ko: "카페", en: "Cafe" },
+    name: { ko: "카페", en: "Cafe", zh: "咖啡店", ja: "カフェ" },
     emoji: "☕",
     icon: cafeIcon,
     nearby: { kind: "category", code: "CE7", radius: 500 },
   },
   {
     id: "convenience",
-    name: { ko: "편의점", en: "Store" },
+    name: { ko: "편의점", en: "Store", zh: "便利店", ja: "コンビニ" },
     emoji: "🏪",
     icon: convenienceIcon,
     nearby: { kind: "category", code: "CS2", radius: 500 },
@@ -164,6 +213,8 @@ function nearbyItem(category: CategoryId, place: NearbyPlace): ListItem {
     walk: {
       ko: `도보 ${minutes}분 · ${place.distance}m`,
       en: `${minutes} min on foot · ${place.distance} m`,
+      zh: `步行${minutes}分钟 · ${place.distance}m`,
+      ja: `徒歩${minutes}分 · ${place.distance}m`,
     },
     walkMinutes: minutes,
     note: { ko: place.address, en: place.address },
@@ -199,23 +250,23 @@ function jumpMessage(
 ) {
   const { candidate, ahead } = pick;
   const minutes = Math.max(1, Math.round(candidate.place.distance / WALK_METERS_PER_MINUTE));
-  const line = t(lineLabel(candidate.line), locale);
-  if (locale === "ko") {
-    const brand = categoryName.ko;
-    const where = ahead
-      ? `${candidate.stops}정거장 뒤`
-      : `${line} ${candidate.toward.name} 방면 ${candidate.stops}정거장`;
-    return {
-      missing: `현재 역에는 ${brand}${subjectParticle(brand)} 없어요.`,
-      suggestion: `${where} [${candidate.stop.name} · ${candidate.place.name} 도보 ${minutes}분] 매장을 추천해요.`,
-    };
-  }
+  const brand = t(categoryName, locale);
+  const count = { n: candidate.stops, s: candidate.stops > 1 ? "s" : "" };
   const where = ahead
-    ? `${candidate.stops} stop${candidate.stops > 1 ? "s" : ""} ahead`
-    : `${candidate.stops} stop${candidate.stops > 1 ? "s" : ""} toward ${candidate.toward.name} (${line})`;
+    ? fill(JUMP_COPY.ahead, locale, count)
+    : fill(JUMP_COPY.toward, locale, {
+        ...count,
+        line: t(lineLabel(candidate.line), locale),
+        toward: t(stationName(candidate.toward.name), locale),
+      });
   return {
-    missing: `No ${categoryName.en} at this station.`,
-    suggestion: `Try ${where}: [${candidate.stop.name} · ${candidate.place.name}, ${minutes} min walk].`,
+    missing: fill(JUMP_COPY.missing, locale, { brand, particle: subjectParticle(brand) }),
+    suggestion: fill(JUMP_COPY.suggestion, locale, {
+      where,
+      stop: t(stationName(candidate.stop.name), locale),
+      place: candidate.place.name,
+      minutes,
+    }),
   };
 }
 
@@ -480,6 +531,14 @@ export default function ShopsScreen({
   const jumpPick = jumpCandidates ? pickJump(jumpCandidates, station, tracking ? heading : null) : null;
   const jumpText = jumpPick && activeCategory ? jumpMessage(activeCategory.name, jumpPick, locale) : null;
 
+  const curatedTexts = items
+    .filter((item) => item.zone !== "nearby")
+    .flatMap((item) => [item.name, item.note])
+    .filter((value) => !value[locale])
+    .map((value) => value.ko);
+  const translated = useAutoTranslation(curatedTexts, locale);
+  const label = (value: Localized) => value[locale] ?? translated(value.ko, value.en);
+
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const activeId = selected?.id ?? items[0]?.id ?? null;
 
@@ -624,7 +683,7 @@ export default function ShopsScreen({
                       onClick={() => selectStation(kakaoOption(jumpPick.candidate.stop))}
                       className="mt-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#b45309] shadow-sm"
                     >
-                      {jumpPick.candidate.stop.name} · {t(COPY.jumpGo, locale)} →
+                      {t(stationName(jumpPick.candidate.stop.name), locale)} · {t(COPY.jumpGo, locale)} →
                     </button>
                   </>
                 ) : (
@@ -678,7 +737,7 @@ export default function ShopsScreen({
                           <span className="mt-[2px]">
                             <CategoryIcon category={item.category} size={18} />
                           </span>
-                          {t(item.name, locale)}
+                          {label(item.name)}
                         </p>
                         <p className="mt-1.5 text-[13px] text-neutral-500">
                           {t(item.walk, locale)}
@@ -690,7 +749,7 @@ export default function ShopsScreen({
                           ) : null}
                         </p>
                         <p className="mt-1 text-[13px] text-neutral-400">
-                          {t(item.note, locale)}
+                          {label(item.note)}
                         </p>
                       </button>
                       <div className="mt-2 flex items-center justify-between gap-2">
