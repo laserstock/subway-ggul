@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import AppHeader from "./AppHeader";
 import BottomNav, { HoneyPotIcon } from "./BottomNav";
 import ActionTile, { type ActionKind } from "./ActionTile";
 import DestinationAlarm from "./DestinationAlarm";
-import { PinIcon, SearchIcon, StarIcon } from "./icons";
+import { SearchIcon, StarIcon } from "./icons";
 import LineBadges from "./LineBadges";
 import LiveFeed from "./LiveFeed";
 import LocationSheet from "./LocationSheet";
@@ -28,38 +28,10 @@ import {
   useDestinationStation,
   useSelectedStation,
 } from "../_lib/selectedStation";
-import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
-import {
-  distanceMeters,
-  formatDistance,
-  stationParams,
-  t,
-  type Localized,
-  type StationOption,
-} from "../_lib/stations";
+import { useStationTracker } from "../_lib/useStationTracker";
+import { stationParams, t, type Localized, type StationOption } from "../_lib/stations";
 
 const COPY = {
-  now: { ko: "지금", en: "Now at", zh: "当前", ja: "現在" },
-  backToMine: { ko: "내 위치로", en: "My station", zh: "我的位置", ja: "現在地へ" },
-  locating: {
-    ko: "현재 위치를 찾는 중…",
-    en: "Finding your location…",
-    zh: "正在查找当前位置…",
-    ja: "現在地を検索中…",
-  },
-  locatingHint: {
-    ko: "가장 가까운 역을 자동으로 찾아드려요",
-    en: "We'll find the nearest station for you",
-    zh: "自动为您查找最近的车站",
-    ja: "最寄り駅を自動で探します",
-  },
-  noLocation: {
-    ko: "위치를 확인할 수 없어요",
-    en: "Can't find your location",
-    zh: "无法确认您的位置",
-    ja: "現在地を確認できません",
-  },
-  retry: { ko: "다시 시도", en: "Retry", zh: "重试", ja: "再試行" },
   search: {
     ko: "어느 역으로 가시나요? (예: 광화문역, 서울역)",
     en: "Where are you heading? (e.g. Gwanghwamun, Seoul Stn.)",
@@ -75,15 +47,7 @@ const COPY = {
     zh: "上报成功，谢谢！",
     ja: "投稿しました。ありがとうございます！",
   },
-  manualBadge: { ko: "직접 선택", en: "Picked", zh: "手动选择", ja: "手動選択" },
   editMy: { ko: "편집", en: "Edit", zh: "编辑", ja: "編集" },
-  confirming: { ko: "위치 확인 중", en: "Checking", zh: "确认中", ja: "確認中" },
-  correctLocation: {
-    ko: "위치 교정하기",
-    en: "Correct my station",
-    zh: "校正我的车站",
-    ja: "現在の駅を修正",
-  },
   switched: {
     ko: "📍 지금 역 변경 완료: {station}",
     en: "📍 Now at {station}",
@@ -215,11 +179,6 @@ export default function HomeScreen() {
     if (alarm) void armArrivalAlarm(next);
   }
 
-  function backToMyStation() {
-    setDestinationStation(null);
-    if (!tracker.tracking) tracker.start();
-  }
-
   function actionHref(href: string) {
     const params = station ? stationParams(station) : new URLSearchParams();
     if (!destination && !isManual) params.set("near", "1");
@@ -248,45 +207,10 @@ export default function HomeScreen() {
     showToast(t(COPY.reportDone, locale));
   }
 
-  const distance =
-    !destination && !isManual && tracker.position && tracker.nearest
-      ? distanceMeters(tracker.position, tracker.nearest.center)
-      : null;
-
   const alarmTarget =
     (destination && destination.key !== current?.key ? destination : null) ??
     myPlaces.find((place) => place.station.key !== current?.key)?.station ??
     destination;
-
-  let headline: ReactNode;
-  let detail: ReactNode = null;
-  if (current) {
-    headline = (
-      <>
-        <PinIcon size={18} className="mr-1 shrink-0 text-honey" />
-        <span className="min-w-0 truncate">
-          {t(COPY.now, locale)} {t(current.name, locale)}
-        </span>
-        <LineBadges station={current} locale={locale} size="sm" className="ml-1.5" />
-      </>
-    );
-  } else if (tracker.issue) {
-    headline = (
-      <>
-        <PinIcon size={18} className="mr-1 shrink-0 text-neutral-400" />
-        <span className="min-w-0 truncate">{t(COPY.noLocation, locale)}</span>
-      </>
-    );
-    detail = t(LOCATION_ISSUE_COPY[tracker.issue], locale);
-  } else {
-    headline = (
-      <>
-        <PinIcon size={18} className="mr-1 shrink-0 animate-pulse text-honey" />
-        <span className="min-w-0 truncate">{t(COPY.locating, locale)}</span>
-      </>
-    );
-    detail = t(COPY.locatingHint, locale);
-  }
 
   return (
     <div className="flex min-h-dvh justify-center bg-frame">
@@ -338,81 +262,14 @@ export default function HomeScreen() {
             </div>
           ) : null}
 
-          <section className="mt-4 rounded-[20px] border border-[#f5d76e] bg-gradient-to-br from-[#fff8db] to-[#fffdf3] px-4 py-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)]">
-            <div className="flex items-start justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setLocationOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={locationOpen}
-                title={t(COPY.correctLocation, locale)}
-                className="min-w-0 flex-1 rounded-xl text-left transition active:scale-[0.99]"
-              >
-                <span className="flex items-center gap-1 text-[14px] font-extrabold tracking-tight text-ink">
-                  <span className="flex min-w-0 items-center">{headline}</span>
-                  <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-honey-soft text-honey-strong"
-                    aria-hidden
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M6 9l6 6 6-6"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <span className="sr-only">{t(COPY.correctLocation, locale)}</span>
-                </span>
-                {detail ? (
-                  <span className="mt-1 block pl-[22px] text-[12px] font-normal text-ink-muted">{detail}</span>
-                ) : null}
-              </button>
-              {destination ? (
-                <button
-                  type="button"
-                  onClick={backToMyStation}
-                  className="shrink-0 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-600"
-                >
-                  {t(COPY.backToMine, locale)}
-                </button>
-              ) : isManual ? (
-                <span className="shrink-0 rounded-full bg-[#eff5ff] px-2 py-1 text-[11px] font-semibold text-[#2563eb]">
-                  ✋ {t(COPY.manualBadge, locale)}
-                </span>
-              ) : confirming ? (
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-neutral-500 shadow-sm">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-                  {t(COPY.confirming, locale)}
-                </span>
-              ) : distance !== null ? (
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-[#16a34a] shadow-sm">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e]/60" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22c55e]" />
-                  </span>
-                  {formatDistance(distance)}
-                </span>
-              ) : tracker.issue ? (
-                <button
-                  type="button"
-                  onClick={tracker.start}
-                  className="shrink-0 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-600"
-                >
-                  {t(COPY.retry, locale)}
-                </button>
-              ) : null}
-            </div>
-
-            <DestinationAlarm
-              target={alarmTarget}
-              current={current}
-              locale={locale}
-              onChange={() => openSearch("destination")}
-            />
-          </section>
+          <DestinationAlarm
+            target={alarmTarget}
+            current={current}
+            locating={!tracker.issue}
+            locale={locale}
+            onOrigin={() => setLocationOpen(true)}
+            onChange={() => openSearch("destination")}
+          />
 
           <h2 className="mb-2 mt-4 flex items-center gap-1 text-[15px] font-extrabold tracking-tight text-neutral-900">
             <span className="mr-0.5 shrink-0 text-[#b45309]">{t(COPY.checkTitle, locale)}</span>

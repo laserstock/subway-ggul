@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PinIcon } from "./icons";
 import LineBadges from "./LineBadges";
 import { armArrivalAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { bareStationName } from "../_lib/arrivalTips";
@@ -8,20 +9,23 @@ import { distanceMeters, kakaoOption, restoreStation, t, type Locale, type Local
 import { lineNeighbors, loadLineStations, sameLine, stationLines } from "../_lib/subwayLine";
 
 const COPY = {
-  destination: { ko: "목적지", en: "Destination", zh: "目的地", ja: "目的地" },
-  change: { ko: "변경", en: "Change", zh: "更改", ja: "変更" },
-  pick: { ko: "선택하기", en: "Choose", zh: "选择", ja: "選択" },
+  change: { ko: "목적지 변경", en: "Change", zh: "更改目的地", ja: "目的地変更" },
+  pick: { ko: "목적지 선택", en: "Choose", zh: "选择目的地", ja: "目的地選択" },
+  noDestination: { ko: "목적지", en: "Destination", zh: "目的地", ja: "目的地" },
+  locating: { ko: "위치 찾는 중…", en: "Locating…", zh: "定位中…", ja: "位置を検索中…" },
+  noLocation: { ko: "위치 확인", en: "Set location", zh: "确认位置", ja: "位置を確認" },
+  correctLocation: { ko: "위치 교정하기", en: "Correct my station", zh: "校正我的车站", ja: "現在の駅を修正" },
   title: {
-    ko: "{station} 하차 알림 예약하기",
-    en: "Alert me before {station}",
+    ko: "{station} 하차 알림 예약",
+    en: "Alert before {station}",
     zh: "预约{station}下车提醒",
-    ja: "{station}の降車通知を予約",
+    ja: "{station}の降車通知",
   },
   titleEmpty: {
-    ko: "목적지 정하고 하차 알림 받기",
-    en: "Pick a stop to get an arrival alert",
-    zh: "选择目的地，接收下车提醒",
-    ja: "目的地を選んで降車通知を受け取る",
+    ko: "목적지 하차 알림 예약",
+    en: "Arrival alert",
+    zh: "预约下车提醒",
+    ja: "降車通知を予約",
   },
   hintPrev: {
     ko: "도착 1역 전({prev})에 진동과 알림으로 100% 알려드려요.",
@@ -53,10 +57,10 @@ const COPY = {
 function DestinationIcon() {
   return (
     <span
-      className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-[#ffc83d] to-[#f59e0b] text-white shadow-[0_1px_3px_rgba(146,64,14,0.3)]"
+      className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[6px] bg-gradient-to-br from-[#ffc83d] to-[#f59e0b] text-white shadow-[0_1px_3px_rgba(146,64,14,0.3)]"
       aria-hidden
     >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
         <path d="M5.5 21V4" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
         <path d="M5.5 4.5h11.2l-2.6 4 2.6 4H5.5z" fill="currentColor" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
@@ -78,17 +82,23 @@ async function previousStop(destination: StationOption, from: StationOption | nu
   return nearest ? kakaoOption(nearest) : null;
 }
 
-/** Destination line, the arrival-alarm switch and its hint, inside the home hero card. */
+/** Home hero card: "📍 current ➔ 🚩 destination" route, the arrival-alarm switch and its hint. */
 export default function DestinationAlarm({
   target,
   current,
+  locating,
   locale,
+  onOrigin,
   onChange,
 }: {
   /** Suggested destination: the last station viewed, else the first My station. */
   target: StationOption | null;
   current: StationOption | null;
+  /** Still looking for the current station (as opposed to having failed). */
+  locating: boolean;
   locale: Locale;
+  /** Opens the current-station correction sheet. */
+  onOrigin: () => void;
   onChange: () => void;
 }) {
   const alarm = useArrivalAlarm();
@@ -121,31 +131,55 @@ export default function DestinationAlarm({
   const name = destination ? t(destination.name, locale) : "";
 
   return (
-    <div className="mt-3 border-t border-[#f5d76e]/70 pt-3">
-      <div className="flex items-center gap-1.5 text-[13px] font-bold text-[#92400e]">
-        <DestinationIcon />
-        <span className="shrink-0">{t(COPY.destination, locale)}:</span>
-        {destination ? (
-          <span className="flex min-w-0 items-center gap-1 font-extrabold text-neutral-900">
-            <LineBadges station={destination} locale={locale} size="sm" />
-            <span className="truncate">{name}</span>
+    <section className="mt-4 rounded-[20px] border border-[#f5d76e] bg-gradient-to-br from-[#fff8db] to-[#fffdf3] px-4 py-3 shadow-[0_2px_10px_rgba(15,23,42,0.05)]">
+      <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[14px] font-extrabold tracking-tight text-ink">
+          <button
+            type="button"
+            onClick={onOrigin}
+            aria-haspopup="dialog"
+            title={t(COPY.correctLocation, locale)}
+            className="flex min-w-0 shrink items-center gap-1 rounded-lg transition active:scale-[0.97]"
+          >
+            <PinIcon
+              size={16}
+              className={`shrink-0 ${current ? "text-honey" : locating ? "animate-pulse text-honey" : "text-neutral-400"}`}
+            />
+            <span className={`truncate ${current ? "" : "text-[13px] font-bold text-ink-muted"}`}>
+              {current ? t(current.name, locale) : t(locating ? COPY.locating : COPY.noLocation, locale)}
+            </span>
+            {current ? <LineBadges station={current} locale={locale} size="chip" max={2} /> : null}
+          </button>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-[#d4a72c]" aria-hidden>
+            <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="flex min-w-0 shrink items-center gap-1">
+            <DestinationIcon />
+            {destination ? (
+              <>
+                <span className="truncate">{name}</span>
+                <LineBadges station={destination} locale={locale} size="chip" max={2} />
+              </>
+            ) : (
+              <span className="truncate text-[13px] font-bold text-ink-muted">{t(COPY.noDestination, locale)}</span>
+            )}
           </span>
-        ) : null}
+        </div>
         <button
           type="button"
           onClick={onChange}
           aria-haspopup="dialog"
-          className="ml-auto flex shrink-0 items-center gap-0.5 rounded-full border border-[#f5d76e] bg-white px-2.5 py-1 text-[11.5px] font-extrabold text-[#b45309] transition active:scale-95"
+          className="flex shrink-0 items-center gap-0.5 rounded-full border border-[#f5d76e] bg-white px-2 py-1 text-[11px] font-extrabold text-[#b45309] transition active:scale-95"
         >
           {t(destination ? COPY.change : COPY.pick, locale)}
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
       </div>
 
-      <div className="mt-3 flex items-center gap-3">
-        <p className="min-w-0 flex-1 text-[18px] font-extrabold leading-snug tracking-tight text-neutral-900">
+      <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-[#f5d76e]/70 pt-2.5">
+        <p className="min-w-0 truncate text-[16px] font-extrabold tracking-tight text-neutral-900">
           <span aria-hidden>🔔 </span>
           {destination ? t(COPY.title, locale).replace("{station}", name) : t(COPY.titleEmpty, locale)}
         </p>
@@ -155,21 +189,23 @@ export default function DestinationAlarm({
           aria-checked={on}
           aria-label={t(COPY.toggle, locale)}
           onClick={toggle}
-          className={`relative h-9 w-[60px] shrink-0 rounded-full transition-colors ${on ? "bg-[#22c55e]" : "bg-neutral-300"}`}
+          className={`relative h-8 w-[52px] shrink-0 rounded-full transition-colors ${on ? "bg-[#22c55e]" : "bg-neutral-300"}`}
         >
           <span
-            className={`absolute top-1 h-7 w-7 rounded-full bg-white shadow transition-all ${on ? "left-[28px]" : "left-1"}`}
+            className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? "left-[24px]" : "left-1"}`}
           />
         </button>
       </div>
-      <p className="mt-1 truncate text-[12px] font-semibold tracking-tight text-neutral-600">
-        {prev ? t(COPY.hintPrev, locale).replace("{prev}", t(prev.name, locale)) : t(COPY.hint, locale)}
+      <p className={`mt-0.5 truncate text-xs ${on ? "font-bold text-[#15803d]" : "text-gray-500"}`}>
+        {on
+          ? t(COPY.on, locale)
+          : prev
+            ? t(COPY.hintPrev, locale).replace("{prev}", t(prev.name, locale))
+            : t(COPY.hint, locale)}
       </p>
-
-      {on ? <p className="mt-2 text-[12px] font-bold text-[#15803d]">{t(COPY.on, locale)}</p> : null}
       {on && !alarm.systemAlerts ? (
-        <p className="mt-1 text-[11.5px] font-semibold text-[#b45309]">⚠️ {t(COPY.noSystem, locale)}</p>
+        <p className="mt-0.5 text-[11px] font-semibold text-[#b45309]">⚠️ {t(COPY.noSystem, locale)}</p>
       ) : null}
-    </div>
+    </section>
   );
 }

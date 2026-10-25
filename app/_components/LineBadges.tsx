@@ -1,7 +1,7 @@
 import { lineColor } from "../kakao-places";
 import { t, type Locale, type StationOption } from "../_lib/stations";
 
-export type LineIconSize = "xs" | "sm" | "md" | "lg";
+export type LineIconSize = "xs" | "chip" | "sm" | "md" | "lg";
 
 /** Short Korean names as printed on signage, and the official letter symbols used elsewhere. */
 const NAMED_LINES: [RegExp, { ko: string; symbol: string }][] = [
@@ -24,6 +24,7 @@ const NAMED_LINES: [RegExp, { ko: string; symbol: string }][] = [
 
 const CIRCLE: Record<LineIconSize, string> = {
   xs: "h-4 min-w-4 text-[10px]",
+  chip: "h-[18px] min-w-[18px] text-[11px]",
   sm: "h-5 min-w-5 text-[12px]",
   md: "h-6 min-w-6 text-[13px]",
   lg: "h-12 min-w-12 text-[22px]",
@@ -31,6 +32,7 @@ const CIRCLE: Record<LineIconSize, string> = {
 
 const PILL: Record<LineIconSize, string> = {
   xs: "h-4 px-1 text-[8.5px]",
+  chip: "h-[18px] px-1.5 py-0.5 text-[10px]",
   sm: "h-5 px-1.5 text-[9.5px]",
   md: "h-6 px-2 text-[10.5px]",
   lg: "h-12 w-12 px-1 text-[12px] leading-[1.15] whitespace-pre-line text-center",
@@ -84,21 +86,31 @@ export default function LineBadges({
   station,
   locale,
   size = "sm",
+  max,
   className = "",
 }: {
   station: StationOption;
   locale: Locale;
   size?: LineIconSize;
+  /** Shows only the first `max` lines followed by "+N", for one-line layouts. */
+  max?: number;
   className?: string;
 }) {
   const lines = station.lines.ko.split(" · ").filter(Boolean);
   if (lines.length === 0) return null;
   const labels = t(station.lines, locale).split(" · ");
+  const shown = max ? lines.slice(0, max) : lines;
+  const hidden = lines.length - shown.length;
   return (
     <span className={`inline-flex shrink-0 items-center gap-0.5 ${className}`}>
-      {lines.map((line, index) => (
+      {shown.map((line, index) => (
         <LineIcon key={line} line={line} locale={locale} label={labels[index] ?? line} size={size} />
       ))}
+      {hidden > 0 ? (
+        <span className="text-[10.5px] font-extrabold text-neutral-500" title={labels.slice(shown.length).join(" · ")}>
+          +{hidden}
+        </span>
+      ) : null}
     </span>
   );
 }
