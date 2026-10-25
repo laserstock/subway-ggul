@@ -5,6 +5,7 @@ import { PinIcon } from "./icons";
 import LineBadges from "./LineBadges";
 import { armArrivalAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { bareStationName } from "../_lib/arrivalTips";
+import { isNativeApp } from "../_lib/native";
 import { distanceMeters, kakaoOption, restoreStation, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { lineNeighbors, loadLineStations, sameLine, stationLines } from "../_lib/subwayLine";
 
@@ -46,6 +47,12 @@ const COPY = {
     en: "Alert on · keep this screen open",
     zh: "提醒已开启 · 请保持屏幕开启",
     ja: "通知待機中 · 画面をつけたままにしてください",
+  },
+  onNative: {
+    ko: "알림 대기 중 · 앱을 닫아도 알려드려요",
+    en: "Alert on · works even with the app closed",
+    zh: "提醒已开启 · 关闭应用也会提醒",
+    ja: "通知待機中 · アプリを閉じても通知します",
   },
   noSystem: {
     ko: "알림 권한이 없어 앱 안에서 소리·진동으로만 알려드려요",
@@ -219,7 +226,7 @@ export default function DestinationAlarm({
       </div>
       <p className={`mt-0.5 truncate text-xs ${on ? "font-bold text-[#15803d]" : "text-gray-500"}`}>
         {on
-          ? t(COPY.on, locale)
+          ? t(isNativeApp() ? COPY.onNative : COPY.on, locale)
           : prev
             ? t(COPY.hintPrev, locale).replace("{prev}", t(prev.name, locale))
             : t(COPY.hint, locale)}

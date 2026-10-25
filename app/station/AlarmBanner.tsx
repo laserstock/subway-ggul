@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ElevatorIcon, RestroomIcon } from "../_components/icons";
 import { armArrivalAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { elevatorTip, floorLabel, restroomTip, type ElevatorTip } from "../_lib/arrivalTips";
+import { isNativeApp } from "../_lib/native";
 import type { StationToilet } from "../_lib/stationToilets";
 import { restoreStation, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 
@@ -25,6 +26,12 @@ const COPY = {
     en: "Alert on · keep this screen open",
     zh: "提醒已开启 · 请保持屏幕开启",
     ja: "通知待機中 · 画面をつけたままにしてください",
+  },
+  onNative: {
+    ko: "알림 대기 중 · 앱을 닫아도 알려드려요",
+    en: "Alert on · works even with the app closed",
+    zh: "提醒已开启 · 关闭应用也会提醒",
+    ja: "通知待機中 · アプリを閉じても通知します",
   },
   toggle: { ko: "도착 알림", en: "Arrival alert", zh: "到站提醒", ja: "到着通知" },
   noSystem: {
@@ -87,7 +94,7 @@ export default function AlarmBanner({ station, locale }: { station: StationOptio
             {t(COPY.question, locale).replace("{station}", t(station.name, locale))}
           </p>
           <p className={`mt-0.5 text-[12px] font-bold ${on ? "text-[#15803d]" : "text-neutral-500"}`}>
-            {t(on ? COPY.on : COPY.off, locale)}
+            {t(on ? (isNativeApp() ? COPY.onNative : COPY.on) : COPY.off, locale)}
           </p>
         </div>
         <button

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { LatLng } from "../KakaoMap";
 import { findNearbyStations } from "../kakao-places";
 import { loadKakaoMaps } from "../kakao-sdk";
-import { kakaoOption, type StationOption } from "./stations";
+import { ALL_STATIONS, distanceMeters, kakaoOption, type StationOption } from "./stations";
 
 const pending = new Map<string, Promise<StationOption[]>>();
 const resolved = new Map<string, StationOption[]>();
@@ -28,6 +28,19 @@ export function loadNearbyStations(center: LatLng): Promise<StationOption[]> {
   request.catch(() => pending.delete(key));
   pending.set(key, request);
   return request;
+}
+
+const OFFLINE_RADIUS_METERS = 5000;
+
+/**
+ * Same as `loadNearbyStations` but from the bundled station index, with no network request.
+ * Used while the native app runs in the background, where Android throttles WebView requests.
+ */
+export function nearbyStationsOffline(center: LatLng): StationOption[] {
+  return ALL_STATIONS.map((station) => ({ station, distance: distanceMeters(center, station.center) }))
+    .filter(({ distance }) => distance <= OFFLINE_RADIUS_METERS)
+    .sort((a, b) => a.distance - b.distance)
+    .map(({ station }) => station);
 }
 
 export function useNearbyStations(center: LatLng | null): StationOption[] | null {

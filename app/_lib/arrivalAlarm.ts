@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { isNativeApp, prepareNativeAlerts, sendNativeAlert } from "./native";
 import { serializeStation, type SavedStation, type StationOption } from "./stations";
 
 export type AlarmStage = "armed" | "approaching" | "arrived";
@@ -105,18 +106,25 @@ function notificationsGranted() {
 /**
  * Must run inside the tap that sets the alarm: it unlocks sound and asks for notification permission.
  * Android Chrome only shows notifications through a service worker, so one is registered here.
+ * In the native app the alarm starts only after the notification prompt, because starting it asks
+ * for location and Android can't show two permission prompts at once.
  */
 export async function armArrivalAlarm(station: StationOption) {
   unlockSound();
   const armedAt = Date.now();
-  save({
+  const armed: ArrivalAlarm = {
     station: serializeStation(station),
     stage: "armed",
     armedAt,
     from: null,
     line: null,
-    systemAlerts: notificationsGranted(),
-  });
+    systemAlerts: false,
+  };
+  if (isNativeApp()) {
+    save({ ...armed, systemAlerts: await prepareNativeAlerts("하차 알림 · Arrival alerts") });
+    return;
+  }
+  save({ ...armed, systemAlerts: notificationsGranted() });
   if (typeof Notification === "undefined" || !("serviceWorker" in navigator)) return;
   navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
   const permission =
@@ -127,6 +135,7 @@ export async function armArrivalAlarm(station: StationOption) {
 export async function sendArrivalAlert(title: string, body: string) {
   navigator.vibrate?.(VIBRATION);
   chime();
+  if (isNativeApp()) return sendNativeAlert(title, body);
   if (!notificationsGranted()) return;
   const options: NotificationOptions = { body, tag: "arrival-alarm", requireInteraction: true };
   try {

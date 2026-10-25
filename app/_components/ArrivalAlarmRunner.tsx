@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
   cancelArrivalAlarm,
   sendArrivalAlert,
@@ -11,6 +11,7 @@ import {
 } from "../_lib/arrivalAlarm";
 import { approachMessage, arrivalMessage, bareStationName, type AlarmMessage } from "../_lib/arrivalTips";
 import { useLocale } from "../_lib/locale";
+import { isNativeApp } from "../_lib/native";
 import { distanceMeters, restoreStation, t, type Localized } from "../_lib/stations";
 import { lineNeighbors, loadLineStations, sameLine, stationLines } from "../_lib/subwayLine";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
@@ -26,6 +27,24 @@ const COPY = {
     zh: "{station} 到站提醒中 · 请保持屏幕常亮",
     ja: "{station} 到着通知待機中 · 画面をつけたままに",
   },
+  waitingNative: {
+    ko: "{station} 도착 알림 대기 중 · 앱을 닫아도 돼요",
+    en: "Arrival alert for {station} on · you can close the app",
+    zh: "{station} 到站提醒中 · 可关闭应用",
+    ja: "{station} 到着通知待機中 · アプリを閉じてもOK",
+  },
+  trackingTitle: {
+    ko: "지하철꿀정보 하차 알림",
+    en: "Subway Honey arrival alert",
+    zh: "地铁蜜信息 下车提醒",
+    ja: "地下鉄ハチミツ情報 降車通知",
+  },
+  trackingMessage: {
+    ko: "{station} 도착 전에 알려드릴게요",
+    en: "We'll alert you before {station}",
+    zh: "到达{station}前会提醒您",
+    ja: "{station}の手前でお知らせします",
+  },
   approaching: {
     ko: "곧 {station} 도착 · 내릴 준비하세요",
     en: "{station} is next · get ready",
@@ -40,8 +59,9 @@ const COPY = {
 } satisfies Record<string, Localized>;
 
 /** Keeps the screen awake while the alarm runs; browsers drop the lock whenever the page is hidden. */
-function useWakeLock() {
+function useWakeLock(enabled: boolean) {
   useEffect(() => {
+    if (!enabled) return;
     let sentinel: WakeLockSentinel | null = null;
     let alive = true;
     function acquire() {
@@ -61,7 +81,7 @@ function useWakeLock() {
       document.removeEventListener("visibilitychange", acquire);
       void sentinel?.release();
     };
-  }, []);
+  }, [enabled]);
 }
 
 function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
@@ -90,7 +110,9 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     };
   }, [station]);
 
-  useWakeLock();
+  const native = isNativeApp();
+  const name = t(station.name, locale);
+  useWakeLock(!native);
 
   function fire(next: AlarmMessage) {
     setMessage(next);
@@ -99,6 +121,10 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
 
   const tracker = useStationTracker({
     autoStart: true,
+    background: {
+      title: t(COPY.trackingTitle, locale),
+      message: t(COPY.trackingMessage, locale).replace("{station}", name),
+    },
     onNearest: ({ station: here, position }) => {
       const current = alarmRef.current;
       if (current.stage === "arrived") return;
@@ -119,12 +145,15 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     },
   });
 
+  const stopTracking = useEffectEvent(() => tracker.stop());
+  useEffect(() => {
+    if (alarm.stage === "arrived") stopTracking();
+  }, [alarm.stage]);
+
   function dismiss() {
     setMessage(null);
     if (alarmRef.current.stage === "arrived") cancelArrivalAlarm();
   }
-
-  const name = t(station.name, locale);
 
   if (message) {
     return (
@@ -155,7 +184,10 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
 
   const status = tracker.issue
     ? t(LOCATION_ISSUE_COPY[tracker.issue], locale)
-    : t(COPY[alarm.stage === "armed" ? "waiting" : alarm.stage], locale).replace("{station}", name);
+    : t(COPY[alarm.stage === "armed" ? (native ? "waitingNative" : "waiting") : alarm.stage], locale).replace(
+        "{station}",
+        name,
+      );
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[84px] z-[110] flex justify-center px-4">
