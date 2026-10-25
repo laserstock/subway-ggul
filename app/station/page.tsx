@@ -23,9 +23,9 @@ function DashboardShell() {
       <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader backHref="/" title={DASHBOARD_TITLE} />
         <div className="mx-4 h-[118px] animate-pulse rounded-2xl bg-[#fff3c4]" />
-        <div className="mx-4 mt-4 grid grid-cols-2 gap-2.5">
+        <div className="mx-4 mt-4 grid grid-cols-2 gap-2">
           {[0, 1, 2, 3].map((index) => (
-            <div key={index} className="h-[124px] animate-pulse rounded-2xl bg-surface-muted" />
+            <div key={index} className="h-[54px] animate-pulse rounded-[22px] bg-surface-muted" />
           ))}
         </div>
         <div className="mx-4 mt-4 h-[230px] animate-pulse rounded-2xl bg-surface-muted" />

@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import AppHeader from "./AppHeader";
-import BottomNav, { HoneyPotIcon } from "./BottomNav";
-import ActionTile, { type ActionKind } from "./ActionTile";
+import BottomNav from "./BottomNav";
 import DestinationAlarm from "./DestinationAlarm";
 import { SearchIcon, StarIcon } from "./icons";
 import LineBadges from "./LineBadges";
@@ -15,6 +14,7 @@ import LocationSheet from "./LocationSheet";
 import ReportSheet from "./ReportSheet";
 import SearchOverlay from "./SearchOverlay";
 import { Toast, useToast } from "./Toast";
+import UtilityTiles from "./UtilityTiles";
 import { armArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { useHomeResetToken } from "../_lib/homeReset";
 import { useLastStation } from "../_lib/lastStation";
@@ -29,7 +29,7 @@ import {
   useSelectedStation,
 } from "../_lib/selectedStation";
 import { useStationTracker } from "../_lib/useStationTracker";
-import { stationParams, t, type Localized, type StationOption } from "../_lib/stations";
+import { stationParams, t, type StationOption } from "../_lib/stations";
 
 const COPY = {
   search: {
@@ -38,8 +38,6 @@ const COPY = {
     zh: "您要去哪个站？（例：光化门站、首尔站）",
     ja: "どの駅へ行きますか？（例：光化門駅、ソウル駅）",
   },
-  checkTitle: { ko: "내리기 전 필수 체크!", en: "Before you get off!", zh: "下车前必看！", ja: "降りる前にチェック！" },
-  honeyTitle: { ko: "꿀정보", en: "tips", zh: "攻略", ja: "お役立ち情報" },
   reportCta: { ko: "나도 1초 제보하기", en: "Report in 1 second", zh: "1秒快速上报", ja: "1秒で投稿する" },
   reportDone: {
     ko: "제보가 등록됐어요. 고마워요!",
@@ -55,40 +53,6 @@ const COPY = {
     ja: "📍 {station}に切り替えました",
   },
 };
-
-type MainAction = {
-  kind: ActionKind;
-  title: Localized;
-  sub: Localized;
-  href: "/urgent" | "/shops" | "/transfer" | "/luggage";
-};
-
-const MAIN_ACTIONS: MainAction[] = [
-  {
-    kind: "urgent",
-    title: { ko: "화장실 · 약국", en: "Restroom · Pharmacy", zh: "卫生间 · 药店", ja: "トイレ · 薬局" },
-    sub: { ko: "개찰구 안/밖 3초 비교", en: "In/out of gate", zh: "闸机内/外比较", ja: "改札内/外を比較" },
-    href: "/urgent",
-  },
-  {
-    kind: "shops",
-    title: { ko: "출구 주변 가게", en: "Shops by exits", zh: "出口周边商店", ja: "出口近くの店" },
-    sub: { ko: "올영 · 카페 · 편의점", en: "Olive Young · Cafe · Store", zh: "Olive Young · 咖啡 · 便利店", ja: "オリヤン · カフェ · コンビニ" },
-    href: "/shops",
-  },
-  {
-    kind: "transfer",
-    title: { ko: "빠른 환승", en: "Fast transfer", zh: "快速换乘", ja: "スムーズ乗換" },
-    sub: { ko: "에스컬레이터 · 엘리베이터", en: "Escalator · Elevator", zh: "扶梯 · 电梯", ja: "エスカレーター · エレベーター" },
-    href: "/transfer",
-  },
-  {
-    kind: "luggage",
-    title: { ko: "짐 보관", en: "Luggage", zh: "行李寄存", ja: "荷物預け" },
-    sub: { ko: "또타라커 · 러기지", en: "T-Locker · T-Luggage", zh: "T-Locker · T-Luggage", ja: "T-Locker · T-Luggage" },
-    href: "/luggage",
-  },
-];
 
 type SearchMode = "dashboard" | "destination";
 
@@ -271,29 +235,7 @@ export default function HomeScreen() {
             onChange={() => openSearch("destination")}
           />
 
-          <h2 className="mb-2 mt-4 flex items-center gap-1 text-[15px] font-extrabold tracking-tight text-neutral-900">
-            <span className="mr-0.5 shrink-0 text-[#b45309]">{t(COPY.checkTitle, locale)}</span>
-            {station ? (
-              <>
-                <span className="min-w-0 truncate">{t(station.name, locale)}</span>
-                <LineBadges station={station} locale={locale} size="sm" className="shrink-0" />
-              </>
-            ) : null}
-            <span className="shrink-0">{t(COPY.honeyTitle, locale)}</span>
-            <HoneyPotIcon size={20} />
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            {MAIN_ACTIONS.map((action) => (
-              <ActionTile
-                key={action.kind}
-                kind={action.kind}
-                title={t(action.title, locale)}
-                sub={t(action.sub, locale)}
-                href={actionHref(action.href)}
-                compact
-              />
-            ))}
-          </div>
+          <UtilityTiles station={station} locale={locale} hrefFor={actionHref} className="mt-4" />
 
           <LiveFeed station={station} onToast={showToast} />
 

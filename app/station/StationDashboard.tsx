@@ -3,24 +3,24 @@
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
-import ActionTile, { type ActionKind } from "../_components/ActionTile";
 import AppHeader from "../_components/AppHeader";
-import BottomNav, { HoneyPotIcon } from "../_components/BottomNav";
+import BottomNav from "../_components/BottomNav";
 import LineBadges from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import SearchOverlay from "../_components/SearchOverlay";
 import { Toast, useToast } from "../_components/Toast";
+import UtilityTiles from "../_components/UtilityTiles";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import { useStationReports } from "../_lib/reports";
 import { setDestinationStation } from "../_lib/selectedStation";
 import { STATION_TIPS } from "../_lib/stationTips";
 import { stationParams, t, type Localized, type StationOption } from "../_lib/stations";
-import { bestSpot, loadUrgent, type StationUrgent } from "../_lib/urgent";
+import { loadUrgent, type StationUrgent } from "../_lib/urgent";
 import AlarmBanner from "./AlarmBanner";
 import ExitGuide from "./ExitGuide";
 import FacilitySearch from "./FacilitySearch";
-import { DASHBOARD_TITLE, tilesTitle } from "./header";
+import { DASHBOARD_TITLE } from "./header";
 
 const COPY = {
   searchOther: { ko: "다른 역 검색", en: "Search another", zh: "搜索其他车站", ja: "他の駅を検索" },
@@ -46,91 +46,7 @@ const COPY = {
     zh: "上报成功，谢谢！",
     ja: "投稿しました。ありがとうございます！",
   },
-  restroomInside: { ko: "🚻 개찰구 안 화장실", en: "🚻 Restroom inside gate", zh: "🚻 闸机内卫生间", ja: "🚻 改札内トイレ" },
-  restroomOutside: { ko: "🚻 개찰구 밖 화장실", en: "🚻 Restroom outside gate", zh: "🚻 闸机外卫生间", ja: "🚻 改札外トイレ" },
-  pharmacyInside: { ko: "💊 개찰구 안 약국", en: "💊 Pharmacy inside gate", zh: "💊 闸机内药店", ja: "💊 改札内薬局" },
-  pharmacyStation: { ko: "💊 역 안 약국", en: "💊 Pharmacy in station", zh: "💊 站内药店", ja: "💊 駅構内薬局" },
-  pharmacyWalk: { ko: "💊 약국 도보 {n}분", en: "💊 Pharmacy {n} min", zh: "💊 药店 步行{n}分钟", ja: "💊 薬局 徒歩{n}分" },
 } satisfies Record<string, Localized>;
-
-type Tile = {
-  id: ActionKind;
-  title: Localized;
-  sub: Localized;
-  href: "/urgent" | "/shops" | "/transfer" | "/luggage";
-};
-
-const TILES: Tile[] = [
-  {
-    id: "urgent",
-    title: { ko: "긴급", en: "Urgent", zh: "紧急", ja: "緊急" },
-    sub: {
-      ko: "개찰구 안 화장실 · 약국",
-      en: "Restroom · Pharmacy in gate",
-      zh: "闸机内卫生间 · 药店",
-      ja: "改札内トイレ · 薬局",
-    },
-    href: "/urgent",
-  },
-  {
-    id: "shops",
-    title: { ko: "출구 매장 & 픽업", en: "Exit Shops & Pickup", zh: "出口商店 & 自提", ja: "出口ショップ & 受け取り" },
-    sub: {
-      ko: "올영 · 다이소 · 스벅",
-      en: "Olive Young · Daiso · Starbucks",
-      zh: "Olive Young · 大创 · 星巴克",
-      ja: "オリーブヤング · ダイソー · スタバ",
-    },
-    href: "/shops",
-  },
-  {
-    id: "transfer",
-    title: {
-      ko: "빠른환승 & 편한길",
-      en: "Fast Transfer & Easy Route",
-      zh: "快速换乘 & 舒适路线",
-      ja: "スムーズ乗換 & らくらくルート",
-    },
-    sub: {
-      ko: "에스컬레이터 · 무장애",
-      en: "Escalator · Barrier-free",
-      zh: "扶梯 · 无障碍",
-      ja: "エスカレーター · バリアフリー",
-    },
-    href: "/transfer",
-  },
-  {
-    id: "luggage",
-    title: { ko: "짐보관", en: "Luggage", zh: "行李寄存", ja: "荷物預け" },
-    sub: {
-      ko: "또타라커 · 러기지 · 스토리지",
-      en: "T-Locker · T-Luggage · Storage",
-      zh: "T-Locker · T-Luggage · 仓储",
-      ja: "T-Locker · T-Luggage · ストレージ",
-    },
-    href: "/luggage",
-  },
-];
-
-function urgentSummary(urgent: StationUrgent): Localized[] {
-  const lines: Localized[] = [];
-  const restroom = bestSpot(urgent.restroom);
-  if (restroom?.zone === "inside") lines.push(COPY.restroomInside);
-  else if (restroom && restroom.zone !== "unknown") lines.push(COPY.restroomOutside);
-  const pharmacy = bestSpot(urgent.pharmacy);
-  if (pharmacy?.zone === "inside") lines.push(COPY.pharmacyInside);
-  else if (pharmacy?.zone === "station") lines.push(COPY.pharmacyStation);
-  else if (pharmacy?.walkMinutes != null) {
-    const minutes = String(pharmacy.walkMinutes);
-    lines.push({
-      ko: COPY.pharmacyWalk.ko.replace("{n}", minutes),
-      en: COPY.pharmacyWalk.en.replace("{n}", minutes),
-      zh: COPY.pharmacyWalk.zh.replace("{n}", minutes),
-      ja: COPY.pharmacyWalk.ja.replace("{n}", minutes),
-    });
-  }
-  return lines;
-}
 
 export default function StationDashboard({ station }: { station: StationOption | null }) {
   const locale = useLocale();
@@ -171,7 +87,6 @@ export default function StationDashboard({ station }: { station: StationOption |
 
   const curatedTip = station ? STATION_TIPS[station.name.ko] : undefined;
   const liveTip = reports[0];
-  const urgentLines = urgent ? urgentSummary(urgent) : [];
 
   return (
     <div className="flex min-h-dvh justify-center bg-frame">
@@ -205,31 +120,12 @@ export default function StationDashboard({ station }: { station: StationOption |
 
               <AlarmBanner station={station} locale={locale} />
 
-              <h2 className="mb-2.5 mt-5 flex items-center gap-1.5 text-[16px] font-extrabold tracking-tight text-neutral-900">
-                <HoneyPotIcon size={22} />
-                {t(tilesTitle(station, TILES.length), locale)}
-              </h2>
-              <div className="grid grid-cols-2 gap-2.5">
-                {TILES.map((tile) => (
-                  <ActionTile
-                    key={tile.id}
-                    kind={tile.id}
-                    title={t(tile.title, locale)}
-                    sub={t(tile.sub, locale)}
-                    href={`${tile.href}?${stationParams(station)}`}
-                  >
-                    {tile.id === "urgent" && urgentLines.length > 0 ? (
-                      <span className="mt-1.5 flex flex-col gap-0.5 text-[11px] font-semibold text-neutral-700">
-                        {urgentLines.map((line) => (
-                          <span key={line.ko} className="truncate">
-                            {t(line, locale)}
-                          </span>
-                        ))}
-                      </span>
-                    ) : null}
-                  </ActionTile>
-                ))}
-              </div>
+              <UtilityTiles
+                station={station}
+                locale={locale}
+                hrefFor={(href) => `${href}?${stationParams(station)}`}
+                className="mt-4"
+              />
 
               <ExitGuide station={station} locale={locale} />
 
