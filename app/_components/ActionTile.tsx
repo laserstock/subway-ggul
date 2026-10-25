@@ -66,14 +66,16 @@ function LuggageArt({ color }: { color: string }) {
   );
 }
 
-function Badge({ color, children }: { color: string; children: ReactNode }) {
+function Badge({ color, small = false, children }: { color: string; small?: boolean; children: ReactNode }) {
   return (
     <span
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-[0_3px_8px_rgba(15,23,42,0.15)]"
+      className={`flex shrink-0 items-center justify-center rounded-full text-white ${
+        small ? "h-6 w-6 shadow-[0_2px_5px_rgba(15,23,42,0.15)]" : "h-9 w-9 shadow-[0_3px_8px_rgba(15,23,42,0.15)]"
+      }`}
       style={{ backgroundColor: color }}
       aria-hidden
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <svg width={small ? 14 : 20} height={small ? 14 : 20} viewBox="0 0 24 24" fill="none">
         {children}
       </svg>
     </span>
@@ -122,6 +124,39 @@ const TILE_THEMES: Record<ActionKind, TileTheme> = {
     art: <LuggageArt color="#22a559" />,
   },
 };
+
+/** Slim pill version of the tile for the home utility row: same badge, emoji, colors and link. */
+export function ActionChip({
+  kind,
+  title,
+  detail,
+  href,
+}: {
+  kind: ActionKind;
+  title: string;
+  detail?: string;
+  href: string;
+}) {
+  const theme = TILE_THEMES[kind];
+  return (
+    <Link
+      href={href}
+      className="flex shrink-0 items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-left shadow-[0_1px_4px_rgba(15,23,42,0.05)] transition active:scale-95"
+      style={{ backgroundColor: theme.bg, borderColor: `${theme.accent}40` }}
+    >
+      <Badge color={theme.accent} small>
+        {theme.badge}
+      </Badge>
+      <span className="whitespace-nowrap text-[13px] font-extrabold tracking-tight text-ink">
+        <span className="mr-0.5 text-[12px]" aria-hidden>
+          {theme.emoji}
+        </span>
+        {title}
+        {detail ? <span className="ml-0.5 text-[10.5px] font-bold text-ink-muted">{detail}</span> : null}
+      </span>
+    </Link>
+  );
+}
 
 /** Big 2x2 home/dashboard tile: colored badge + line illustration on top, title and accent subtitle below. */
 export default function ActionTile({

@@ -6,7 +6,8 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNod
 import { flushSync } from "react-dom";
 import AppHeader from "./AppHeader";
 import BottomNav from "./BottomNav";
-import ActionTile, { type ActionKind } from "./ActionTile";
+import { ActionChip, type ActionKind } from "./ActionTile";
+import DestinationAlarm from "./DestinationAlarm";
 import { PinIcon, SearchIcon, StarIcon } from "./icons";
 import LineBadges from "./LineBadges";
 import LiveFeed from "./LiveFeed";
@@ -14,6 +15,7 @@ import LocationSheet from "./LocationSheet";
 import ReportSheet from "./ReportSheet";
 import SearchOverlay from "./SearchOverlay";
 import { Toast, useToast } from "./Toast";
+import { armArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { useHomeResetToken } from "../_lib/homeReset";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale, useMessages } from "../_lib/locale";
@@ -37,8 +39,12 @@ import {
 } from "../_lib/stations";
 
 const COPY = {
-  now: { ko: "지금", en: "Now at", zh: "当前", ja: "現在" },
-  destination: { ko: "목적지", en: "Heading to", zh: "目的地", ja: "目的地" },
+  riding: {
+    ko: "현재 {station} 탑승 중",
+    en: "Riding from {station}",
+    zh: "当前在{station}乘车",
+    ja: "現在 {station}から乗車中",
+  },
   backToMine: { ko: "내 위치로", en: "My station", zh: "我的位置", ja: "現在地へ" },
   locating: {
     ko: "현재 위치를 찾는 중…",
@@ -66,16 +72,10 @@ const COPY = {
     ja: "どの駅へ行きますか？（例：光化門駅、ソウル駅）",
   },
   mainTitle: {
-    ko: "지하철 내리기 전 필수 체크",
-    en: "Check before you get off",
-    zh: "下车前必看",
-    ja: "降りる前に必ずチェック",
-  },
-  mainSubtitle: {
-    ko: "지하철 내리기 전 꼭 필요한 긴급 동선 해결사",
-    en: "Your quick route fixer for the moment before your stop",
-    zh: "下车前必备的紧急动线助手",
-    ja: "降車前に役立つ緊急ルートお助け",
+    ko: "3초 유틸리티 요약",
+    en: "3-second utilities",
+    zh: "3秒实用工具",
+    ja: "3秒ユーティリティ",
   },
   reportCta: { ko: "나도 1초 제보하기", en: "Report in 1 second", zh: "1秒快速上报", ja: "1秒で投稿する" },
   reportDone: {
@@ -105,7 +105,6 @@ type MainAction = {
   kind: ActionKind;
   title: Localized;
   detail?: Localized;
-  sub: Localized;
   href: "/urgent" | "/shops" | "/transfer" | "/luggage";
 };
 
@@ -119,23 +118,11 @@ const MAIN_ACTIONS: MainAction[] = [
       zh: "(卫生间·药店)",
       ja: "(トイレ·薬局)",
     },
-    sub: {
-      ko: "개찰구 안/밖 3초 비교 →",
-      en: "In/out of gate, 3-sec compare →",
-      zh: "闸机内/外 3秒比较 →",
-      ja: "改札内/外を3秒比較 →",
-    },
     href: "/urgent",
   },
   {
     kind: "shops",
     title: { ko: "출구 매장 & 픽업", en: "Exit Shops & Pickup", zh: "出口商店 & 自提", ja: "出口ショップ & 受け取り" },
-    sub: {
-      ko: "올영·다이소·카페·편의점",
-      en: "Olive Young·Daiso·Cafe·Store",
-      zh: "Olive Young·大创·咖啡·便利店",
-      ja: "オリヤン·ダイソー·カフェ·コンビニ",
-    },
     href: "/shops",
   },
   {
@@ -146,36 +133,16 @@ const MAIN_ACTIONS: MainAction[] = [
       zh: "快速换乘 & 舒适路线",
       ja: "スムーズ乗換 & らくらくルート",
     },
-    sub: {
-      ko: "에스컬레이터·무장애",
-      en: "Escalator·Barrier-free",
-      zh: "扶梯·无障碍",
-      ja: "エスカレーター·バリアフリー",
-    },
     href: "/transfer",
   },
   {
     kind: "luggage",
     title: { ko: "짐보관", en: "Luggage", zh: "行李寄存", ja: "荷物預け" },
-    sub: {
-      ko: "또타라커·러기지·스토리지",
-      en: "T-Locker·T-Luggage·Storage",
-      zh: "T-Locker·T-Luggage·仓储",
-      ja: "T-Locker·T-Luggage·ストレージ",
-    },
     href: "/luggage",
   },
 ];
 
-function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <section
-      className={`rounded-[20px] border border-line bg-surface shadow-[0_2px_10px_rgba(15,23,42,0.05)] ${className}`}
-    >
-      {children}
-    </section>
-  );
-}
+type SearchMode = "dashboard" | "destination";
 
 export default function HomeScreen() {
   const locale = useLocale();
@@ -188,6 +155,8 @@ export default function HomeScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchMode, setSearchMode] = useState<SearchMode>("dashboard");
+  const alarm = useArrivalAlarm();
   const closeLocation = useCallback(() => setLocationOpen(false), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
   const { toast, showToast } = useToast();
@@ -221,6 +190,7 @@ export default function HomeScreen() {
     if (window.location.hash !== "#search") return;
     window.history.replaceState(null, "", window.location.pathname);
     const frame = requestAnimationFrame(() => {
+      setSearchMode("dashboard");
       setSearchOpen(true);
       searchInputRef.current?.focus();
     });
@@ -241,8 +211,11 @@ export default function HomeScreen() {
     router.prefetch("/station");
   }, [router]);
 
-  function openSearch() {
-    flushSync(() => setSearchOpen(true));
+  function openSearch(mode: SearchMode) {
+    flushSync(() => {
+      setSearchMode(mode);
+      setSearchOpen(true);
+    });
     searchInputRef.current?.focus();
   }
 
@@ -250,6 +223,12 @@ export default function HomeScreen() {
     setDestinationStation(next);
     setSearchOpen(false);
     router.push(`/station?${stationParams(next)}`);
+  }
+
+  function pickDestination(next: StationOption) {
+    setDestinationStation(next);
+    setSearchOpen(false);
+    if (alarm) void armArrivalAlarm(next);
   }
 
   function backToMyStation() {
@@ -290,22 +269,25 @@ export default function HomeScreen() {
       ? distanceMeters(tracker.position, tracker.nearest.center)
       : null;
 
+  const alarmTarget =
+    (destination && destination.key !== current?.key ? destination : null) ??
+    myPlaces.find((place) => place.station.key !== current?.key)?.station ??
+    destination;
+
   let headline: ReactNode;
   let detail: ReactNode = null;
-  if (station) {
+  if (current) {
     headline = (
       <>
-        <PinIcon size={22} className={`mr-1 shrink-0 ${destination ? "text-[#2563eb]" : "text-honey"}`} />
-        <span className="min-w-0 truncate">
-          {t(destination ? COPY.destination : COPY.now, locale)} {t(station.name, locale)}
-        </span>
-        <LineBadges station={station} locale={locale} size="md" className="ml-1.5" />
+        <PinIcon size={18} className="mr-1 shrink-0 text-honey" />
+        <span className="min-w-0 truncate">{t(COPY.riding, locale).replace("{station}", t(current.name, locale))}</span>
+        <LineBadges station={current} locale={locale} size="sm" className="ml-1.5" />
       </>
     );
   } else if (tracker.issue) {
     headline = (
       <>
-        <PinIcon size={22} className="mr-1 shrink-0 text-neutral-400" />
+        <PinIcon size={18} className="mr-1 shrink-0 text-neutral-400" />
         <span className="min-w-0 truncate">{t(COPY.noLocation, locale)}</span>
       </>
     );
@@ -313,7 +295,7 @@ export default function HomeScreen() {
   } else {
     headline = (
       <>
-        <PinIcon size={22} className="mr-1 shrink-0 animate-pulse text-honey" />
+        <PinIcon size={18} className="mr-1 shrink-0 animate-pulse text-honey" />
         <span className="min-w-0 truncate">{t(COPY.locating, locale)}</span>
       </>
     );
@@ -326,81 +308,12 @@ export default function HomeScreen() {
         <AppHeader />
 
         <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-5">
-          <Card className="px-4 py-3.5">
-            <div className="flex items-start justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setLocationOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={locationOpen}
-                title={t(COPY.correctLocation, locale)}
-                className="min-w-0 flex-1 rounded-xl text-left transition active:scale-[0.99]"
-              >
-                <span className="flex items-center gap-1 text-[18px] font-extrabold tracking-tight text-ink">
-                  <span className="flex min-w-0 items-center">{headline}</span>
-                  <span
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-honey-soft text-honey-strong"
-                    aria-hidden
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M6 9l6 6 6-6"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <span className="sr-only">{t(COPY.correctLocation, locale)}</span>
-                </span>
-                {detail ? (
-                  <span className="mt-1.5 block pl-[26px] text-[12px] font-normal text-ink-muted">{detail}</span>
-                ) : null}
-              </button>
-              {destination ? (
-                <button
-                  type="button"
-                  onClick={backToMyStation}
-                  className="shrink-0 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-600"
-                >
-                  {t(COPY.backToMine, locale)}
-                </button>
-              ) : isManual ? (
-                <span className="shrink-0 rounded-full bg-[#eff5ff] px-2 py-1 text-[11px] font-semibold text-[#2563eb]">
-                  ✋ {t(COPY.manualBadge, locale)}
-                </span>
-              ) : confirming ? (
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-neutral-500 shadow-sm">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-                  {t(COPY.confirming, locale)}
-                </span>
-              ) : distance !== null ? (
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-[#16a34a] shadow-sm">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e]/60" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22c55e]" />
-                  </span>
-                  {formatDistance(distance)}
-                </span>
-              ) : tracker.issue ? (
-                <button
-                  type="button"
-                  onClick={tracker.start}
-                  className="shrink-0 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-600"
-                >
-                  {t(COPY.retry, locale)}
-                </button>
-              ) : null}
-            </div>
-          </Card>
-
           <button
             type="button"
-            onClick={openSearch}
+            onClick={() => openSearch("dashboard")}
             aria-haspopup="dialog"
             aria-expanded={searchOpen}
-            className="mt-3 flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-muted px-3.5 py-3 text-left transition active:scale-[0.99]"
+            className="flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-muted px-3.5 py-3 text-left transition active:scale-[0.99]"
           >
             <SearchIcon />
             <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-400">{t(COPY.search, locale)}</span>
@@ -439,32 +352,104 @@ export default function HomeScreen() {
             </div>
           ) : null}
 
-          <header className="mb-3 mt-6 flex items-start gap-2.5">
+          <section className="mt-4 rounded-[20px] border border-[#f5d76e] bg-gradient-to-br from-[#fff8db] to-[#fffdf3] px-4 py-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)]">
+            <div className="flex items-start justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setLocationOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={locationOpen}
+                title={t(COPY.correctLocation, locale)}
+                className="min-w-0 flex-1 rounded-xl text-left transition active:scale-[0.99]"
+              >
+                <span className="flex items-center gap-1 text-[14px] font-extrabold tracking-tight text-ink">
+                  <span className="flex min-w-0 items-center">{headline}</span>
+                  <span
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-honey-soft text-honey-strong"
+                    aria-hidden
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span className="sr-only">{t(COPY.correctLocation, locale)}</span>
+                </span>
+                {detail ? (
+                  <span className="mt-1 block pl-[22px] text-[12px] font-normal text-ink-muted">{detail}</span>
+                ) : null}
+              </button>
+              {destination ? (
+                <button
+                  type="button"
+                  onClick={backToMyStation}
+                  className="shrink-0 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-600"
+                >
+                  {t(COPY.backToMine, locale)}
+                </button>
+              ) : isManual ? (
+                <span className="shrink-0 rounded-full bg-[#eff5ff] px-2 py-1 text-[11px] font-semibold text-[#2563eb]">
+                  ✋ {t(COPY.manualBadge, locale)}
+                </span>
+              ) : confirming ? (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-neutral-500 shadow-sm">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+                  {t(COPY.confirming, locale)}
+                </span>
+              ) : distance !== null ? (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-[#16a34a] shadow-sm">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e]/60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22c55e]" />
+                  </span>
+                  {formatDistance(distance)}
+                </span>
+              ) : tracker.issue ? (
+                <button
+                  type="button"
+                  onClick={tracker.start}
+                  className="shrink-0 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-600"
+                >
+                  {t(COPY.retry, locale)}
+                </button>
+              ) : null}
+            </div>
+
+            <DestinationAlarm
+              target={alarmTarget}
+              current={current}
+              locale={locale}
+              onChange={() => openSearch("destination")}
+            />
+          </section>
+
+          <header className="mb-2 mt-5 flex items-center gap-2">
             <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#ffe7c2] to-[#ffd6a0] text-[18px] shadow-[0_2px_6px_rgba(245,158,11,0.25)]"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#ffe7c2] to-[#ffd6a0] text-[14px] shadow-[0_2px_6px_rgba(245,158,11,0.25)]"
               aria-hidden
             >
               ✨
             </span>
-            <div className="min-w-0">
-              <h2 className="text-lg font-bold leading-tight tracking-tight text-neutral-900">
-                {t(COPY.mainTitle, locale)}
-              </h2>
-              <p className="mt-0.5 text-[13px] leading-snug text-gray-500">{t(COPY.mainSubtitle, locale)}</p>
-            </div>
+            <h2 className="text-[15px] font-bold leading-tight tracking-tight text-neutral-900">
+              {t(COPY.mainTitle, locale)}
+            </h2>
           </header>
-          <div className="grid grid-cols-2 gap-2.5">
+          <nav className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1" aria-label={t(COPY.mainTitle, locale)}>
             {MAIN_ACTIONS.map((action) => (
-              <ActionTile
+              <ActionChip
                 key={action.kind}
                 kind={action.kind}
                 title={t(action.title, locale)}
                 detail={action.detail ? t(action.detail, locale) : undefined}
-                sub={t(action.sub, locale)}
                 href={actionHref(action.href)}
               />
             ))}
-          </div>
+          </nav>
 
           <LiveFeed station={station} onToast={showToast} />
 
@@ -506,7 +491,7 @@ export default function HomeScreen() {
         <SearchOverlay
           isOpen={searchOpen}
           onClose={closeSearch}
-          onSelect={openDashboard}
+          onSelect={searchMode === "destination" ? pickDestination : openDashboard}
           inputRef={searchInputRef}
           near={tracker.position ?? current?.center ?? null}
         />
