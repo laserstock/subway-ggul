@@ -1,4 +1,4 @@
-package com.laserstock.subwayggul;
+package com.subwayggul;
 
 import com.getcapacitor.BridgeActivity;
 

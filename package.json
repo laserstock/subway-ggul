@@ -12,6 +12,7 @@
     "stations:names": "node scripts/fetch-station-names.mjs",
     "lockers:build": "node scripts/build-station-lockers.mjs",
     "exits:build": "node scripts/build-station-exits.mjs",
+    "icons:build": "node scripts/build-app-icons.mjs",
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios"
@@ -37,6 +38,7 @@
     "eslint-config-next": "16.4.2",
     "kakao.maps.d.ts": "^0.1.40",
     "opencc-js": "^1.4.2",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
