@@ -32,6 +32,10 @@ export type NearbyQuery =
       category?: KakaoCategory;
       /** Keep only places whose name starts with the keyword (brand stores, not "스타벅스 앞 주차장"). */
       brand?: boolean;
+      /** Keep places whose Kakao category path has this level, e.g. "백화점" (matches "더현대 서울" too). */
+      categoryName?: string;
+      /** Results per request, up to Kakao's 15. */
+      size?: number;
     };
 
 /** Seoul Metro signage palette (Pantone → hex) plus the commuter/light-rail lines. */
@@ -199,6 +203,9 @@ export function searchNearby(query: NearbyQuery, center: LatLng): Promise<Nearby
         items
           .filter((item) => {
             if (query.kind === "category") return true;
+            if (query.categoryName) {
+              return item.category_name.split(">").some((level) => level.trim() === query.categoryName);
+            }
             if (!query.brand) return item.place_name.includes(query.keyword);
             return item.place_name.replace(/\s+/g, "").startsWith(query.keyword.replace(/\s+/g, ""));
           })
@@ -219,7 +226,7 @@ export function searchNearby(query: NearbyQuery, center: LatLng): Promise<Nearby
       location: new kakao.maps.LatLng(center.lat, center.lng),
       radius: query.radius,
       sort: kakao.maps.services.SortBy.DISTANCE,
-      size: 10,
+      size: query.kind === "keyword" && query.size ? Math.min(query.size, 15) : 10,
     };
     if (query.kind === "category") {
       places().categorySearch(query.code, callback, options);

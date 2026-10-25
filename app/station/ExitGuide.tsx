@@ -12,20 +12,35 @@ import type { LatLng } from "../KakaoMap";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
 import { loadKakaoMaps } from "../kakao-sdk";
 import { ExitIcon, PinIcon } from "../_components/icons";
-import { loadExits, mapPoint, walkMinutes, walkUrl, type StationExit } from "../_lib/exits";
+import { DEPARTMENT_QUERY, departmentLogo, uniqueDepartmentStores } from "../_lib/departmentStores";
+import { loadExits, mapPoint, nearestExit, walkMinutes, walkUrl, type StationExit } from "../_lib/exits";
 import { HUB_TAGS, hubForExit, hubGuide, type HubRoute } from "../_lib/hubGuides";
 import { t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 
 type ShopKind = {
   id: string;
   icon: StaticImageData;
+  /** Brand logo per place, e.g. Lotte vs Shinsegae for department stores. */
+  iconFor?: (place: NearbyPlace) => StaticImageData;
   label: Localized;
   query: NearbyQuery;
   /** Drops places another row already covers, e.g. Starbucks from the generic cafe row. */
   skip?: RegExp;
+  refine?: (places: NearbyPlace[]) => NearbyPlace[];
+  /** Rare kinds are left out instead of showing "none nearby". */
+  hideEmpty?: boolean;
 };
 
 const SHOP_KINDS: ShopKind[] = [
+  {
+    id: "department",
+    icon: departmentLogo(""),
+    iconFor: (place) => departmentLogo(place.name),
+    label: { ko: "백화점", en: "Department store", zh: "百货商店", ja: "百貨店" },
+    query: { ...DEPARTMENT_QUERY, radius: 600 },
+    refine: uniqueDepartmentStores,
+    hideEmpty: true,
+  },
   {
     id: "pharmacy",
     icon: pharmacyIcon,
@@ -119,6 +134,9 @@ const COPY = {
     ja: "ベータ版の案内です · 駅構内の案内表示もご確認ください",
   },
   hubExit: { ko: "{n}번 출구", en: "Exit {n}", zh: "{n}号出口", ja: "{n}番出口" },
+  deptTitle: { ko: "백화점 · 가까운 출구", en: "Department stores · nearest exit", zh: "百货商店 · 最近出口", ja: "百貨店 · 最寄り出口" },
+  deptSource: { ko: "카카오맵 기준", en: "via Kakao Map", zh: "基于Kakao地图", ja: "カカオマップ基準" },
+  deptFromExit: { ko: "{n}번 출구에서", en: "from Exit {n}", zh: "从{n}号出口", ja: "{n}番出口から" },
 } satisfies Record<string, Localized>;
 
 function HubCard({
@@ -199,11 +217,92 @@ async function loadShops(center: LatLng): Promise<ShopRow[] | null> {
   await loadKakaoMaps();
   const results = await Promise.allSettled(SHOP_KINDS.map((kind) => searchNearby(kind.query, center)));
   if (results.every((result) => result.status === "rejected")) return null;
-  return SHOP_KINDS.map((kind, index) => {
+  return SHOP_KINDS.flatMap((kind, index) => {
     const result = results[index];
-    const places = result.status === "fulfilled" ? result.value : [];
-    return { kind, places: kind.skip ? places.filter((place) => !kind.skip?.test(place.name)) : places };
+    let places = result.status === "fulfilled" ? result.value : [];
+    if (kind.skip) places = places.filter((place) => !kind.skip?.test(place.name));
+    if (kind.refine) places = kind.refine(places);
+    return kind.hideEmpty && places.length === 0 ? [] : [{ kind, places }];
   });
+}
+
+type DepartmentStop = { place: NearbyPlace; exit: StationExit | null; meters: number };
+
+/** Department stores around the station, each with the exit closest to it. */
+async function loadDepartments(station: StationOption, exits: StationExit[]): Promise<DepartmentStop[]> {
+  await loadKakaoMaps();
+  const places = uniqueDepartmentStores(await searchNearby(DEPARTMENT_QUERY, station.center));
+  return places.map((place) => {
+    const near = nearestExit(exits, place.position);
+    return near ? { place, exit: near.exit, meters: near.meters } : { place, exit: null, meters: place.distance };
+  });
+}
+
+function DepartmentCard({
+  stops,
+  activeExit,
+  locale,
+  onPickExit,
+}: {
+  stops: DepartmentStop[];
+  activeExit: string | null;
+  locale: Locale;
+  onPickExit: (exit: string) => void;
+}) {
+  return (
+    <div className="mt-2 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+      <div className="flex items-center justify-between gap-2 px-3.5 pb-1 pt-3">
+        <p className="text-[14px] font-extrabold tracking-tight text-neutral-900">{t(COPY.deptTitle, locale)}</p>
+        <span className="text-[10.5px] font-semibold text-neutral-400">{t(COPY.deptSource, locale)}</span>
+      </div>
+      <ul className="flex flex-col gap-1.5 px-2.5 pb-2.5 pt-1.5">
+        {stops.map(({ place, exit, meters }) => {
+          const active = exit !== null && exit.label === activeExit;
+          return (
+            <li key={place.id} className="flex items-center gap-2.5 rounded-xl bg-surface-muted/70 px-2.5 py-2">
+              <Image
+                src={departmentLogo(place.name)}
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 shrink-0 rounded-[10px] object-contain"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13.5px] font-extrabold text-neutral-900">{place.name}</span>
+                <span className="mt-0.5 block text-[11.5px] font-semibold text-neutral-500">
+                  {fill(COPY.walk, locale, walkMinutes(meters))}
+                  {exit ? ` · ${fill(COPY.deptFromExit, locale, exit.label)}` : ""}
+                </span>
+              </span>
+              {exit ? (
+                <button
+                  type="button"
+                  onClick={() => onPickExit(exit.label)}
+                  aria-pressed={active}
+                  className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[12px] font-black tabular-nums transition active:scale-95 ${
+                    active
+                      ? "bg-[#f5b800] text-neutral-900 shadow-[0_2px_6px_rgba(245,184,0,0.4)]"
+                      : "bg-neutral-900 text-white"
+                  }`}
+                >
+                  {fill(COPY.hubExit, locale, exit.label)}
+                </button>
+              ) : (
+                <a
+                  href={place.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 rounded-lg bg-[#eef4ff] px-2 py-1.5 text-[11px] font-extrabold text-[#2563eb]"
+                >
+                  {t(COPY.route, locale)}
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 function ShopRowItem({
@@ -219,7 +318,7 @@ function ShopRowItem({
   const body = (
     <>
       <Image
-        src={row.kind.icon}
+        src={nearest && row.kind.iconFor ? row.kind.iconFor(nearest) : row.kind.icon}
         alt=""
         width={40}
         height={40}
@@ -274,6 +373,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
   const [picked, setPicked] = useState<string | null>(null);
   /** Shop rows per exit label ("" for the station centre); null when the lookup failed. */
   const [shops, setShops] = useState<Record<string, ShopRow[] | null>>({});
+  const [departments, setDepartments] = useState<{ key: string; stops: DepartmentStop[] } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const hub = hubGuide(station.name.ko);
 
@@ -293,6 +393,25 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
   }, [station]);
 
   const exitList = exits?.key === station.key ? exits.list : null;
+
+  useEffect(() => {
+    if (!exitList) return;
+    let alive = true;
+    loadDepartments(station, exitList)
+      .catch(() => [])
+      .then((stops) => {
+        if (alive) setDepartments({ key: station.key, stops });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [station, exitList]);
+
+  const departmentStops = departments?.key === station.key ? departments.stops : [];
+  const departmentByExit = new Map<string, NearbyPlace>();
+  for (const stop of departmentStops) {
+    if (stop.exit && !departmentByExit.has(stop.exit.label)) departmentByExit.set(stop.exit.label, stop.place);
+  }
   const selected = exitList ? (exitList.find((exit) => exit.label === picked) ?? exitList[0] ?? null) : null;
   const shopKey = selected?.label ?? "";
   const center = selected?.position ?? station.center;
@@ -339,6 +458,15 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
         />
       ) : null}
 
+      {departmentStops.length > 0 ? (
+        <DepartmentCard
+          stops={departmentStops}
+          activeExit={picked !== null ? (selected?.label ?? null) : null}
+          locale={locale}
+          onPickExit={pickHubExit}
+        />
+      ) : null}
+
       {exitList === null ? (
         <div className="mt-2 flex gap-1.5" aria-busy>
           {[0, 1, 2, 3, 4, 5].map((index) => (
@@ -354,6 +482,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
             {exitList.map((exit) => {
               const active = exit.label === selected?.label;
               const hubTag = hubForExit(hub, exit.label).tags[0];
+              const department = departmentByExit.get(exit.label);
               return (
                 <button
                   key={exit.label}
@@ -372,6 +501,14 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
                     <span className="absolute -right-1 -top-1 text-[11px] leading-none" aria-hidden>
                       {HUB_TAGS[hubTag].emoji}
                     </span>
+                  ) : department ? (
+                    <Image
+                      src={departmentLogo(department.name)}
+                      alt=""
+                      width={16}
+                      height={16}
+                      className="absolute -right-1 -top-1 h-4 w-4 rounded-[4px] shadow-[0_1px_2px_rgba(15,23,42,0.25)]"
+                    />
                   ) : null}
                 </button>
               );
@@ -418,7 +555,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
           </p>
           {rows === undefined ? (
             <ul className="divide-y divide-line" aria-busy>
-              {SHOP_KINDS.map((kind) => (
+              {SHOP_KINDS.filter((kind) => !kind.hideEmpty).map((kind) => (
                 <li key={kind.id} className="flex items-center gap-3 px-3 py-2.5">
                   <span className="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-surface-muted" />
                   <span className="h-4 flex-1 animate-pulse rounded bg-surface-muted" />
