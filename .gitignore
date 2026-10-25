@@ -24,6 +24,11 @@
 .DS_Store
 *.pem
 
+# app signing keys
+*.jks
+*.keystore
+keystore.properties
+
 # raw station map downloads (copies live in public/station-maps)
 /서울교통공사_역이용안내도_*/
 
