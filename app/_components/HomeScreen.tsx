@@ -95,40 +95,33 @@ const COPY = {
 type MainAction = {
   kind: ActionKind;
   title: Localized;
-  detail?: Localized;
+  sub: Localized;
   href: "/urgent" | "/shops" | "/transfer" | "/luggage";
 };
 
 const MAIN_ACTIONS: MainAction[] = [
   {
     kind: "urgent",
-    title: { ko: "긴급", en: "Urgent", zh: "紧急", ja: "緊急" },
-    detail: {
-      ko: "(화장실·약국)",
-      en: "(Restroom·Pharmacy)",
-      zh: "(卫生间·药店)",
-      ja: "(トイレ·薬局)",
-    },
+    title: { ko: "화장실 · 약국", en: "Restroom · Pharmacy", zh: "卫生间 · 药店", ja: "トイレ · 薬局" },
+    sub: { ko: "개찰구 안/밖 3초 비교", en: "In/out of gate", zh: "闸机内/外比较", ja: "改札内/外を比較" },
     href: "/urgent",
   },
   {
     kind: "shops",
-    title: { ko: "출구 매장 & 픽업", en: "Exit Shops & Pickup", zh: "出口商店 & 自提", ja: "出口ショップ & 受け取り" },
+    title: { ko: "출구 주변 가게", en: "Shops by exits", zh: "出口周边商店", ja: "出口近くの店" },
+    sub: { ko: "올영 · 카페 · 편의점", en: "Olive Young · Cafe · Store", zh: "Olive Young · 咖啡 · 便利店", ja: "オリヤン · カフェ · コンビニ" },
     href: "/shops",
   },
   {
     kind: "transfer",
-    title: {
-      ko: "빠른환승 & 편한길",
-      en: "Fast Transfer & Easy Route",
-      zh: "快速换乘 & 舒适路线",
-      ja: "スムーズ乗換 & らくらくルート",
-    },
+    title: { ko: "빠른 환승", en: "Fast transfer", zh: "快速换乘", ja: "スムーズ乗換" },
+    sub: { ko: "에스컬레이터 · 엘리베이터", en: "Escalator · Elevator", zh: "扶梯 · 电梯", ja: "エスカレーター · エレベーター" },
     href: "/transfer",
   },
   {
     kind: "luggage",
-    title: { ko: "짐보관", en: "Luggage", zh: "行李寄存", ja: "荷物預け" },
+    title: { ko: "짐 보관", en: "Luggage", zh: "行李寄存", ja: "荷物預け" },
+    sub: { ko: "또타라커 · 러기지", en: "T-Locker · T-Luggage", zh: "T-Locker · T-Luggage", ja: "T-Locker · T-Luggage" },
     href: "/luggage",
   },
 ];
@@ -438,8 +431,9 @@ export default function HomeScreen() {
                 key={action.kind}
                 kind={action.kind}
                 title={t(action.title, locale)}
-                detail={action.detail ? t(action.detail, locale) : undefined}
+                sub={t(action.sub, locale)}
                 href={actionHref(action.href)}
+                compact
               />
             ))}
           </div>
