@@ -66,13 +66,8 @@ const COPY = {
     zh: "您要去哪个站？（例：光化门站、首尔站）",
     ja: "どの駅へ行きますか？（例：光化門駅、ソウル駅）",
   },
-  honeyTitle: {
-    ko: "{station} 꿀정보",
-    en: "{station} honey tips",
-    zh: "{station}攻略",
-    ja: "{station}お役立ち情報",
-  },
-  honeyTitleEmpty: { ko: "역 꿀정보", en: "Station honey tips", zh: "车站攻略", ja: "駅お役立ち情報" },
+  checkTitle: { ko: "내리기 전 필수 체크!", en: "Before you get off!", zh: "下车前必看！", ja: "降りる前にチェック！" },
+  honeyTitle: { ko: "꿀정보", en: "tips", zh: "攻略", ja: "お役立ち情報" },
   reportCta: { ko: "나도 1초 제보하기", en: "Report in 1 second", zh: "1秒快速上报", ja: "1秒で投稿する" },
   reportDone: {
     ko: "제보가 등록됐어요. 고마워요!",
@@ -426,15 +421,18 @@ export default function HomeScreen() {
             />
           </section>
 
-          <h2 className="mb-2.5 mt-5 flex items-center gap-1.5 text-[16px] font-extrabold tracking-tight text-neutral-900">
-            <span className="min-w-0 truncate">
-              {station
-                ? t(COPY.honeyTitle, locale).replace("{station}", t(station.name, locale))
-                : t(COPY.honeyTitleEmpty, locale)}
-            </span>
-            <HoneyPotIcon size={22} />
+          <h2 className="mb-2 mt-4 flex items-center gap-1 text-[15px] font-extrabold tracking-tight text-neutral-900">
+            <span className="mr-0.5 shrink-0 text-[#b45309]">{t(COPY.checkTitle, locale)}</span>
+            {station ? (
+              <>
+                <span className="min-w-0 truncate">{t(station.name, locale)}</span>
+                <LineBadges station={station} locale={locale} size="sm" className="shrink-0" />
+              </>
+            ) : null}
+            <span className="shrink-0">{t(COPY.honeyTitle, locale)}</span>
+            <HoneyPotIcon size={20} />
           </h2>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2">
             {MAIN_ACTIONS.map((action) => (
               <ActionTile
                 key={action.kind}

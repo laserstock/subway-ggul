@@ -66,14 +66,16 @@ function LuggageArt({ color }: { color: string }) {
   );
 }
 
-function Badge({ color, children }: { color: string; children: ReactNode }) {
+function Badge({ color, small = false, children }: { color: string; small?: boolean; children: ReactNode }) {
   return (
     <span
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-[0_3px_8px_rgba(15,23,42,0.15)]"
+      className={`flex shrink-0 items-center justify-center rounded-full text-white ${
+        small ? "h-7 w-7 shadow-[0_2px_6px_rgba(15,23,42,0.15)]" : "h-9 w-9 shadow-[0_3px_8px_rgba(15,23,42,0.15)]"
+      }`}
       style={{ backgroundColor: color }}
       aria-hidden
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <svg width={small ? 16 : 20} height={small ? 16 : 20} viewBox="0 0 24 24" fill="none">
         {children}
       </svg>
     </span>
@@ -125,7 +127,7 @@ const TILE_THEMES: Record<ActionKind, TileTheme> = {
 
 /**
  * 2x2 home/dashboard tile: colored badge + line illustration on top, title and accent subtitle below.
- * Without `sub` it renders the shorter home version (same artwork, title only).
+ * Without `sub` it renders the one-row home version: small badge, title, and the same artwork scaled down.
  */
 export default function ActionTile({
   kind,
@@ -146,33 +148,44 @@ export default function ActionTile({
 }) {
   const theme = TILE_THEMES[kind];
   const compact = !sub;
-  const body = (
+  const heading = (
+    <>
+      <span className="mr-1 text-[14px]" aria-hidden>
+        {theme.emoji}
+      </span>
+      {title}
+      {detail ? <span className="ml-0.5 text-[11px] font-bold text-ink-muted">{detail}</span> : null}
+    </>
+  );
+  const body = compact ? (
+    <>
+      <Badge color={theme.accent} small>
+        {theme.badge}
+      </Badge>
+      <span className="line-clamp-2 min-w-0 flex-1 text-[13px] font-extrabold leading-[1.25] tracking-tight text-ink">
+        {heading}
+      </span>
+      <span className="h-[30px] w-[44px] shrink-0 [&_svg]:h-full [&_svg]:w-full">{theme.art}</span>
+    </>
+  ) : (
     <>
       <span className="flex items-start justify-between">
         <Badge color={theme.accent}>{theme.badge}</Badge>
         {theme.art}
       </span>
-      <span className={`block ${compact ? "mt-2" : "mt-3"}`}>
-        <span
-          className={`block font-extrabold leading-tight tracking-tight text-ink ${compact ? "text-[14px]" : "text-[15px]"}`}
-        >
-          <span className="mr-1 text-[14px]" aria-hidden>
-            {theme.emoji}
-          </span>
-          {title}
-          {detail ? <span className="ml-0.5 text-[11px] font-bold text-ink-muted">{detail}</span> : null}
+      <span className="mt-3 block">
+        <span className="block text-[15px] font-extrabold leading-tight tracking-tight text-ink">{heading}</span>
+        <span className="mt-1 block text-[11.5px] font-bold" style={{ color: theme.accent }}>
+          {sub}
         </span>
-        {sub ? (
-          <span className="mt-1 block text-[11.5px] font-bold" style={{ color: theme.accent }}>
-            {sub}
-          </span>
-        ) : null}
         {children}
       </span>
     </>
   );
-  const className = `flex flex-col justify-between rounded-[22px] border text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition active:scale-[0.98] ${
-    compact ? "p-3" : "min-h-[140px] p-3.5"
+  const className = `flex rounded-[22px] border text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition active:scale-[0.98] ${
+    compact
+      ? "min-h-[54px] items-center gap-1.5 py-2 pl-2.5 pr-2"
+      : "min-h-[140px] flex-col justify-between p-3.5"
   }`;
   const style = { backgroundColor: theme.bg, borderColor: `${theme.accent}40` };
   return href ? (
