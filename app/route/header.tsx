@@ -1,3 +1,4 @@
+import { RouteIcon } from "../_components/icons";
 import type { Localized } from "../_lib/stations";
 
 export const ROUTE_TITLE: Localized = {
@@ -13,10 +14,10 @@ export function isRouteMode(value: unknown): value is (typeof ROUTE_MODES)[numbe
   return ROUTE_MODES.includes(value as (typeof ROUTE_MODES)[number]);
 }
 
-export function RouteIcon() {
+export function RouteHeaderIcon() {
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#fff1c2] text-[18px]" aria-hidden>
-      🧭
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#fff1c2] text-[#d97706]" aria-hidden>
+      <RouteIcon size={18} />
     </span>
   );
 }

@@ -12,7 +12,7 @@ import { useLocale } from "../_lib/locale";
 import { findRoute, networkStationId, type Route, type RouteLeg, type RouteMode, type RouteTransfer } from "../_lib/routeFinder";
 import { stationName, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { lineLabel } from "../_lib/subwayLine";
-import { ROUTE_MODES, ROUTE_TITLE, RouteIcon } from "./header";
+import { ROUTE_MODES, ROUTE_TITLE, RouteHeaderIcon } from "./header";
 import { routeHref } from "./params";
 
 const COPY = {
@@ -352,7 +352,7 @@ export default function RouteScreen({
   return (
     <div className="flex min-h-dvh justify-center bg-frame">
       <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
-        <AppHeader backHref="/" title={ROUTE_TITLE} icon={<RouteIcon />} />
+        <AppHeader backHref="/" title={ROUTE_TITLE} icon={<RouteHeaderIcon />} />
 
         <div className="mx-4 flex shrink-0 items-center gap-2 rounded-2xl border border-neutral-200/70 bg-white py-1 pr-2 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
           <div className="min-w-0 flex-1 divide-y divide-dashed divide-neutral-200">

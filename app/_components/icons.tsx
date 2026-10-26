@@ -115,6 +115,23 @@ export function ExitIcon({ size = 16, className = "" }: { size?: number; classNa
   );
 }
 
+/** Ring-to-dot S-curve: a trip from one station to another. */
+export function RouteIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M6 8.5v3.5a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3v.5"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeDasharray="0.1 3.6"
+      />
+      <circle cx="6" cy="5.5" r="2.8" stroke="currentColor" strokeWidth="2.2" />
+      <circle cx="18" cy="19" r="3" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function StarIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>

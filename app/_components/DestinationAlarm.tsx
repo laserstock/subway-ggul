@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { PinIcon } from "./icons";
+import { PinIcon, RouteIcon } from "./icons";
 import LineBadges from "./LineBadges";
 import { armArrivalAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { bareStationName } from "../_lib/arrivalTips";
@@ -216,10 +216,13 @@ export default function DestinationAlarm({
 
       <Link
         href={routeHref(current, destination)}
-        className="mt-2 flex items-center justify-center gap-1.5 rounded-xl bg-neutral-900 py-2.5 text-[14px] font-extrabold text-white shadow-[0_2px_8px_rgba(15,23,42,0.18)] transition active:scale-[0.98]"
+        className="mt-2 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#ffc83d] to-[#f59e0b] py-2.5 text-[14px] font-extrabold text-[#5a3300] shadow-[0_2px_8px_rgba(245,158,11,0.35)] transition active:scale-[0.98]"
       >
-        <span aria-hidden>🧭</span>
+        <RouteIcon size={18} />
         {t(COPY.findRoute, locale)}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </Link>
 
       <div className="mt-2.5 flex items-center justify-between gap-3">
