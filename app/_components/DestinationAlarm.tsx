@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PinIcon } from "./icons";
 import LineBadges from "./LineBadges";
@@ -8,6 +9,7 @@ import { bareStationName } from "../_lib/arrivalTips";
 import { isNativeApp } from "../_lib/native";
 import { distanceMeters, kakaoOption, restoreStation, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { lineNeighbors, loadLineStations, sameLine, stationLines } from "../_lib/subwayLine";
+import { routeHref } from "../route/params";
 
 const COPY = {
   from: { ko: "출발", en: "From", zh: "出发", ja: "出発" },
@@ -61,6 +63,7 @@ const COPY = {
     ja: "通知が許可されていないため、アプリ内の音と振動でお知らせします",
   },
   toggle: { ko: "하차 알림", en: "Arrival alert", zh: "下车提醒", ja: "降車通知" },
+  findRoute: { ko: "최적경로 찾기", en: "Find the best route", zh: "查找最佳路线", ja: "最適ルートを検索" },
 } satisfies Record<string, Localized>;
 
 /** Hollow honey ring with a pin: where the rider is now. */
@@ -210,6 +213,14 @@ export default function DestinationAlarm({
           </button>
         </div>
       </div>
+
+      <Link
+        href={routeHref(current, destination)}
+        className="mt-2 flex items-center justify-center gap-1.5 rounded-xl bg-neutral-900 py-2.5 text-[14px] font-extrabold text-white shadow-[0_2px_8px_rgba(15,23,42,0.18)] transition active:scale-[0.98]"
+      >
+        <span aria-hidden>🧭</span>
+        {t(COPY.findRoute, locale)}
+      </Link>
 
       <div className="mt-2.5 flex items-center justify-between gap-3">
         <p className="min-w-0 text-[16px] font-extrabold leading-snug tracking-tight text-neutral-900">

@@ -13,6 +13,8 @@
     "lockers:build": "node scripts/build-station-lockers.mjs",
     "exits:build": "node scripts/build-station-exits.mjs",
     "icons:build": "node scripts/build-app-icons.mjs",
+    "routes:fetch": "node scripts/fetch-subway-routes.mjs",
+    "routes:build": "node scripts/build-subway-network.mjs",
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios"
