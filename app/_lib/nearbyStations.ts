@@ -13,7 +13,11 @@ function cacheKey(center: LatLng) {
   return `${center.lat.toFixed(4)},${center.lng.toFixed(4)}`;
 }
 
-/** Stations within 5 km, nearest first. Cached per ~10 m grid cell. */
+/**
+ * Stations within 5 km, nearest first. Cached per ~10 m grid cell.
+ * Falls back to the bundled index when Kakao is unreachable or rejects the key (e.g. on a domain not
+ * registered in the Kakao console); that result isn't cached so Kakao is retried next time.
+ */
 export function loadNearbyStations(center: LatLng): Promise<StationOption[]> {
   const key = cacheKey(center);
   const cached = pending.get(key);
@@ -24,8 +28,13 @@ export function loadNearbyStations(center: LatLng): Promise<StationOption[]> {
       const stations = found.map(kakaoOption);
       resolved.set(key, stations);
       return stations;
+    })
+    .catch((error: unknown) => {
+      pending.delete(key);
+      const offline = nearbyStationsOffline(center);
+      if (offline.length) return offline;
+      throw error;
     });
-  request.catch(() => pending.delete(key));
   pending.set(key, request);
   return request;
 }

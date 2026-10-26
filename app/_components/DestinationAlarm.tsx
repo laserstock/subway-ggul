@@ -180,7 +180,12 @@ export default function DestinationAlarm({
           </button>
         </div>
         <div className="flex items-center justify-between gap-2 py-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1 text-base font-bold text-gray-900">
+          <button
+            type="button"
+            onClick={onChange}
+            aria-haspopup="dialog"
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg text-left text-base font-bold text-gray-900 transition active:scale-[0.98]"
+          >
             <DestinationIcon />
             <span className="whitespace-nowrap text-sm font-semibold text-gray-500">{t(COPY.to, locale)} :</span>
             {destination ? (
@@ -191,7 +196,7 @@ export default function DestinationAlarm({
             ) : (
               <span className="whitespace-nowrap text-sm font-semibold text-gray-400">{t(COPY.noDestination, locale)}</span>
             )}
-          </div>
+          </button>
           <button
             type="button"
             onClick={onChange}
