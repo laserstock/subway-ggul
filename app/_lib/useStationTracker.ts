@@ -6,12 +6,25 @@ import { saveLastStation } from "./lastStation";
 import { isNativeApp, watchBackgroundLocation } from "./native";
 import { loadNearbyStations, nearbyStationsOffline } from "./nearbyStations";
 import { distanceMeters, type Localized, type StationOption } from "./stations";
+import { sameLine, stationLines } from "./subwayLine";
 
 const NEAREST_LOOKUP_METERS = 150;
 /** Re-resolve when the previous fix was this vague and a new one is at least twice as precise. */
 const SHARPER_FIX_METERS = 100;
 /** A cached fix this recent is still the same station for a subway rider. */
 const QUICK_FIX_MAX_AGE_MS = 60_000;
+/** Cell-tower fixes this vague can land on any station in the district, so they don't replace a known one. */
+const IGNORE_FIX_METERS = 2000;
+/** Underground fixes (Wi-Fi/cell) vaguer than this snap to a station on the line the rider was on. */
+const SNAP_FIX_METERS = 100;
+/** The bundled index answers when it has a station this close; Kakao is only asked outside its coverage. */
+const OFFLINE_MATCH_METERS = 3000;
+/**
+ * Underground, GPS watches often go quiet; after this long without a fix we ask for a network
+ * (Wi-Fi/cell) position instead, which still works in tunnels and stations.
+ */
+const STALL_MS = 15_000;
+const POLL_MS = 10_000;
 
 export type LocationIssue = "denied" | "unavailable" | "unsupported" | "noStation" | "lookupFailed";
 
@@ -50,6 +63,20 @@ export const LOCATION_ISSUE_COPY: Record<LocationIssue, Localized> = {
 
 export type NearestUpdate = { station: StationOption; position: LatLng; seq: number };
 
+/**
+ * Nearest station, except that a vague fix keeps the rider on the line they were on: from 장한평 a
+ * fuzzy fix between 군자 and a closer station on another line resolves to 군자.
+ */
+function pickStation(stations: StationOption[], here: LatLng, accuracy: number, previous: StationOption | null) {
+  const [nearest] = stations;
+  if (!nearest || !previous || accuracy <= SNAP_FIX_METERS) return nearest ?? null;
+  const lines = stationLines(previous);
+  const onLine = stations.find((station) => stationLines(station).some((line) => lines.some((other) => sameLine(line, other))));
+  if (!onLine || onLine === nearest) return nearest;
+  const slack = Math.min(accuracy, 1000) / 2;
+  return distanceMeters(here, onLine.center) <= distanceMeters(here, nearest.center) + slack ? onLine : nearest;
+}
+
 export function useStationTracker({
   autoStart = false,
   quickStart = false,
@@ -79,26 +106,33 @@ export function useStationTracker({
   const lookupAccuracyRef = useRef(Infinity);
   const lookupSeqRef = useRef(0);
   const positionRef = useRef<LatLng | null>(null);
+  const nearestRef = useRef<StationOption | null>(null);
+  const lastFixAtRef = useRef(0);
+  const stopPollRef = useRef<(() => void) | null>(null);
   const onNearestRef = useRef(onNearest);
 
   useEffect(() => {
     onNearestRef.current = onNearest;
   });
 
-  function lookupNearest(here: LatLng): Promise<StationOption | null> {
+  function lookupNearest(here: LatLng, accuracy: number): Promise<StationOption | null> {
     const seq = ++lookupSeqRef.current;
     lastLookupRef.current = here;
-    const lookup = stopNativeWatchRef.current
-      ? Promise.resolve(nearbyStationsOffline(here))
-      : loadNearbyStations(here);
+    const offline = nearbyStationsOffline(here);
+    const lookup =
+      stopNativeWatchRef.current || (offline[0] && distanceMeters(here, offline[0].center) <= OFFLINE_MATCH_METERS)
+        ? Promise.resolve(offline)
+        : loadNearbyStations(here);
     return lookup
-      .then(([station]) => {
-        if (seq !== lookupSeqRef.current) return station ?? null;
+      .then((stations) => {
+        const station = pickStation(stations, here, accuracy, nearestRef.current);
+        if (seq !== lookupSeqRef.current) return station;
         if (!station) {
           setIssue("noStation");
           return null;
         }
         setIssue(null);
+        nearestRef.current = station;
         setNearest(station);
         setLookupPosition(here);
         saveLastStation(station);
@@ -123,6 +157,8 @@ export function useStationTracker({
     watchIdRef.current = null;
     stopNativeWatchRef.current?.();
     stopNativeWatchRef.current = null;
+    stopPollRef.current?.();
+    stopPollRef.current = null;
     lookupSeqRef.current += 1;
     lastLookupRef.current = null;
     lookupAccuracyRef.current = Infinity;
@@ -137,6 +173,8 @@ export function useStationTracker({
   }
 
   function handleFix(here: LatLng, accuracy: number) {
+    if (accuracy > IGNORE_FIX_METERS && nearestRef.current) return;
+    lastFixAtRef.current = Date.now();
     positionRef.current = here;
     setPosition(here);
     setAccuracy(accuracy);
@@ -146,11 +184,33 @@ export function useStationTracker({
       quickStart && lookupAccuracyRef.current > SHARPER_FIX_METERS && accuracy < lookupAccuracyRef.current / 2;
     if (last && distanceMeters(last, here) < NEAREST_LOOKUP_METERS && !sharper) return;
     lookupAccuracyRef.current = accuracy;
-    lookupNearest(here);
+    lookupNearest(here, accuracy);
   }
 
   function handleWebFix(result: GeolocationPosition) {
     handleFix({ lat: result.coords.latitude, lng: result.coords.longitude }, result.coords.accuracy);
+  }
+
+  /** Fills gaps in a stalled watch with network fixes, and refreshes as soon as the screen comes back. */
+  function startStallPolling() {
+    const poll = (force: boolean) => {
+      if (document.visibilityState !== "visible") return;
+      if (!force && Date.now() - lastFixAtRef.current < STALL_MS) return;
+      navigator.geolocation.getCurrentPosition(
+        (result) => {
+          if (watchIdRef.current !== null) handleWebFix(result);
+        },
+        () => {},
+        { enableHighAccuracy: false, maximumAge: force ? 5000 : STALL_MS, timeout: 10000 },
+      );
+    };
+    const timer = window.setInterval(() => poll(false), POLL_MS);
+    const onVisible = () => poll(true);
+    document.addEventListener("visibilitychange", onVisible);
+    stopPollRef.current = () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }
 
   function beginWatch() {
@@ -187,11 +247,12 @@ export function useStationTracker({
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
     );
+    if (quickStart || background) startStallPolling();
   }
 
   function start() {
     if (watching()) {
-      if (positionRef.current) lookupNearest(positionRef.current);
+      if (positionRef.current) lookupNearest(positionRef.current, lookupAccuracyRef.current);
       return;
     }
     setTracking(true);
@@ -217,8 +278,9 @@ export function useStationTracker({
             setTracking(true);
             beginWatch();
           }
+          lastFixAtRef.current = Date.now();
           lookupAccuracyRef.current = result.coords.accuracy;
-          resolve(lookupNearest(here));
+          resolve(lookupNearest(here, result.coords.accuracy));
         },
         (error) => {
           if (error.code === error.PERMISSION_DENIED) {
@@ -238,6 +300,7 @@ export function useStationTracker({
     setTracking(false);
     setPosition(null);
     setAccuracy(null);
+    nearestRef.current = null;
     setNearest(null);
     setLookupPosition(null);
     setIssue(null);

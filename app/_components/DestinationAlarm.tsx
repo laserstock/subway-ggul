@@ -7,7 +7,7 @@ import LineBadges from "./LineBadges";
 import { armArrivalAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { bareStationName } from "../_lib/arrivalTips";
 import { isNativeApp } from "../_lib/native";
-import { distanceMeters, kakaoOption, restoreStation, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import { distanceMeters, formatDistance, kakaoOption, restoreStation, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { lineNeighbors, loadLineStations, sameLine, stationLines } from "../_lib/subwayLine";
 import { routeHref } from "../route/params";
 
@@ -63,6 +63,12 @@ const COPY = {
     ja: "通知が許可されていないため、アプリ内の音と振動でお知らせします",
   },
   toggle: { ko: "하차 알림", en: "Arrival alert", zh: "下车提醒", ja: "降車通知" },
+  distanceTitle: {
+    ko: "내 위치에서 역까지 거리",
+    en: "Distance from you to the station",
+    zh: "您与车站的距离",
+    ja: "現在地から駅までの距離",
+  },
   findRoute: { ko: "최적경로 찾기", en: "Find the best route", zh: "查找最佳路线", ja: "最適ルートを検索" },
 } satisfies Record<string, Localized>;
 
@@ -113,6 +119,7 @@ async function previousStop(destination: StationOption, from: StationOption | nu
 export default function DestinationAlarm({
   target,
   current,
+  currentDistance,
   locating,
   locale,
   onOrigin,
@@ -121,6 +128,8 @@ export default function DestinationAlarm({
   /** Suggested destination: the last station viewed, else the first My station. */
   target: StationOption | null;
   current: StationOption | null;
+  /** Metres from the latest location fix to `current`, when there is a fix. */
+  currentDistance: number | null;
   /** Still looking for the current station (as opposed to having failed). */
   locating: boolean;
   locale: Locale;
@@ -174,6 +183,14 @@ export default function DestinationAlarm({
               <span className="flex flex-wrap items-center gap-1">
                 <span className="whitespace-nowrap font-bold">{t(current.name, locale)}</span>
                 <LineBadges station={current} locale={locale} size="chip" />
+                {currentDistance !== null ? (
+                  <span
+                    className="whitespace-nowrap text-[11px] font-bold text-[#16a34a]"
+                    title={t(COPY.distanceTitle, locale)}
+                  >
+                    {formatDistance(currentDistance)}
+                  </span>
+                ) : null}
               </span>
             ) : (
               <span className="whitespace-nowrap text-gray-400">

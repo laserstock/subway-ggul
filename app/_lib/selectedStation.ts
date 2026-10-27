@@ -18,13 +18,18 @@ export type SelectedStation = { station: StationOption; source: StationSource };
 
 /** Roughly one station apart; smaller values let underground GPS drift undo the user's correction. */
 export const MANUAL_RELEASE_METERS = 1000;
-/** Coarser fixes (Wi-Fi/cell, typical underground) can jump over a kilometre, so they never move or release a correction. */
-const ANCHOR_MAX_ACCURACY_METERS = 150;
+/**
+ * Underground fixes come from Wi-Fi/cell and are rarely sharper than a few hundred metres; they still
+ * count, but the release distance grows with their vagueness so a jumpy fix can't undo a correction.
+ */
+const ANCHOR_MAX_ACCURACY_METERS = 1000;
 
 export type LocationFix = { position: LatLng | null; accuracy: number | null };
 
-function reliable(fix: LocationFix): LatLng | null {
-  return fix.position && fix.accuracy !== null && fix.accuracy <= ANCHOR_MAX_ACCURACY_METERS ? fix.position : null;
+function usable(fix: LocationFix): { position: LatLng; accuracy: number } | null {
+  return fix.position && fix.accuracy !== null && fix.accuracy <= ANCHOR_MAX_ACCURACY_METERS
+    ? { position: fix.position, accuracy: fix.accuracy }
+    : null;
 }
 
 const listeners = new Set<() => void>();
@@ -44,7 +49,7 @@ function subscribe(listener: () => void) {
 }
 
 export function selectStation(station: StationOption, source: ManualStation["source"], fix: LocationFix) {
-  manual = { station, source, anchor: reliable(fix) };
+  manual = { station, source, anchor: usable(fix)?.position ?? null };
   emit();
 }
 
@@ -56,12 +61,12 @@ export function clearSelectedStation() {
 
 /** Re-anchors a correction made without GPS, or releases it once the user has clearly moved on. */
 export function syncSelectedStation(fix: LocationFix) {
-  const position = reliable(fix);
-  if (!manual || !position) return;
+  const found = usable(fix);
+  if (!manual || !found) return;
   if (!manual.anchor) {
-    manual = { ...manual, anchor: position };
+    manual = { ...manual, anchor: found.position };
     emit();
-  } else if (distanceMeters(manual.anchor, position) > MANUAL_RELEASE_METERS) {
+  } else if (distanceMeters(manual.anchor, found.position) > Math.max(MANUAL_RELEASE_METERS, found.accuracy * 1.5 + 300)) {
     clearSelectedStation();
   }
 }

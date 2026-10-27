@@ -29,7 +29,7 @@ import {
   useSelectedStation,
 } from "../_lib/selectedStation";
 import { useStationTracker } from "../_lib/useStationTracker";
-import { stationParams, t, type StationOption } from "../_lib/stations";
+import { distanceMeters, stationParams, t, type StationOption } from "../_lib/stations";
 
 const COPY = {
   search: {
@@ -229,6 +229,7 @@ export default function HomeScreen() {
           <DestinationAlarm
             target={alarmTarget}
             current={current}
+            currentDistance={current && tracker.position ? distanceMeters(tracker.position, current.center) : null}
             locating={!tracker.issue}
             locale={locale}
             onOrigin={() => setLocationOpen(true)}
