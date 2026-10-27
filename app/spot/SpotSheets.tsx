@@ -5,6 +5,7 @@ import { useState } from "react";
 import AuthorLine from "../_components/AuthorLine";
 import BeeAvatar from "../_components/BeeAvatar";
 import Sheet from "../_components/BottomSheet";
+import { FlagButton, type FlagRequest } from "../_components/FlagSheet";
 import { t, type Locale, type Localized } from "../_lib/i18n";
 import { authorLabel, type AvatarId, type BadgeId } from "../_lib/profile";
 import { formatRelativeTime } from "../_lib/reports";
@@ -249,12 +250,14 @@ function CommentRow({
   text,
   now,
   locale,
+  onFlag,
 }: {
   comment: SpotComment;
   /** Shown text: the comment itself or its translation. */
   text: string;
   now: number | null;
   locale: Locale;
+  onFlag: () => void;
 }) {
   return (
     <li className="rounded-2xl bg-surface-muted px-3.5 py-2.5">
@@ -277,6 +280,7 @@ function CommentRow({
             {formatRelativeTime(comment.createdAt, now, locale)}
           </span>
         ) : null}
+        {comment.mine ? null : <FlagButton onClick={onFlag} className={now !== null ? "-my-1 -mr-1.5" : "-my-1 -mr-1.5 ml-auto"} />}
       </div>
       <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{text}</p>
     </li>
@@ -289,12 +293,14 @@ export function CommentSheet({
   now,
   locale,
   onClose,
+  onFlag,
 }: {
   post: SpotPost;
   author: Author;
   now: number | null;
   locale: Locale;
   onClose: () => void;
+  onFlag: (request: FlagRequest) => void;
 }) {
   const [draft, setDraft] = useState("");
   const hidden = post.commentCount > post.comments.length;
@@ -343,6 +349,7 @@ export function CommentSheet({
                 text={translation.show(comment.text)}
                 now={now}
                 locale={locale}
+                onFlag={() => onFlag({ target: "comment", id: comment.id, authorId: comment.authorId })}
               />
             ))}
           </ul>

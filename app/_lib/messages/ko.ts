@@ -38,7 +38,7 @@ const ko = {
     feedbackPlaceholder: "예: 2호선 환승 경로도 알려 주세요",
     feedbackSend: "보내기",
     feedbackDone: "소중한 의견 고마워요!",
-    feedbackNote: "베타: 피드백은 현재 이 기기에 저장되며, 정식 버전에서 서버로 전송돼요",
+    feedbackNote: "보낸 의견은 운영자에게 바로 전달돼요. 개인정보(연락처 등)는 적지 말아 주세요.",
     theme: "화면 모드",
     themeLight: "밝게",
     themeDark: "어둡게",

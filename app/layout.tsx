@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import ArrivalAlarmRunner from "./_components/ArrivalAlarmRunner";
 import BadgeCelebration from "./_components/BadgeCelebration";
@@ -13,9 +13,30 @@ const notoSansKr = Noto_Sans_KR({
   weight: ["400", "500", "600", "700"],
 });
 
+const DESCRIPTION = "역 주변과 동선 상의 시설을 가장 빠르게 찾아보세요.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://subway-ggul.vercel.app"),
   title: "지하철꿀정보",
-  description: "역 주변과 동선 상의 시설을 가장 빠르게 찾아보세요.",
+  description: DESCRIPTION,
+  applicationName: "지하철꿀정보",
+  openGraph: {
+    type: "website",
+    siteName: "지하철꿀정보",
+    title: "지하철꿀정보",
+    description: DESCRIPTION,
+    locale: "ko_KR",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#14161c" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

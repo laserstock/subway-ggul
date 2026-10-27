@@ -12,8 +12,10 @@ import PrimaryStationSheet from "../_components/PrimaryStationSheet";
 import { APP_VERSION } from "../_components/SideDrawer";
 import ThemePicker from "../_components/ThemePicker";
 import { Toast, useToast } from "../_components/Toast";
+import { deleteMyAccount } from "../_lib/account";
 import { LANGUAGES, LOCALES, t, type Locale, type Localized } from "../_lib/i18n";
 import { useLastStation } from "../_lib/lastStation";
+import { PRIVACY_TITLE } from "../_lib/legal";
 import { setLocale, useLocale } from "../_lib/locale";
 import {
   authorLabel,
@@ -32,6 +34,7 @@ import {
   type BadgeId,
 } from "../_lib/profile";
 import { deleteReport, formatRelativeTime, useMyReports, useNow } from "../_lib/reports";
+import { unblockAll, useSafety } from "../_lib/safety";
 import { useDestinationStation } from "../_lib/selectedStation";
 import { deleteSpotPost, useSpotActivity, type SpotPost } from "../_lib/spot";
 import { ME_TITLE } from "./header";
@@ -137,7 +140,77 @@ const COPY = {
     ja: "💾 プロフィールはこの端末に、投稿と報告はこの端末の匿名アカウントでサーバーに保存されます",
   },
   profileSaved: { ko: "프로필을 저장했어요", en: "Profile saved", zh: "已保存个人资料", ja: "プロフィールを保存しました" },
+  account: { ko: "🔒 개인정보 · 계정", en: "🔒 Privacy & account", zh: "🔒 隐私 · 账号", ja: "🔒 プライバシー・アカウント" },
+  terms: {
+    ko: "이용약관 · 커뮤니티 가이드라인",
+    en: "Terms & community guidelines",
+    zh: "使用条款 · 社区准则",
+    ja: "利用規約・コミュニティガイドライン",
+  },
+  blocked: { ko: "차단한 사용자 {n}명", en: "{n} blocked users", zh: "已屏蔽 {n} 位用户", ja: "ブロック中のユーザー {n}人" },
+  unblockAll: { ko: "모두 해제", en: "Unblock all", zh: "全部解除", ja: "すべて解除" },
+  unblocked: { ko: "차단을 모두 해제했어요", en: "Everyone unblocked", zh: "已全部解除屏蔽", ja: "ブロックをすべて解除しました" },
+  deleteAll: { ko: "내 데이터 모두 삭제", en: "Delete all my data", zh: "删除我的全部数据", ja: "自分のデータをすべて削除" },
+  deleteTitle: {
+    ko: "내 데이터를 모두 삭제할까요?",
+    en: "Delete all your data?",
+    zh: "要删除您的全部数据吗？",
+    ja: "データをすべて削除しますか？",
+  },
+  deleteBody: {
+    ko: "이 기기의 익명 계정과 그 계정으로 올린 꿀스팟 글·댓글, 역 제보, 공감·스크랩·투표, 보낸 의견이 서버에서 즉시 영구 삭제돼요. 프로필·내 역·설정 등 기기에 저장된 정보도 모두 지워지며 되돌릴 수 없어요.",
+    en: "This device's anonymous account and every post, comment, report, like, save, vote and feedback message it made are permanently deleted from the server right away. Your profile, saved stations and settings on this device are erased too. This can't be undone.",
+    zh: "本设备的匿名账号及其发布的帖子、评论、上报、点赞、收藏、投票和反馈将立即从服务器永久删除。本设备上的个人资料、车站和设置也会被清除，且无法恢复。",
+    ja: "この端末の匿名アカウントと、そのアカウントの投稿・コメント・報告・いいね・保存・投票・ご意見がサーバーから直ちに完全削除されます。端末内のプロフィール・駅・設定も消去され、元に戻せません。",
+  },
+  deleteConfirm: { ko: "영구 삭제하기", en: "Delete permanently", zh: "永久删除", ja: "完全に削除する" },
+  deleting: { ko: "삭제하는 중…", en: "Deleting…", zh: "正在删除…", ja: "削除中…" },
+  deleteFailed: {
+    ko: "삭제하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.",
+    en: "Couldn't delete. Check your connection and try again.",
+    zh: "删除失败。请检查网络连接后重试。",
+    ja: "削除できませんでした。接続を確認して再度お試しください。",
+  },
 } satisfies Record<string, Localized>;
+
+function DeleteAccountSheet({ locale, onClose }: { locale: Locale; onClose: () => void }) {
+  const [status, setStatus] = useState<"idle" | "deleting" | "failed">("idle");
+
+  async function confirm() {
+    setStatus("deleting");
+    if (await deleteMyAccount()) window.location.replace("/");
+    else setStatus("failed");
+  }
+
+  return (
+    <BottomSheet title={t(COPY.deleteTitle, locale)} onClose={status === "deleting" ? () => {} : onClose}>
+      <div className="px-5 pb-1 pt-2">
+        <p className="text-[13px] leading-relaxed text-neutral-600">{t(COPY.deleteBody, locale)}</p>
+        {status === "failed" ? (
+          <p role="alert" className="mt-3 rounded-xl bg-[#fef2f2] px-3 py-2 text-[12px] font-semibold text-[#dc2626]">
+            {t(COPY.deleteFailed, locale)}
+          </p>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => void confirm()}
+          disabled={status === "deleting"}
+          className="mt-4 w-full rounded-2xl bg-[#dc2626] py-3.5 text-[15px] font-bold text-white transition active:scale-[0.98] disabled:opacity-60"
+        >
+          {t(status === "deleting" ? COPY.deleting : COPY.deleteConfirm, locale)}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={status === "deleting"}
+          className="mt-2 w-full rounded-2xl bg-surface-muted py-3.5 text-[15px] font-bold text-ink transition active:scale-[0.98]"
+        >
+          {t(COPY.cancel, locale)}
+        </button>
+      </div>
+    </BottomSheet>
+  );
+}
 
 function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
@@ -339,6 +412,8 @@ export default function MeScreen() {
   const [nicknameDraft, setNicknameDraft] = useState<string | null>(null);
   const [stationSheetOpen, setStationSheetOpen] = useState(false);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const safety = useSafety();
 
   const here = destination ?? lastStation;
   const primary = profile.primaryStation;
@@ -666,6 +741,51 @@ export default function MeScreen() {
             </p>
           </Section>
 
+          <Section title={t(COPY.account, locale)}>
+            <div className="mt-3 flex flex-col gap-1.5">
+              {(
+                [
+                  ["/privacy", PRIVACY_TITLE],
+                  ["/terms", COPY.terms],
+                ] as const
+              ).map(([href, label]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex items-center justify-between rounded-2xl bg-surface-muted px-3.5 py-3 text-[14px] font-bold text-ink active:scale-[0.99]"
+                >
+                  {t(label, locale)}
+                  <span className="text-neutral-400" aria-hidden>
+                    ›
+                  </span>
+                </Link>
+              ))}
+            </div>
+            {safety.blocked.size > 0 ? (
+              <div className="mt-3 flex items-center justify-between gap-2 px-1 text-[13px] font-semibold text-ink-muted">
+                <span>🚫 {t(COPY.blocked, locale).replace("{n}", String(safety.blocked.size))}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    unblockAll();
+                    showToast(t(COPY.unblocked, locale));
+                  }}
+                  className="shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold text-honey-strong ring-1 ring-[#f6e3a8] active:scale-95"
+                >
+                  {t(COPY.unblockAll, locale)}
+                </button>
+              </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(true)}
+              aria-haspopup="dialog"
+              className="mt-3 w-full rounded-2xl py-2.5 text-[13px] font-bold text-[#dc2626] ring-1 ring-[#fecaca] active:bg-[#fef2f2]"
+            >
+              {t(COPY.deleteAll, locale)}
+            </button>
+          </Section>
+
           <p className="mt-4 px-1 text-[11px] leading-relaxed text-neutral-400">{t(COPY.savedNote, locale)}</p>
         </main>
 
@@ -686,6 +806,8 @@ export default function MeScreen() {
             }}
           />
         ) : null}
+
+        {deleteOpen ? <DeleteAccountSheet locale={locale} onClose={() => setDeleteOpen(false)} /> : null}
 
         {stationSheetOpen ? (
           <PrimaryStationSheet

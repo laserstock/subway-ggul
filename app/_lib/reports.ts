@@ -4,6 +4,7 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { type Locale } from "./i18n";
 import { recordActivity, syncActivity } from "./profile";
+import { isHiddenContent, useSafety } from "./safety";
 import { localizedStationName, stationFeedKey, type Localized, type StationOption } from "./stations";
 import {
   currentUserId,
@@ -28,6 +29,8 @@ export type Report = {
   createdAt: number;
   /** Last time anyone tapped "still true"; restarts the report's TTL. */
   confirmedAt: number | null;
+  authorId: string;
+  mine: boolean;
 };
 
 export type MyReport = {
@@ -246,6 +249,7 @@ const EMPTY: ReportRow[] = [];
 export function useStationReports(station: StationOption | null): Report[] {
   const snapshot = useSyncExternalStore(subscribe, readState, readState);
   const uid = useUserId();
+  const safety = useSafety();
   const key = station ? stationFeedKey(station) : null;
   useOwnData();
 
@@ -256,7 +260,12 @@ export function useStationReports(station: StationOption | null): Report[] {
   return useMemo(() => {
     const rows = key ? (snapshot.byStation[key] ?? EMPTY) : EMPTY;
     return rows
-      .filter((row) => !row.resolved_at && !snapshot.resolved.has(row.id))
+      .filter(
+        (row) =>
+          !row.resolved_at &&
+          !snapshot.resolved.has(row.id) &&
+          (row.author_id === uid || !isHiddenContent(safety, "report", row.id, row.author_id)),
+      )
       .map((row) => ({
         id: row.id,
         type: row.type,
@@ -265,9 +274,11 @@ export function useStationReports(station: StationOption | null): Report[] {
         liked: uid !== null && snapshot.confirmed.has(row.id),
         createdAt: Date.parse(row.created_at),
         confirmedAt: row.last_confirmed_at ? Date.parse(row.last_confirmed_at) : null,
+        authorId: row.author_id,
+        mine: uid !== null && row.author_id === uid,
       }))
       .sort((a, b) => b.createdAt - a.createdAt);
-  }, [snapshot, key, uid]);
+  }, [snapshot, key, uid, safety]);
 }
 
 export function useMyReports(): MyReport[] {

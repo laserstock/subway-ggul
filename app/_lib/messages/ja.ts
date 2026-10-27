@@ -40,7 +40,7 @@ const ja: Messages = {
     feedbackPlaceholder: "例：2号線の乗り換え情報もほしいです",
     feedbackSend: "送信",
     feedbackDone: "貴重なご意見ありがとうございます！",
-    feedbackNote: "ベータ版：フィードバックは現在この端末に保存され、正式版でサーバーに送信されます",
+    feedbackNote: "ご意見は運営者に直接届きます。連絡先などの個人情報は書かないでください。",
     theme: "表示モード",
     themeLight: "ライト",
     themeDark: "ダーク",

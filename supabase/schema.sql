@@ -219,12 +219,70 @@ language sql stable security definer set search_path = '' as $$
   group by v.facility_id
 $$;
 
+-- ───────────────────────── Safety: flags, feedback, account deletion ─────────────────────────
+
+-- Content flagged by 3+ different users is hidden from everyone but its author (see select policies)
+-- until the operator reviews it in the Table Editor (delete the row, or reset flag_count to 0).
+alter table public.reports add column if not exists flag_count integer not null default 0;
+alter table public.spot_posts add column if not exists flag_count integer not null default 0;
+alter table public.spot_comments add column if not exists flag_count integer not null default 0;
+
+create table if not exists public.content_flags (
+  target_type text not null check (target_type in ('report', 'post', 'comment')),
+  target_id uuid not null,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  reason text not null check (reason in ('spam', 'abuse', 'privacy', 'other')),
+  created_at timestamptz not null default now(),
+  primary key (target_type, target_id, user_id)
+);
+create index if not exists content_flags_recent_idx on public.content_flags (created_at desc);
+
+create or replace function public.on_content_flag() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.target_type = 'report' then
+    update public.reports set flag_count = flag_count + 1 where id = new.target_id;
+  elsif new.target_type = 'post' then
+    update public.spot_posts set flag_count = flag_count + 1 where id = new.target_id;
+  else
+    update public.spot_comments set flag_count = flag_count + 1 where id = new.target_id;
+  end if;
+  return null;
+end $$;
+
+drop trigger if exists content_flag_count on public.content_flags;
+create trigger content_flag_count after insert on public.content_flags
+  for each row execute function public.on_content_flag();
+
+-- In-app "Send feedback"; read it in the Table Editor.
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  text text not null check (char_length(btrim(text)) between 1 and 500),
+  page text check (page is null or char_length(page) <= 100),
+  locale text check (locale is null or locale in ('ko', 'en', 'zh', 'ja')),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index if not exists feedback_recent_idx on public.feedback (created_at desc);
+
+-- "Delete all my data": removing the auth user cascades to every row it owns.
+create or replace function public.delete_my_account() returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+  delete from auth.users where id = uid;
+end $$;
+
 -- ───────────────────────── Privileges ─────────────────────────
 -- Column-level grants: clients can only write content columns; ids, authors, timestamps and counters come from defaults/triggers.
 
 revoke all on public.reports, public.report_confirmations, public.report_resolutions,
   public.spot_posts, public.spot_comments, public.spot_likes, public.spot_scraps, public.spot_views,
-  public.facility_votes from anon, authenticated;
+  public.facility_votes, public.content_flags, public.feedback from anon, authenticated;
 
 grant select on public.reports, public.spot_posts, public.spot_comments to anon, authenticated;
 grant select on public.report_confirmations, public.report_resolutions,
@@ -238,6 +296,9 @@ grant insert (post_id) on public.spot_likes, public.spot_scraps to authenticated
 grant insert (post_id, viewer) on public.spot_views to anon, authenticated;
 grant insert (facility_id, vote) on public.facility_votes to authenticated;
 grant update (vote) on public.facility_votes to authenticated;
+grant select on public.content_flags, public.feedback to authenticated;
+grant insert (target_type, target_id, reason) on public.content_flags to authenticated;
+grant insert (text, page, locale) on public.feedback to authenticated;
 
 grant delete on public.reports, public.report_confirmations, public.spot_posts, public.spot_comments,
   public.spot_likes, public.spot_scraps, public.facility_votes to authenticated;
@@ -245,7 +306,9 @@ grant delete on public.reports, public.report_confirmations, public.spot_posts, 
 revoke all on function public.facility_vote_counts(text[]) from public;
 grant execute on function public.facility_vote_counts(text[]) to anon, authenticated;
 revoke all on function public.on_report_confirmation(), public.on_report_resolution(),
-  public.on_spot_counter(), public.touch_facility_vote() from public, anon, authenticated;
+  public.on_spot_counter(), public.touch_facility_vote(), public.on_content_flag() from public, anon, authenticated;
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
 
 -- ───────────────────────── Row level security ─────────────────────────
 
@@ -258,9 +321,12 @@ alter table public.spot_likes enable row level security;
 alter table public.spot_scraps enable row level security;
 alter table public.spot_views enable row level security;
 alter table public.facility_votes enable row level security;
+alter table public.content_flags enable row level security;
+alter table public.feedback enable row level security;
 
 drop policy if exists "reports are public" on public.reports;
-create policy "reports are public" on public.reports for select using (true);
+create policy "reports are public" on public.reports for select
+  using (flag_count < 3 or author_id = (select auth.uid()));
 drop policy if exists "post own reports, 10 per 10 min" on public.reports;
 create policy "post own reports, 10 per 10 min" on public.reports for insert to authenticated
   with check (
@@ -281,7 +347,8 @@ create policy "own resolutions" on public.report_resolutions for all to authenti
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 drop policy if exists "posts are public" on public.spot_posts;
-create policy "posts are public" on public.spot_posts for select using (true);
+create policy "posts are public" on public.spot_posts for select
+  using (flag_count < 3 or author_id = (select auth.uid()));
 drop policy if exists "write own posts, 5 per 10 min" on public.spot_posts;
 create policy "write own posts, 5 per 10 min" on public.spot_posts for insert to authenticated
   with check (
@@ -294,7 +361,8 @@ create policy "delete own posts" on public.spot_posts for delete to authenticate
   using (author_id = (select auth.uid()));
 
 drop policy if exists "comments are public" on public.spot_comments;
-create policy "comments are public" on public.spot_comments for select using (true);
+create policy "comments are public" on public.spot_comments for select
+  using (flag_count < 3 or author_id = (select auth.uid()));
 drop policy if exists "write own comments, 20 per 10 min" on public.spot_comments;
 create policy "write own comments, 20 per 10 min" on public.spot_comments for insert to authenticated
   with check (
@@ -322,6 +390,28 @@ create policy "anyone can record a view" on public.spot_views for insert to anon
 drop policy if exists "own facility votes" on public.facility_votes;
 create policy "own facility votes" on public.facility_votes for all to authenticated
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+drop policy if exists "read own flags" on public.content_flags;
+create policy "read own flags" on public.content_flags for select to authenticated
+  using (user_id = (select auth.uid()));
+drop policy if exists "flag content, 20 per 10 min" on public.content_flags;
+create policy "flag content, 20 per 10 min" on public.content_flags for insert to authenticated
+  with check (
+    user_id = (select auth.uid())
+    and (select count(*) from public.content_flags f
+         where f.user_id = (select auth.uid()) and f.created_at > now() - interval '10 minutes') < 20
+  );
+
+drop policy if exists "read own feedback" on public.feedback;
+create policy "read own feedback" on public.feedback for select to authenticated
+  using (user_id = (select auth.uid()));
+drop policy if exists "send feedback, 5 per 10 min" on public.feedback;
+create policy "send feedback, 5 per 10 min" on public.feedback for insert to authenticated
+  with check (
+    user_id = (select auth.uid())
+    and (select count(*) from public.feedback f
+         where f.user_id = (select auth.uid()) and f.created_at > now() - interval '10 minutes') < 5
+  );
 
 -- ───────────────────────── Realtime ─────────────────────────
 

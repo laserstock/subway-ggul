@@ -15,6 +15,7 @@ import {
   useUserId,
 } from "./supabase";
 import { isAvatarId, isBadgeId, recordActivity, syncActivity, type AvatarId, type BadgeId } from "./profile";
+import { isHiddenContent, useSafety, type SafetyState } from "./safety";
 
 export const SPOT_CATEGORIES = ["commute", "food", "lost", "free"] as const;
 export type SpotCategory = (typeof SPOT_CATEGORIES)[number];
@@ -41,6 +42,7 @@ export type SpotComment = {
   badge: BadgeId | null;
   text: string;
   createdAt: number;
+  authorId: string;
   mine: boolean;
 };
 
@@ -63,6 +65,7 @@ export type SpotPost = {
   /** Highlighted reply shown under the post body. */
   bestReply: SpotComment | null;
   comments: SpotComment[];
+  authorId: string;
   mine: boolean;
 };
 
@@ -371,12 +374,15 @@ function toComment(row: CommentRow, uid: string | null): SpotComment {
     badge: isBadgeId(row.badge) ? row.badge : null,
     text: row.text,
     createdAt: Date.parse(row.created_at),
+    authorId: row.author_id,
     mine: uid !== null && row.author_id === uid,
   };
 }
 
-function buildPost(snapshot: State, row: PostRow, uid: string | null): SpotPost {
-  const comments = (snapshot.comments[row.id] ?? []).map((comment) => toComment(comment, uid));
+function buildPost(snapshot: State, row: PostRow, uid: string | null, safety: SafetyState): SpotPost {
+  const comments = (snapshot.comments[row.id] ?? [])
+    .filter((comment) => comment.author_id === uid || !isHiddenContent(safety, "comment", comment.id, comment.author_id))
+    .map((comment) => toComment(comment, uid));
   return {
     id: row.id,
     line: row.line,
@@ -395,12 +401,18 @@ function buildPost(snapshot: State, row: PostRow, uid: string | null): SpotPost 
     commentCount: Math.max(row.comment_count, comments.length),
     bestReply: comments[0] ?? null,
     comments,
+    authorId: row.author_id,
     mine: uid !== null && row.author_id === uid,
   };
 }
 
-function buildPosts(snapshot: State, ids: string[], uid: string | null) {
-  return ids.flatMap((id) => (snapshot.posts[id] ? [buildPost(snapshot, snapshot.posts[id], uid)] : []));
+function buildPosts(snapshot: State, ids: string[], uid: string | null, safety: SafetyState) {
+  return ids.flatMap((id) => {
+    const row = snapshot.posts[id];
+    if (!row) return [];
+    if (row.author_id !== uid && isHiddenContent(safety, "post", row.id, row.author_id)) return [];
+    return [buildPost(snapshot, row, uid, safety)];
+  });
 }
 
 const NO_IDS: string[] = [];
@@ -408,13 +420,17 @@ const NO_IDS: string[] = [];
 export function useSpotPosts(line: string): SpotPost[] {
   const snapshot = useSyncExternalStore(subscribe, readState, readState);
   const uid = useUserId();
+  const safety = useSafety();
   useOwnData();
 
   useEffect(() => {
     ensureLine(line);
   }, [line]);
 
-  return useMemo(() => buildPosts(snapshot, snapshot.lineIds[line] ?? NO_IDS, uid), [snapshot, line, uid]);
+  return useMemo(
+    () => buildPosts(snapshot, snapshot.lineIds[line] ?? NO_IDS, uid, safety),
+    [snapshot, line, uid, safety],
+  );
 }
 
 export function filterSpotPosts(posts: SpotPost[], tab: SpotTab, query: string) {
@@ -437,14 +453,15 @@ export type SpotActivity = { posts: SpotPost[]; scrapped: SpotPost[]; commentCou
 export function useSpotActivity(): SpotActivity {
   const snapshot = useSyncExternalStore(subscribe, readState, readState);
   const uid = useUserId();
+  const safety = useSafety();
   useOwnData();
   return useMemo(
     () => ({
-      posts: buildPosts(snapshot, snapshot.myIds, uid),
-      scrapped: buildPosts(snapshot, snapshot.scrapIds, uid),
+      posts: buildPosts(snapshot, snapshot.myIds, uid, safety),
+      scrapped: buildPosts(snapshot, snapshot.scrapIds, uid, safety),
       commentCount: snapshot.myCommentCount,
     }),
-    [snapshot, uid],
+    [snapshot, uid, safety],
   );
 }
 

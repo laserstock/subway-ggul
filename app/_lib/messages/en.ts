@@ -40,7 +40,7 @@ const en: Messages = {
     feedbackPlaceholder: "e.g. Please add Line 2 transfer tips",
     feedbackSend: "Send",
     feedbackDone: "Thanks for your feedback!",
-    feedbackNote: "Beta: feedback is stored on this device until the server is ready",
+    feedbackNote: "Your message goes straight to the operator. Please don't include personal details.",
     theme: "Display mode",
     themeLight: "Light",
     themeDark: "Dark",

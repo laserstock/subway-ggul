@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { saveFeedback } from "../_lib/feedback";
 import { requestHomeReset } from "../_lib/homeReset";
 import { t, type Localized } from "../_lib/i18n";
+import { PRIVACY_TITLE } from "../_lib/legal";
 import { useLocale, useMessages } from "../_lib/locale";
 import { deleteReport, formatRelativeTime, useMyReports, useNow } from "../_lib/reports";
 import { clearSelectedStation, setDestinationStation } from "../_lib/selectedStation";
@@ -24,6 +26,8 @@ const MENU: { id: MenuId; emoji: string; tint: string }[] = [
   { id: "feedback", emoji: "💬", tint: "#e6f5e9" },
   { id: "share", emoji: "🔗", tint: "#f3e8ff" },
 ];
+
+const TERMS_LINK: Localized = { ko: "이용약관", en: "Terms", zh: "使用条款", ja: "利用規約" };
 
 const UPDATE_TAG: Localized = { ko: "업데이트", en: "Update", zh: "更新", ja: "アップデート" };
 const NEW_TAG: Localized = { ko: "신규", en: "New", zh: "新功能", ja: "新機能" };
@@ -194,7 +198,7 @@ export default function SideDrawer({
   function sendFeedback() {
     const text = feedback.trim();
     if (!text) return;
-    saveFeedback(text);
+    void saveFeedback(text, locale);
     setFeedback("");
     setFeedbackSent(true);
   }
@@ -307,6 +311,15 @@ export default function SideDrawer({
               <p className="mb-2 text-[12px] font-bold text-ink-muted">{m.drawer.theme}</p>
               <ThemePicker />
             </div>
+            <p className="mt-4 flex items-center justify-center gap-2 text-[12px] font-semibold text-neutral-400">
+              <Link href="/privacy" onClick={onClose} className="px-1 py-1.5 underline-offset-2 active:underline">
+                {t(PRIVACY_TITLE, locale)}
+              </Link>
+              <span aria-hidden>·</span>
+              <Link href="/terms" onClick={onClose} className="px-1 py-1.5 underline-offset-2 active:underline">
+                {t(TERMS_LINK, locale)}
+              </Link>
+            </p>
           </nav>
         ) : null}
 

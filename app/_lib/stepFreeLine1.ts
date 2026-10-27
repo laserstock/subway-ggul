@@ -19,7 +19,7 @@ const STATION_NAMES = {
 const STANDARD = underground();
 
 function map(code: string, slug: string) {
-  return `/station-maps/line1/${code}-${slug}.jpg`;
+  return `/station-maps/line1/${code}-${slug}.webp`;
 }
 
 /** Seoul Station – Cheongnyangni section, keyed by Korean station name. */

@@ -31,6 +31,7 @@ import { SERVER_CONFIGURED } from "../_lib/supabase";
 import { SpotIcon } from "./header";
 import { usePostTranslation } from "../_lib/translate";
 import { CATEGORY_META, CommentSheet, postTexts, TranslateToggle, WriteSheet } from "./SpotSheets";
+import FlagSheet, { FlagButton, type FlagRequest } from "../_components/FlagSheet";
 
 const COPY = {
   plaza: { ko: "{line} 광장", en: "{line} Plaza", zh: "{line}广场", ja: "{line}広場" },
@@ -164,6 +165,7 @@ function PostCard({
   onOpen,
   onLike,
   onScrap,
+  onFlag,
 }: {
   post: SpotPost;
   now: number | null;
@@ -171,6 +173,7 @@ function PostCard({
   onOpen: () => void;
   onLike: () => void;
   onScrap: () => void;
+  onFlag: () => void;
 }) {
   const category = CATEGORY_META[post.category];
   const translation = usePostTranslation(post.id, postTexts(post), locale);
@@ -244,6 +247,7 @@ function PostCard({
           <BookmarkIcon filled={post.scrapped} />
           {t(COPY.scrap, locale)}
         </button>
+        {post.mine ? null : <FlagButton onClick={onFlag} className="ml-auto" />}
       </div>
     </article>
   );
@@ -284,6 +288,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
   const [writeOpen, setWriteOpen] = useState(false);
   const [stationGateOpen, setStationGateOpen] = useState(false);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
+  const [flagging, setFlagging] = useState<FlagRequest | null>(null);
   const { toast, showToast } = useToast();
   const mainRef = useRef<HTMLElement>(null);
   const closeWrite = () => setWriteOpen(false);
@@ -447,6 +452,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
                         onOpen={() => openComments(post)}
                         onLike={() => toggleSpotLike(post.id)}
                         onScrap={() => scrap(post)}
+                        onFlag={() => setFlagging({ target: "post", id: post.id, authorId: post.authorId })}
                       />
                     </li>
                   ))}
@@ -516,8 +522,11 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
             now={now}
             locale={locale}
             onClose={closeComments}
+            onFlag={setFlagging}
           />
         ) : null}
+
+        {flagging ? <FlagSheet request={flagging} onClose={() => setFlagging(null)} onToast={showToast} /> : null}
       </div>
     </div>
   );

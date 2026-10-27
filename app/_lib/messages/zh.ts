@@ -40,7 +40,7 @@ const zh: Messages = {
     feedbackPlaceholder: "例：希望增加2号线换乘信息",
     feedbackSend: "发送",
     feedbackDone: "感谢您的宝贵意见！",
-    feedbackNote: "测试版：反馈目前保存在本设备，正式版将发送至服务器",
+    feedbackNote: "您的意见将直接发送给运营者。请勿填写联系方式等个人信息。",
     theme: "显示模式",
     themeLight: "浅色",
     themeDark: "深色",

@@ -122,7 +122,7 @@ export function stationMap(
   return {
     ...line,
     code,
-    image: `/station-maps/${folder}/${code}-${slug}.jpg`,
+    image: `/station-maps/${folder}/${code}-${slug}.webp`,
     ends,
     ...layout,
     ...route,

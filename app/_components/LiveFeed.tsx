@@ -12,6 +12,7 @@ import {
   type ReportType,
 } from "../_lib/reports";
 import { t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import FlagSheet, { FlagButton, type FlagRequest } from "./FlagSheet";
 
 const MAX_ACTIVE = 5;
 
@@ -78,6 +79,7 @@ function FeedItem({
   expired,
   onConfirm,
   onResolve,
+  onFlag,
 }: {
   report: RankedReport;
   now: number;
@@ -85,6 +87,7 @@ function FeedItem({
   expired: boolean;
   onConfirm: () => void;
   onResolve: () => void;
+  onFlag: () => void;
 }) {
   const type = TYPE_META[report.type];
   const confirmedAt =
@@ -149,6 +152,7 @@ function FeedItem({
         >
           {t(COPY.resolved, locale)}
         </button>
+        {report.mine ? null : <FlagButton onClick={onFlag} className="ml-auto" />}
       </div>
     </li>
   );
@@ -166,6 +170,7 @@ export default function LiveFeed({
   const now = useNow();
   const reports = useStationReports(station);
   const [showExpired, setShowExpired] = useState(false);
+  const [flagging, setFlagging] = useState<FlagRequest | null>(null);
   const { active, expired } = now !== null ? rankReports(reports, now) : { active: [], expired: [] };
 
   function confirm(id: string) {
@@ -209,6 +214,7 @@ export default function LiveFeed({
                   expired={false}
                   onConfirm={() => confirm(report.id)}
                   onResolve={() => resolve(report.id)}
+                  onFlag={() => setFlagging({ target: "report", id: report.id, authorId: report.authorId })}
                 />
               ))}
             </ul>
@@ -237,6 +243,7 @@ export default function LiveFeed({
                       expired
                       onConfirm={() => confirm(report.id)}
                       onResolve={() => resolve(report.id)}
+                      onFlag={() => setFlagging({ target: "report", id: report.id, authorId: report.authorId })}
                     />
                   ))}
                 </ul>
@@ -245,6 +252,7 @@ export default function LiveFeed({
           ) : null}
         </>
       )}
+      {flagging ? <FlagSheet request={flagging} onClose={() => setFlagging(null)} onToast={onToast} /> : null}
     </section>
   );
 }
