@@ -9,6 +9,7 @@
 -keep public class * extends com.getcapacitor.Plugin { *; }
 -keep class com.equimaps.capacitor_background_geolocation.** { *; }
 -keep class com.capacitorjs.plugins.** { *; }
+-keep class com.subwayggul.** { *; }
 
 # Readable crash stack traces in Play Console (upload the mapping.txt R8 writes next to the bundle).
 -keepattributes SourceFile,LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod

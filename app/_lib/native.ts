@@ -49,6 +49,58 @@ export function watchBackgroundLocation(
   };
 }
 
+export type NativeAlarmStage = "armed" | "approaching" | "arrived";
+
+/** Everything ArrivalAlarmService needs to run on its own, with texts already localized. */
+export type NativeAlarmConfig = {
+  armedAt: number;
+  target: { lat: number; lng: number };
+  /** The stops right before the destination; reaching one fires its approach alert. */
+  approach: { lat: number; lng: number; title: string; body: string }[];
+  texts: {
+    trackingTitle: string;
+    trackingBody: string;
+    cancel: string;
+    approachTitle: string;
+    approachBody: string;
+    arrivalTitle: string;
+    arrivalBody: string;
+    trackingChannel: string;
+    alertChannel: string;
+  };
+};
+
+export type NativeAlarmStatus = { active: boolean; stage: NativeAlarmStage; armedAt: number };
+
+type ArrivalAlarmPlugin = {
+  start(config: NativeAlarmConfig): Promise<void>;
+  stop(): Promise<void>;
+  status(): Promise<NativeAlarmStatus>;
+};
+
+const ArrivalAlarm = registerPlugin<ArrivalAlarmPlugin>("ArrivalAlarm");
+
+/**
+ * App builds with the native alarm service keep alerting after the app is closed.
+ * Older installed builds load this same site without it, so they keep the WebView-based tracking.
+ */
+export function hasNativeArrivalAlarm() {
+  return isNativeApp() && Capacitor.isPluginAvailable("ArrivalAlarm");
+}
+
+/** Rejects with code NOT_AUTHORIZED when location is refused. */
+export function startNativeArrivalAlarm(config: NativeAlarmConfig) {
+  return ArrivalAlarm.start(config);
+}
+
+export function stopNativeArrivalAlarm() {
+  void ArrivalAlarm.stop().catch(() => {});
+}
+
+export function nativeArrivalAlarmStatus(): Promise<NativeAlarmStatus | null> {
+  return ArrivalAlarm.status().catch(() => null);
+}
+
 export function openNativeSettings() {
   void BackgroundGeolocation.openSettings().catch(() => {});
 }

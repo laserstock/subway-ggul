@@ -1,7 +1,13 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { isNativeApp, prepareNativeAlerts, sendNativeAlert } from "./native";
+import {
+  hasNativeArrivalAlarm,
+  isNativeApp,
+  prepareNativeAlerts,
+  sendNativeAlert,
+  stopNativeArrivalAlarm,
+} from "./native";
 import { serializeStation, type SavedStation, type StationOption } from "./stations";
 
 export type AlarmStage = "armed" | "approaching" | "arrived";
@@ -26,11 +32,16 @@ let state: ArrivalAlarm | null = null;
 let loaded = false;
 const listeners = new Set<() => void>();
 
+/** The app keeps alerting after it's closed, so its alarm must survive a restart; a browser tab's must not. */
+function storage() {
+  return isNativeApp() ? localStorage : sessionStorage;
+}
+
 function load() {
   if (loaded) return;
   loaded = true;
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = storage().getItem(STORAGE_KEY);
     const saved = raw ? (JSON.parse(raw) as ArrivalAlarm) : null;
     if (saved && Date.now() - saved.armedAt < MAX_AGE_MS) state = saved;
   } catch {}
@@ -39,8 +50,8 @@ function load() {
 function save(next: ArrivalAlarm | null) {
   state = next;
   try {
-    if (next) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    else sessionStorage.removeItem(STORAGE_KEY);
+    if (next) storage().setItem(STORAGE_KEY, JSON.stringify(next));
+    else storage().removeItem(STORAGE_KEY);
   } catch {}
   for (const listener of listeners) listener();
 }
@@ -66,6 +77,7 @@ export function updateArrivalAlarm(patch: Partial<Omit<ArrivalAlarm, "station" |
 }
 
 export function cancelArrivalAlarm() {
+  if (hasNativeArrivalAlarm()) stopNativeArrivalAlarm();
   save(null);
 }
 
@@ -132,9 +144,11 @@ export async function armArrivalAlarm(station: StationOption) {
   if (state?.armedAt === armedAt) updateArrivalAlarm({ systemAlerts: permission === "granted" });
 }
 
-export async function sendArrivalAlert(title: string, body: string) {
+/** `system: false` when the native alarm service posts the notification itself. */
+export async function sendArrivalAlert(title: string, body: string, system = true) {
   navigator.vibrate?.(VIBRATION);
   chime();
+  if (!system) return;
   if (isNativeApp()) return sendNativeAlert(title, body);
   if (!notificationsGranted()) return;
   const options: NotificationOptions = { body, tag: "arrival-alarm", requireInteraction: true };

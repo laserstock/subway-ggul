@@ -11,7 +11,14 @@ import {
 } from "../_lib/arrivalAlarm";
 import { approachMessage, arrivalMessage, bareStationName, type AlarmMessage } from "../_lib/arrivalTips";
 import { useLocale } from "../_lib/locale";
-import { isNativeApp } from "../_lib/native";
+import type { KakaoStation } from "../kakao-places";
+import {
+  hasNativeArrivalAlarm,
+  isNativeApp,
+  nativeArrivalAlarmStatus,
+  startNativeArrivalAlarm,
+  type NativeAlarmConfig,
+} from "../_lib/native";
 import { distanceMeters, restoreStation, t, type Localized } from "../_lib/stations";
 import { lineNeighbors, loadLineStations, sameLine, stationLines } from "../_lib/subwayLine";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
@@ -56,6 +63,14 @@ const COPY = {
   close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
   ok: { ko: "확인", en: "OK", zh: "确定", ja: "OK" },
   appName: { ko: "지하철꿀정보 · 지금", en: "Subway Honey · now", zh: "地铁蜜信息 · 现在", ja: "地下鉄ハチミツ情報 · 今" },
+  trackingChannel: { ko: "하차 알림 진행 중", en: "Arrival alert running", zh: "下车提醒运行中", ja: "降車通知の実行中" },
+  alertChannel: { ko: "하차 알림", en: "Arrival alerts", zh: "下车提醒", ja: "降車通知" },
+  nativeDenied: {
+    ko: "위치 권한이 없어 앱을 닫으면 알림이 오지 않아요",
+    en: "Location is off, so alerts stop when the app is closed",
+    zh: "未授予定位权限，关闭应用后将无法提醒",
+    ja: "位置情報が許可されていないため、アプリを閉じると通知されません",
+  },
 } satisfies Record<string, Localized>;
 
 /** Keeps the screen awake while the alarm runs; browsers drop the lock whenever the page is hidden. */
@@ -89,6 +104,8 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
   const pathname = usePathname();
   const station = useMemo(() => restoreStation(alarm.station), [alarm.station]);
   const [message, setMessage] = useState<AlarmMessage | null>(null);
+  const [neighbors, setNeighbors] = useState<KakaoStation[] | null>(null);
+  const [nativeDenied, setNativeDenied] = useState(false);
   const alarmRef = useRef(alarm);
   const neighborsRef = useRef<Set<string>>(new Set());
 
@@ -103,7 +120,10 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
         loadLineStations(station, line).then((stations) => lineNeighbors(station, stations)),
       ),
     ).then((groups) => {
-      if (alive) neighborsRef.current = new Set(groups.flat().map((neighbor) => bareStationName(neighbor.name)));
+      if (!alive) return;
+      const found = groups.flat();
+      neighborsRef.current = new Set(found.map((neighbor) => bareStationName(neighbor.name)));
+      setNeighbors(found);
     });
     return () => {
       alive = false;
@@ -111,20 +131,80 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
   }, [station]);
 
   const native = isNativeApp();
+  const nativeAlarm = hasNativeArrivalAlarm();
   const name = t(station.name, locale);
+  const trackingTitle = t(COPY.trackingTitle, locale);
+  const trackingBody = t(COPY.trackingMessage, locale).replace("{station}", name);
   useWakeLock(!native);
+
+  // Hands the alarm to the native service, which keeps alerting after the app is closed.
+  const armedAt = alarm.armedAt;
+  const arrived = alarm.stage === "arrived";
+  useEffect(() => {
+    if (!nativeAlarm || !neighbors || arrived) return;
+    let alive = true;
+    const generic = approachMessage(station, null, locale);
+    const arrival = arrivalMessage(station, alarmRef.current.line, locale);
+    const config: NativeAlarmConfig = {
+      armedAt,
+      target: station.center,
+      approach: neighbors.map((neighbor) => ({ ...neighbor.center, ...approachMessage(station, neighbor.name, locale) })),
+      texts: {
+        trackingTitle,
+        trackingBody,
+        cancel: t(COPY.cancel, locale),
+        approachTitle: generic.title,
+        approachBody: generic.body,
+        arrivalTitle: arrival.title,
+        arrivalBody: arrival.body,
+        trackingChannel: t(COPY.trackingChannel, locale),
+        alertChannel: t(COPY.alertChannel, locale),
+      },
+    };
+    void nativeArrivalAlarmStatus()
+      .then((status) => {
+        // Already finished or cancelled from the notification; the status sync below winds it down.
+        if (!alive || (status && status.armedAt === armedAt && !status.active)) return;
+        return startNativeArrivalAlarm(config).then(() => setNativeDenied(false));
+      })
+      .catch((error: { code?: string }) => {
+        if (alive && error?.code === "NOT_AUTHORIZED") setNativeDenied(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [nativeAlarm, neighbors, arrived, armedAt, station, locale, trackingTitle, trackingBody]);
+
+  // Catches up with what the native service did while the app was in the background or closed.
+  useEffect(() => {
+    if (!nativeAlarm) return;
+    function sync() {
+      if (document.visibilityState !== "visible") return;
+      void nativeArrivalAlarmStatus().then((status) => {
+        const current = alarmRef.current;
+        if (!status || status.armedAt !== current.armedAt) return;
+        if (status.stage === "arrived") {
+          if (current.stage !== "arrived") updateArrivalAlarm({ stage: "arrived" });
+        } else if (!status.active) {
+          cancelArrivalAlarm();
+        } else if (status.stage === "approaching" && current.stage === "armed") {
+          updateArrivalAlarm({ stage: "approaching" });
+        }
+      });
+    }
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, [nativeAlarm]);
 
   function fire(next: AlarmMessage) {
     setMessage(next);
-    void sendArrivalAlert(next.title, next.body);
+    void sendArrivalAlert(next.title, next.body, !nativeAlarm);
   }
 
   const tracker = useStationTracker({
     autoStart: true,
-    background: {
-      title: t(COPY.trackingTitle, locale),
-      message: t(COPY.trackingMessage, locale).replace("{station}", name),
-    },
+    background: nativeAlarm ? undefined : { title: trackingTitle, message: trackingBody },
     onNearest: ({ station: here, position }) => {
       const current = alarmRef.current;
       if (current.stage === "arrived") return;
@@ -182,7 +262,9 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
 
   if (pathname === "/station") return null;
 
-  const status = tracker.issue
+  const status = nativeDenied
+    ? t(COPY.nativeDenied, locale)
+    : tracker.issue
     ? t(LOCATION_ISSUE_COPY[tracker.issue], locale)
     : t(COPY[alarm.stage === "armed" ? (native ? "waitingNative" : "waiting") : alarm.stage], locale).replace(
         "{station}",
