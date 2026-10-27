@@ -1,7 +1,7 @@
 import type { Localized } from "./i18n";
 
 /** Shown in the privacy policy and terms; null until the operator sets a public contact address. */
-export const CONTACT_EMAIL: string | null = null;
+export const CONTACT_EMAIL: string | null = "lukoco1000@gmail.com";
 
 export const LEGAL_UPDATED = "2026-10-27";
 
