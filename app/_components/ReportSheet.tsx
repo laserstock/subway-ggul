@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useLocale } from "../_lib/locale";
 import { addReport, type ReportType } from "../_lib/reports";
+import { useDragToClose } from "../_lib/useSheetDrag";
 import { t, type Localized, type StationOption } from "../_lib/stations";
 
 export type QuickReport = { emoji: string; text: Localized; type?: ReportType };
@@ -93,6 +94,7 @@ export default function ReportSheet({
 }) {
   const locale = useLocale();
   const [draft, setDraft] = useState("");
+  const { sheetRef, sheetStyle, handleProps } = useDragToClose<HTMLDivElement>(onClose);
 
   function post(text: Localized, type?: ReportType) {
     if (!station) return;
@@ -109,8 +111,12 @@ export default function ReportSheet({
         className="absolute inset-0"
         onClick={onClose}
       />
-      <div className="relative w-full rounded-t-3xl bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3">
-        <div className="mb-3 flex justify-center">
+      <div
+        ref={sheetRef}
+        style={sheetStyle}
+        className="relative w-full rounded-t-3xl bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 ease-out"
+      >
+        <div {...handleProps} className="-mx-4 flex cursor-grab justify-center pb-3 pt-3 active:cursor-grabbing" aria-hidden>
           <span className="h-[4px] w-10 rounded-full bg-neutral-300" />
         </div>
         {station ? (

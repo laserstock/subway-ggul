@@ -12,6 +12,7 @@ import {
   type Localized,
   type StationOption,
 } from "../_lib/stations";
+import { useDragToClose } from "../_lib/useSheetDrag";
 import { LOCATION_ISSUE_COPY, type LocationIssue } from "../_lib/useStationTracker";
 import { PinIcon } from "./icons";
 import LineBadges from "./LineBadges";
@@ -104,6 +105,7 @@ export default function LocationSheet({
   const locale = useLocale();
   const titleId = useId();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const { sheetRef, sheetStyle, handleProps } = useDragToClose(onClose);
   const [query, setQuery] = useState("");
   const [relocating, setRelocating] = useState(false);
   const [result, setResult] = useState<RelocateResult>(null);
@@ -167,11 +169,13 @@ export default function LocationSheet({
           setQuery("");
           setResult(null);
         }}
-        className={`absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+        ref={sheetRef}
+        style={sheetStyle}
+        className={`absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-[0_-8px_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
           isOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="flex justify-center pb-3" aria-hidden>
+        <div {...handleProps} className="-mx-5 flex cursor-grab justify-center pb-3 pt-2.5 active:cursor-grabbing" aria-hidden>
           <span className="h-[5px] w-11 rounded-full bg-neutral-300" />
         </div>
 

@@ -16,6 +16,7 @@ import {
   type RouteEndpoint,
 } from "../_lib/myStations";
 import { t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import { useDragToClose } from "../_lib/useSheetDrag";
 
 const COPY = {
   close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
@@ -74,6 +75,7 @@ function Sheet({
 }) {
   const locale = useLocale();
   const titleId = useId();
+  const { sheetRef, sheetStyle, handleProps } = useDragToClose(onClose);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -96,9 +98,11 @@ function Sheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="absolute inset-x-0 bottom-0 animate-[sheet-up_300ms_cubic-bezier(0.22,1,0.36,1)] rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_40px_rgba(15,23,42,0.18)]"
+        ref={sheetRef}
+        style={sheetStyle}
+        className="absolute inset-x-0 bottom-0 animate-[sheet-up_300ms_cubic-bezier(0.22,1,0.36,1)] rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-[0_-8px_40px_rgba(15,23,42,0.18)] transition-transform duration-200 ease-out"
       >
-        <div className="flex justify-center pb-3" aria-hidden>
+        <div {...handleProps} className="-mx-5 flex cursor-grab justify-center pb-3 pt-2.5 active:cursor-grabbing" aria-hidden>
           <span className="h-[5px] w-11 rounded-full bg-neutral-300" />
         </div>
         <div className="flex items-center justify-between gap-3">

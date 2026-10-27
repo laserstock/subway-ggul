@@ -4,6 +4,7 @@ import { useEffect, useId, useRef } from "react";
 import { LANGUAGES, LOCALES, type Locale } from "../_lib/i18n";
 import { MESSAGES } from "../_lib/messages";
 import { useLocale, useMessages } from "../_lib/locale";
+import { useDragToClose } from "../_lib/useSheetDrag";
 
 function languageDescription(code: Locale, uiLocale: Locale) {
   const native = LANGUAGES[code].native;
@@ -28,6 +29,7 @@ export default function LanguageSheet({
   const m = useMessages();
   const titleId = useId();
   const selectedRef = useRef<HTMLButtonElement>(null);
+  const { sheetRef, sheetStyle, handleProps } = useDragToClose(onClose);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -64,11 +66,13 @@ export default function LanguageSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+        ref={sheetRef}
+        style={sheetStyle}
+        className={`absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-[0_-8px_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
           isOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="flex justify-center pb-3" aria-hidden>
+        <div {...handleProps} className="-mx-5 flex cursor-grab justify-center pb-3 pt-2.5 active:cursor-grabbing" aria-hidden>
           <span className="h-[5px] w-11 rounded-full bg-neutral-300" />
         </div>
 

@@ -13,6 +13,7 @@ import AppHeader from "../_components/AppHeader";
 import StationSearch from "../_components/StationSearch";
 import { LocateIcon } from "../_components/icons";
 import { useLocale } from "../_lib/locale";
+import { useVerticalDrag } from "../_lib/useSheetDrag";
 import { LOCATION_ISSUE_COPY, useStationTracker } from "../_lib/useStationTracker";
 import { AT_STATION_METERS, findStoreJumps, type JumpCandidate } from "../_lib/storeJump";
 import { angleBetween, bearingDegrees, lineLabel } from "../_lib/subwayLine";
@@ -33,6 +34,12 @@ import {
   type StationOption,
   type Zone,
 } from "../_lib/stations";
+
+/** The results list's resting height; the panel's handle drags it between closed and nearly full screen. */
+const LIST_DEFAULT_HEIGHT = 188;
+const MAP_MIN_HEIGHT = 96;
+/** px/ms */
+const FLICK_VELOCITY = 0.5;
 
 type ListItem = {
   id: string;
@@ -443,6 +450,42 @@ export default function ShopsScreen({
   const [jump, setJump] = useState<{ key: string; candidates: JumpCandidate[] } | null>(null);
   const lastFixRef = useRef<LatLng | null>(null);
   const kakaoStatus = useKakaoMaps();
+  const areaRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [listHeight, setListHeight] = useState(LIST_DEFAULT_HEIGHT);
+  const [listDragging, setListDragging] = useState(false);
+  const listDragRef = useRef({ start: LIST_DEFAULT_HEIGHT, max: LIST_DEFAULT_HEIGHT });
+
+  /** Tallest list that still leaves a strip of map visible above the panel. */
+  function listMaxHeight() {
+    const area = areaRef.current?.clientHeight ?? 0;
+    const chrome = (panelRef.current?.offsetHeight ?? 0) - (listRef.current?.offsetHeight ?? 0);
+    return Math.max(LIST_DEFAULT_HEIGHT, area - chrome - MAP_MIN_HEIGHT);
+  }
+
+  const panelDrag = useVerticalDrag({
+    onStart: () => {
+      listDragRef.current = { start: listRef.current?.offsetHeight ?? listHeight, max: listMaxHeight() };
+      setListDragging(true);
+    },
+    onMove: (dy) => {
+      const { start, max } = listDragRef.current;
+      setListHeight(Math.min(max, Math.max(0, start - dy)));
+    },
+    onEnd: ({ dy, velocity }) => {
+      setListDragging(false);
+      const { start, max } = listDragRef.current;
+      const now = Math.min(max, Math.max(0, start - dy));
+      const snaps = [0, LIST_DEFAULT_HEIGHT, max];
+      let target: number;
+      if (Math.abs(dy) < 4) target = listHeight < max - 1 ? max : LIST_DEFAULT_HEIGHT;
+      else if (velocity < -FLICK_VELOCITY) target = snaps.find((snap) => snap > now + 1) ?? max;
+      else if (velocity > FLICK_VELOCITY) target = [...snaps].reverse().find((snap) => snap < now - 1) ?? 0;
+      else target = snaps.reduce((best, snap) => (Math.abs(snap - now) < Math.abs(best - now) ? snap : best));
+      setListHeight(target);
+    },
+  });
 
   const tracker = useStationTracker({
     autoStart: follow,
@@ -624,7 +667,7 @@ export default function ShopsScreen({
           })}
         </div>
 
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#eef1f3]">
+        <div ref={areaRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#eef1f3]">
           <div className="relative isolate min-h-0 flex-1">
             <KakaoMap
               center={station.center}
@@ -645,8 +688,15 @@ export default function ShopsScreen({
             </button>
           </div>
 
-          <section className="relative z-40 shrink-0 rounded-t-[22px] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_28px_rgba(15,23,42,0.08)]">
-            <div className="mb-3 flex justify-center">
+          <section
+            ref={panelRef}
+            className="relative z-40 shrink-0 rounded-t-[22px] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-8px_28px_rgba(15,23,42,0.08)]"
+          >
+            <div
+              {...panelDrag}
+              className="-mx-4 flex cursor-grab justify-center pb-3 pt-2 active:cursor-grabbing"
+              aria-hidden
+            >
               <span className="h-[4px] w-10 rounded-full bg-neutral-300" />
             </div>
             {locationMessage ? (
@@ -706,7 +756,11 @@ export default function ShopsScreen({
                 {t(COPY.gatePending, locale)}
               </p>
             )}
-            <div className="flex max-h-[188px] flex-col gap-2.5 overflow-y-auto pb-1">
+            <div
+              ref={listRef}
+              className="flex flex-col gap-2.5 overflow-y-auto pb-1"
+              style={{ maxHeight: listHeight, transition: listDragging ? "none" : "max-height 250ms ease-out" }}
+            >
               {items.length === 0 ? (
                 <p className="rounded-2xl border border-neutral-100 px-4 py-8 text-center text-sm text-neutral-400">
                   {t(
