@@ -12,8 +12,17 @@ import type { LatLng } from "../KakaoMap";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
 import { loadKakaoMaps } from "../kakao-sdk";
 import { ExitIcon, PinIcon } from "../_components/icons";
+import PlaceInfoSheet from "../_components/PlaceInfoSheet";
 import { DEPARTMENT_QUERY, departmentLogo, uniqueDepartmentStores } from "../_lib/departmentStores";
-import { loadExits, mapPoint, nearestExit, walkMinutes, walkUrl, type StationExit } from "../_lib/exits";
+import {
+  loadExits,
+  mapPoint,
+  nearestExit,
+  walkMinutes,
+  walkUrl,
+  type MapPoint,
+  type StationExit,
+} from "../_lib/exits";
 import { HUB_TAGS, hubForExit, hubGuide, type HubRoute } from "../_lib/hubGuides";
 import { t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 
@@ -31,12 +40,14 @@ type ShopKind = {
   hideEmpty?: boolean;
 };
 
+const DEPARTMENT_LABEL: Localized = { ko: "백화점", en: "Department store", zh: "百货商店", ja: "百貨店" };
+
 const SHOP_KINDS: ShopKind[] = [
   {
     id: "department",
     icon: departmentLogo(""),
     iconFor: (place) => departmentLogo(place.name),
-    label: { ko: "백화점", en: "Department store", zh: "百货商店", ja: "百貨店" },
+    label: DEPARTMENT_LABEL,
     query: { ...DEPARTMENT_QUERY, radius: 600 },
     refine: uniqueDepartmentStores,
     hideEmpty: true,
@@ -245,14 +256,18 @@ async function loadDepartments(station: StationOption, exits: StationExit[]): Pr
 
 function DepartmentCard({
   stops,
+  station,
   activeExit,
   locale,
   onPickExit,
+  onOpen,
 }: {
   stops: DepartmentStop[];
+  station: StationOption;
   activeExit: string | null;
   locale: Locale;
   onPickExit: (exit: string) => void;
+  onOpen: (stop: DepartmentStop) => void;
 }) {
   return (
     <div className="mt-2 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
@@ -265,20 +280,26 @@ function DepartmentCard({
           const active = exit !== null && exit.label === activeExit;
           return (
             <li key={place.id} className="flex items-center gap-2.5 rounded-xl bg-surface-muted/70 px-2.5 py-2">
-              <Image
-                src={departmentLogo(place.name)}
-                alt=""
-                width={36}
-                height={36}
-                className="h-9 w-9 shrink-0 rounded-[10px] object-contain"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13.5px] font-extrabold text-neutral-900">{place.name}</span>
-                <span className="mt-0.5 block text-[11.5px] font-semibold text-neutral-500">
-                  {fill(COPY.walk, locale, walkMinutes(meters))}
-                  {exit ? ` · ${fill(COPY.deptFromExit, locale, exit.label)}` : ""}
+              <button
+                type="button"
+                onClick={() => onOpen({ place, exit, meters })}
+                className="flex min-w-0 flex-1 items-center gap-2.5 text-left active:opacity-70"
+              >
+                <Image
+                  src={departmentLogo(place.name)}
+                  alt=""
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 shrink-0 rounded-[10px] object-contain"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] font-extrabold text-neutral-900">{place.name}</span>
+                  <span className="mt-0.5 block text-[11.5px] font-semibold text-neutral-500">
+                    {fill(COPY.walk, locale, walkMinutes(meters))}
+                    {exit ? ` · ${fill(COPY.deptFromExit, locale, exit.label)}` : ""}
+                  </span>
                 </span>
-              </span>
+              </button>
               {exit ? (
                 <button
                   type="button"
@@ -294,7 +315,7 @@ function DepartmentCard({
                 </button>
               ) : (
                 <a
-                  href={place.url}
+                  href={walkUrl({ name: station.name.ko, position: station.center }, place)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="shrink-0 rounded-lg bg-[#eef4ff] px-2 py-1.5 text-[11px] font-extrabold text-[#2563eb]"
@@ -314,10 +335,12 @@ function ShopRowItem({
   row,
   from,
   locale,
+  onOpen,
 }: {
   row: ShopRow;
-  from: { name: string; position: LatLng };
+  from: MapPoint;
   locale: Locale;
+  onOpen: () => void;
 }) {
   const [nearest, ...rest] = row.places;
   const body = (
@@ -338,40 +361,54 @@ function ShopRowItem({
         )}
       </span>
       {nearest ? (
-        <span className="flex shrink-0 items-center gap-2">
-          <span className="text-right">
-            <span className="block text-[12.5px] font-extrabold text-[#2563eb]">
-              {fill(COPY.walk, locale, walkMinutes(nearest.distance))}
-            </span>
-            <span className="block text-[11px] font-semibold text-neutral-400">
-              {nearest.distance}m{rest.length > 0 ? ` · ${fill(COPY.more, locale, rest.length)}` : ""}
-            </span>
+        <span className="shrink-0 text-right">
+          <span className="block text-[12.5px] font-extrabold text-[#2563eb]">
+            {fill(COPY.walk, locale, walkMinutes(nearest.distance))}
           </span>
-          <span className="rounded-lg bg-[#eef4ff] px-2 py-1.5 text-[11px] font-extrabold text-[#2563eb]">
-            {t(COPY.route, locale)}
+          <span className="block text-[11px] font-semibold text-neutral-400">
+            {nearest.distance}m{rest.length > 0 ? ` · ${fill(COPY.more, locale, rest.length)}` : ""}
           </span>
         </span>
       ) : null}
     </>
   );
 
-  return (
-    <li>
-      {nearest ? (
-        <a
-          href={walkUrl(from, nearest)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 px-3 py-2.5 transition active:bg-surface-muted"
-        >
-          {body}
-        </a>
-      ) : (
+  if (!nearest) {
+    return (
+      <li>
         <div className="flex items-center gap-3 px-3 py-2.5">{body}</div>
-      )}
+      </li>
+    );
+  }
+  return (
+    <li className="flex items-center gap-2 pr-3">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-center gap-3 py-2.5 pl-3 text-left transition active:bg-surface-muted"
+      >
+        {body}
+      </button>
+      <a
+        href={walkUrl(from, nearest)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="shrink-0 rounded-lg bg-[#eef4ff] px-2 py-1.5 text-[11px] font-extrabold text-[#2563eb] active:scale-95"
+      >
+        {t(COPY.route, locale)}
+      </a>
     </li>
   );
 }
+
+type OpenShop = {
+  places: NearbyPlace[];
+  id: string;
+  kind: Localized;
+  icon: (place: NearbyPlace) => StaticImageData;
+  origin: MapPoint;
+  originLabel: string;
+};
 
 export default function ExitGuide({ station, locale }: { station: StationOption; locale: Locale }) {
   const [exits, setExits] = useState<{ key: string; list: StationExit[] } | null>(null);
@@ -379,6 +416,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
   /** Shop rows per exit label ("" for the station centre); null when the lookup failed. */
   const [shops, setShops] = useState<Record<string, ShopRow[] | null>>({});
   const [departments, setDepartments] = useState<{ key: string; stops: DepartmentStop[] } | null>(null);
+  const [openShop, setOpenShop] = useState<OpenShop | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const hub = hubGuide(station.name.ko);
 
@@ -444,6 +482,33 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
     requestAnimationFrame(() => panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
   }
 
+  function openRow(row: ShopRow) {
+    const nearest = row.places[0];
+    if (!nearest) return;
+    const { iconFor, icon } = row.kind;
+    setOpenShop({
+      places: row.places,
+      id: nearest.id,
+      kind: row.kind.label,
+      icon: iconFor ?? (() => icon),
+      origin: { name: mapName, position: center },
+      originLabel: selected ? fill(COPY.hubExit, locale, selected.label) : t(station.name, locale),
+    });
+  }
+
+  function openDepartment({ place, exit }: DepartmentStop) {
+    setOpenShop({
+      places: [place],
+      id: place.id,
+      kind: DEPARTMENT_LABEL,
+      icon: (found) => departmentLogo(found.name),
+      origin: exit
+        ? { name: `${station.name.ko} ${exit.label}번 출구`, position: exit.position }
+        : { name: station.name.ko, position: station.center },
+      originLabel: exit ? fill(COPY.hubExit, locale, exit.label) : t(station.name, locale),
+    });
+  }
+
   return (
     <section id="exit-guide" className="mt-5 scroll-mt-3">
       <h2 className="flex items-center gap-1.5 text-[16px] font-extrabold tracking-tight text-neutral-900">
@@ -466,9 +531,11 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
       {departmentStops.length > 0 ? (
         <DepartmentCard
           stops={departmentStops}
+          station={station}
           activeExit={picked !== null ? (selected?.label ?? null) : null}
           locale={locale}
           onPickExit={pickHubExit}
+          onOpen={openDepartment}
         />
       ) : null}
 
@@ -572,7 +639,13 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
           ) : (
             <ul className="divide-y divide-line">
               {rows.map((row) => (
-                <ShopRowItem key={row.kind.id} row={row} from={{ name: mapName, position: center }} locale={locale} />
+                <ShopRowItem
+                  key={row.kind.id}
+                  row={row}
+                  from={{ name: mapName, position: center }}
+                  locale={locale}
+                  onOpen={() => openRow(row)}
+                />
               ))}
             </ul>
           )}
@@ -591,6 +664,20 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
       </a>
       {exitList && exitList.length > 0 ? (
         <p className="mt-1.5 text-right text-[10px] text-neutral-400">{t(COPY.credit, locale)}</p>
+      ) : null}
+      {openShop ? (
+        <PlaceInfoSheet
+          places={openShop.places}
+          initialId={openShop.id}
+          origin={openShop.origin}
+          originLabel={openShop.originLabel}
+          kind={openShop.kind}
+          renderIcon={(place) => (
+            <Image src={openShop.icon(place)} alt="" width={40} height={40} className="h-full w-full object-contain" />
+          )}
+          locale={locale}
+          onClose={() => setOpenShop(null)}
+        />
       ) : null}
     </section>
   );

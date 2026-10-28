@@ -10,7 +10,9 @@ import KakaoMap, { type LatLng, type MapFit, type MapOverlay } from "../KakaoMap
 import { useKakaoMaps } from "../kakao-sdk";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
 import AppHeader from "../_components/AppHeader";
+import PlaceInfoSheet from "../_components/PlaceInfoSheet";
 import StationSearch from "../_components/StationSearch";
+import { walkUrl } from "../_lib/exits";
 import { LocateIcon } from "../_components/icons";
 import { useLocale } from "../_lib/locale";
 import { useVerticalDrag } from "../_lib/useSheetDrag";
@@ -53,7 +55,8 @@ type ListItem = {
   position: LatLng;
   distance?: number;
   badge?: number;
-  url?: string;
+  /** Kakao Places entry; curated sample places have none. */
+  place?: NearbyPlace;
 };
 
 const COPY = {
@@ -79,7 +82,8 @@ const COPY = {
     zh: "本站检票口内/外信息正在准备中",
     ja: "この駅の改札内/外情報は準備中です",
   },
-  kakaoLink: { ko: "카카오맵에서 보기", en: "View on Kakao Map", zh: "在Kakao地图查看", ja: "カカオマップで見る" },
+  route: { ko: "길찾기", en: "Directions", zh: "导航", ja: "ルート" },
+  details: { ko: "매장 정보", en: "Store info", zh: "店铺信息", ja: "店舗情報" },
   myLocation: {
     ko: "내 위치로 가장 가까운 역 찾기",
     en: "Find the station nearest to me",
@@ -227,7 +231,7 @@ function nearbyItem(category: CategoryId, place: NearbyPlace): ListItem {
     note: { ko: place.address, en: place.address },
     position: place.position,
     distance: place.distance,
-    url: place.url,
+    place,
   };
 }
 
@@ -440,6 +444,7 @@ export default function ShopsScreen({
   );
   const [query, setQuery] = useState(() => (initialStation ? initialStation.name.ko : ""));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sheetId, setSheetId] = useState<string | null>(null);
   const [nearby, setNearby] = useState<{ key: string; items: ListItem[] | null }>({
     key: "",
     items: [],
@@ -584,13 +589,26 @@ export default function ShopsScreen({
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const activeId = selected?.id ?? items[0]?.id ?? null;
+  const sheetItem = items.find((item) => item.id === sheetId && item.place) ?? null;
+  const sheetPlaces = sheetItem
+    ? items
+        .filter((item) => item.category === sheetItem.category)
+        .flatMap((item) => (item.place ? [item.place] : []))
+        .sort((a, b) => a.distance - b.distance)
+    : [];
+  const stationPoint = { name: station.name.ko, position: station.center };
+
+  function openItem(id: string) {
+    setSelectedId(id);
+    if (items.some((item) => item.id === id && item.place)) setSheetId(id);
+  }
 
   const overlays = buildOverlays({
     locale,
     station,
     items,
     activeId,
-    onSelect: setSelectedId,
+    onSelect: openItem,
     myPosition,
   });
 
@@ -784,7 +802,7 @@ export default function ShopsScreen({
                     >
                       <button
                         type="button"
-                        onClick={() => setSelectedId(item.id)}
+                        onClick={() => openItem(item.id)}
                         className="block w-full text-left"
                       >
                         <p className="flex items-start gap-2 text-[15px] font-bold leading-snug text-neutral-900">
@@ -810,15 +828,24 @@ export default function ShopsScreen({
                         <span className="inline-flex rounded-full bg-neutral-100 px-2 py-[3px] text-[11px] font-medium text-neutral-500">
                           {t(zoneLabel(item.zone), locale)}
                         </span>
-                        {item.url ? (
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[12px] font-medium text-[#2563eb]"
-                          >
-                            {t(COPY.kakaoLink, locale)} ›
-                          </a>
+                        {item.place ? (
+                          <span className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openItem(item.id)}
+                              className="rounded-lg bg-surface-muted px-2 py-1.5 text-[11px] font-bold text-neutral-600 active:scale-95"
+                            >
+                              {t(COPY.details, locale)}
+                            </button>
+                            <a
+                              href={walkUrl(stationPoint, item.place)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-lg bg-[#eef4ff] px-2 py-1.5 text-[11px] font-extrabold text-[#2563eb] active:scale-95"
+                            >
+                              {t(COPY.route, locale)}
+                            </a>
+                          </span>
                         ) : null}
                       </div>
                     </div>
@@ -828,6 +855,19 @@ export default function ShopsScreen({
             </div>
           </section>
         </div>
+        {sheetItem?.place ? (
+          <PlaceInfoSheet
+            key={sheetItem.id}
+            places={sheetPlaces}
+            initialId={sheetItem.place.id}
+            origin={stationPoint}
+            originLabel={t(station.name, locale)}
+            kind={CATEGORIES.find((entry) => entry.id === sheetItem.category)?.name}
+            renderIcon={() => <CategoryIcon category={sheetItem.category} size={24} />}
+            locale={locale}
+            onClose={() => setSheetId(null)}
+          />
+        ) : null}
       </div>
     </div>
   );

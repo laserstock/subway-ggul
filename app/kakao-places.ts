@@ -15,6 +15,8 @@ export type NearbyPlace = {
   lotAddress: string;
   /** Kakao category path, e.g. "의료,건강 > 병원 > 내과". */
   category: string;
+  /** Empty when the store hasn't registered one with Kakao. */
+  phone: string;
   url: string;
   position: LatLng;
 };
@@ -217,6 +219,7 @@ export function searchNearby(query: NearbyQuery, center: LatLng): Promise<Nearby
             roadAddress: item.road_address_name,
             lotAddress: item.address_name,
             category: item.category_name,
+            phone: item.phone,
             url: item.place_url,
             position: toLatLng(item),
           })),
