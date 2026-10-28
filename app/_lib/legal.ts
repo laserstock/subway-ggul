@@ -21,6 +21,107 @@ export const TERMS_TITLE: Localized = {
   ja: "利用規約・コミュニティガイドライン",
 };
 
+export const DELETION_TITLE: Localized = {
+  ko: "계정·데이터 삭제 요청",
+  en: "Delete your account and data",
+  zh: "删除账号与数据",
+  ja: "アカウント・データの削除",
+};
+
+const deletionEmail: Localized = CONTACT_EMAIL
+  ? {
+      ko: `앱을 쓸 수 없거나 앱을 이미 삭제했다면 이메일(${CONTACT_EMAIL})로 제목에 "데이터 삭제 요청"이라고 적어 보내 주세요. 닉네임과 글을 올린 역·대략적인 날짜를 함께 적어 주시면 본인 데이터를 찾는 데 도움이 돼요.`,
+      en: `If you can't use the app or have already uninstalled it, email ${CONTACT_EMAIL} with the subject "Data deletion request". Include your nickname and the stations and rough dates of anything you posted so we can find your data.`,
+      zh: `如果无法使用应用或已卸载应用，请发送邮件至 ${CONTACT_EMAIL}，标题注明"数据删除申请"。请附上您的昵称以及发布内容的车站和大致日期，以便我们找到您的数据。`,
+      ja: `アプリを使用できない場合やすでに削除した場合は、件名を「データ削除依頼」として ${CONTACT_EMAIL} までメールをお送りください。ニックネームと投稿した駅・おおよその日付を添えていただくと、データの特定に役立ちます。`,
+    }
+  : {
+      ko: "앱을 쓸 수 없다면 [메뉴 → 의견 보내기]로 삭제를 요청해 주세요.",
+      en: "If you can't use the app, request deletion through Menu → Send feedback.",
+      zh: "如无法使用应用，请通过「菜单 → 发送意见」申请删除。",
+      ja: "アプリを使用できない場合は「メニュー → ご意見を送る」から削除をご依頼ください。",
+    };
+
+export const DELETION_SECTIONS: LegalSection[] = [
+  {
+    title: { ko: "대상 앱", en: "App", zh: "适用应用", ja: "対象アプリ" },
+    body: [
+      {
+        ko: "지하철꿀정보 (K-Sub: Seoul Subway Guide) · Android 앱(com.subwayggul)과 웹(www.k-sub.com). 이 페이지는 운영자가 직접 관리해요.",
+        en: "지하철꿀정보 (K-Sub: Seoul Subway Guide) · Android app (com.subwayggul) and web (www.k-sub.com). This page is maintained by the developer.",
+        zh: "지하철꿀정보（K-Sub 首尔地铁指南）· Android 应用（com.subwayggul）及网页版（www.k-sub.com）。本页面由开发者维护。",
+        ja: "지하철꿀정보（K-Sub ソウル地下鉄ガイド）· Android アプリ（com.subwayggul）と Web 版（www.k-sub.com）。このページは開発者が管理しています。",
+      },
+    ],
+  },
+  {
+    title: {
+      ko: "1. 앱에서 바로 삭제하기",
+      en: "1. Delete it yourself in the app",
+      zh: "1. 在应用内直接删除",
+      ja: "1. アプリで今すぐ削除する",
+    },
+    body: [
+      {
+        ko: "① 앱 또는 www.k-sub.com 을 열어요. ② 하단의 [마이] 탭으로 이동해요. ③ 맨 아래 [내 데이터 모두 삭제]를 누르고 확인해요.",
+        en: "① Open the app or www.k-sub.com. ② Go to the Me tab at the bottom. ③ Scroll down, tap Delete all my data and confirm.",
+        zh: "① 打开应用或 www.k-sub.com。② 进入底部的「我的」标签页。③ 滑到最下方，点击「删除我的全部数据」并确认。",
+        ja: "① アプリまたは www.k-sub.com を開きます。② 下部の「マイ」タブに移動します。③ 一番下の「自分のデータをすべて削除」を押して確認します。",
+      },
+      {
+        ko: "확인하는 즉시 서버에서 영구 삭제되며 되돌릴 수 없어요. 기기에 저장된 설정도 함께 지워져요.",
+        en: "Everything is permanently deleted from our servers right away and cannot be restored. Settings stored on the device are cleared too.",
+        zh: "确认后数据会立即从服务器永久删除，且无法恢复。设备上保存的设置也会一并清除。",
+        ja: "確認するとすぐにサーバーから完全に削除され、元に戻すことはできません。端末に保存された設定も削除されます。",
+      },
+    ],
+  },
+  {
+    title: {
+      ko: "2. 이메일로 삭제 요청하기",
+      en: "2. Request deletion by email",
+      zh: "2. 通过邮件申请删除",
+      ja: "2. メールで削除を依頼する",
+    },
+    body: [
+      deletionEmail,
+      {
+        ko: "확인 후 지체 없이, 늦어도 30일 이내에 삭제하고 결과를 답장으로 알려 드려요.",
+        en: "We delete your data promptly after verification, within 30 days at the latest, and reply to confirm.",
+        zh: "我们会在确认后尽快删除，最迟不超过 30 天，并回复邮件告知结果。",
+        ja: "確認後速やかに、遅くとも 30 日以内に削除し、結果を返信でお知らせします。",
+      },
+    ],
+  },
+  {
+    title: { ko: "3. 삭제되는 데이터", en: "3. What gets deleted", zh: "3. 删除的数据", ja: "3. 削除されるデータ" },
+    body: [
+      {
+        ko: "익명 계정 ID, 역 제보와 제보 확인·해결 기록, 꿀스팟 글·댓글, 공감·스크랩, 닉네임·캐릭터, 시설 투표, 신고 기록, 의견 보내기 내용이 모두 삭제돼요.",
+        en: "Your anonymous account ID, station reports and report confirmations, plaza posts and comments, likes and saves, nickname and character, facility votes, content flags and feedback messages.",
+        zh: "匿名账号 ID、车站上报及确认/解决记录、广场帖子和评论、点赞和收藏、昵称和角色、设施投票、举报记录以及意见反馈内容都会被删除。",
+        ja: "匿名アカウント ID、駅の情報とその確認・解決の記録、広場の投稿・コメント、いいね・保存、ニックネーム・キャラクター、施設投票、通報の記録、ご意見の内容がすべて削除されます。",
+      },
+    ],
+  },
+  {
+    title: {
+      ko: "4. 남는 데이터와 보관 기간",
+      en: "4. What we keep and for how long",
+      zh: "4. 保留的数据与期限",
+      ja: "4. 残るデータと保存期間",
+    },
+    body: [
+      {
+        ko: "별도로 보관하는 개인 데이터는 없어요. 다만 호스팅·데이터베이스 업체의 서버 접속 기록과 백업에 남은 정보는 각 업체 정책에 따라 최대 30일 안에 자동으로 지워져요.",
+        en: "We keep no personal data after deletion. Server access logs and backups at our hosting and database providers are erased automatically under their policies, within 30 days at most.",
+        zh: "删除后我们不会保留任何个人数据。托管和数据库服务商的服务器访问日志及备份中的信息，将根据各服务商政策在最多 30 天内自动清除。",
+        ja: "削除後に個人データを保持することはありません。ただし、ホスティング・データベース事業者のアクセスログやバックアップに残る情報は、各社のポリシーに従い最長 30 日以内に自動的に消去されます。",
+      },
+    ],
+  },
+];
+
 const contact: Localized = CONTACT_EMAIL
   ? {
       ko: `앱의 [메뉴 → 의견 보내기] 또는 이메일(${CONTACT_EMAIL})로 문의할 수 있어요.`,
@@ -109,7 +210,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
       },
       {
         ko: "[마이 → 내 데이터 모두 삭제]를 누르면 익명 계정과 그 계정으로 올린 제보·글·댓글·투표·의견이 서버에서 즉시 영구 삭제돼요. 기기에 저장된 설정도 함께 지워져요.",
-        en: "Tap My → Delete all my data to permanently delete your anonymous account and every report, post, comment, vote and feedback message it made. Settings stored on the device are cleared too.",
+        en: "Tap Me → Delete all my data to permanently delete your anonymous account and every report, post, comment, vote and feedback message it made. Settings stored on the device are cleared too.",
         zh: "点击「我的 → 删除我的全部数据」，匿名账号及其发布的上报、帖子、评论、投票和意见将立即从服务器永久删除，设备上保存的设置也会一并清除。",
         ja: "「マイ → 自分のデータをすべて削除」を押すと、匿名アカウントとそのアカウントで投稿した情報・投稿・コメント・投票・ご意見がサーバーから即座に完全削除されます。端末に保存された設定も削除されます。",
       },
