@@ -1,18 +1,13 @@
 import { stationLines } from "./subwayLine";
 import type { Localized, StationOption } from "./stations";
-
-export type Difficulty = "easy" | "normal" | "hard";
-export type Landmark = "escalator" | "elevator" | "stairs" | "corridor";
+import { stationDoorOptions, type DoorOption } from "./transferDoors";
 
 export type TransferRoute = {
   id: string;
   from: string;
   to: string;
-  car: string | null;
-  landmark: Landmark;
-  path: Localized | null;
-  walkMinutes: number | null;
-  difficulty: Difficulty | null;
+  /** Official car/door rows for each direction pair; empty when the station has none. */
+  options: DoorOption[];
 };
 
 export type AccessStep = { icon: string; text: Localized };
@@ -36,7 +31,6 @@ export type StationTransfer = {
 };
 
 type SampleTransfer = {
-  routes: Omit<TransferRoute, "id">[];
   courses: AccessCourse[];
   facilities: Omit<Facility, "id">[];
 };
@@ -44,36 +38,6 @@ type SampleTransfer = {
 /** Beta sample data keyed by Korean station name; live data will come from public APIs and user votes. */
 const SAMPLES: Record<string, SampleTransfer> = {
   강남역: {
-    routes: [
-      {
-        from: "2호선",
-        to: "신분당선",
-        car: "3-1",
-        landmark: "escalator",
-        path: {
-          ko: "B1 환승통로 따라 직진",
-          en: "Go straight along the B1 transfer passage",
-          zh: "沿B1换乘通道直行",
-          ja: "B1乗換通路をまっすぐ",
-        },
-        walkMinutes: 3,
-        difficulty: "easy",
-      },
-      {
-        from: "신분당선",
-        to: "2호선",
-        car: "5-3",
-        landmark: "escalator",
-        path: {
-          ko: "환승 개찰구 지나 2호선 대합실로",
-          en: "Through the transfer gate to the Line 2 concourse",
-          zh: "经换乘闸机前往2号线大厅",
-          ja: "乗換改札を通って2号線コンコースへ",
-        },
-        walkMinutes: 4,
-        difficulty: "normal",
-      },
-    ],
     courses: [
       {
         id: "exit1-line2",
@@ -122,36 +86,6 @@ const SAMPLES: Record<string, SampleTransfer> = {
     ],
   },
   홍대입구역: {
-    routes: [
-      {
-        from: "2호선",
-        to: "경의·중앙선",
-        car: "7-1",
-        landmark: "corridor",
-        path: {
-          ko: "긴 환승통로 + 에스컬레이터 2번",
-          en: "Long transfer passage + 2 escalators",
-          zh: "较长换乘通道 + 2段扶梯",
-          ja: "長い乗換通路 + エスカレーター2回",
-        },
-        walkMinutes: 6,
-        difficulty: "hard",
-      },
-      {
-        from: "경의·중앙선",
-        to: "2호선",
-        car: "4-1",
-        landmark: "escalator",
-        path: {
-          ko: "B3 → B1 환승통로 표지판 따라",
-          en: "Follow the B3 → B1 transfer signs",
-          zh: "按B3 → B1换乘指示牌前行",
-          ja: "B3 → B1の乗換案内に沿って",
-        },
-        walkMinutes: 6,
-        difficulty: "hard",
-      },
-    ],
     courses: [
       {
         id: "exit9-line2",
@@ -200,50 +134,6 @@ const SAMPLES: Record<string, SampleTransfer> = {
     ],
   },
   서울역: {
-    routes: [
-      {
-        from: "1호선",
-        to: "4호선",
-        car: "2-3",
-        landmark: "escalator",
-        path: {
-          ko: "B1 환승통로 표지판 따라 직진",
-          en: "Straight along the B1 transfer signs",
-          zh: "沿B1换乘指示牌直行",
-          ja: "B1の乗換案内に沿って直進",
-        },
-        walkMinutes: 4,
-        difficulty: "normal",
-      },
-      {
-        from: "4호선",
-        to: "1호선",
-        car: "8-1",
-        landmark: "stairs",
-        path: {
-          ko: "계단 1번 + 짧은 연결통로",
-          en: "One flight of stairs + short passage",
-          zh: "1段楼梯 + 短通道",
-          ja: "階段1回 + 短い連絡通路",
-        },
-        walkMinutes: 3,
-        difficulty: "normal",
-      },
-      {
-        from: "1호선",
-        to: "경의·중앙선",
-        car: "1-1",
-        landmark: "corridor",
-        path: {
-          ko: "지상 역사 경유 · 이동 거리 길어요",
-          en: "Via the main station building · long walk",
-          zh: "经地面站厅 · 步行距离较长",
-          ja: "地上駅舎経由 · 移動距離が長め",
-        },
-        walkMinutes: 8,
-        difficulty: "hard",
-      },
-    ],
     courses: [
       {
         id: "ktx-line1",
@@ -292,36 +182,6 @@ const SAMPLES: Record<string, SampleTransfer> = {
     ],
   },
   잠실역: {
-    routes: [
-      {
-        from: "2호선",
-        to: "8호선",
-        car: "9-4",
-        landmark: "escalator",
-        path: {
-          ko: "B1 환승통로 → 8호선 대합실",
-          en: "B1 transfer passage → Line 8 concourse",
-          zh: "B1换乘通道 → 8号线大厅",
-          ja: "B1乗換通路 → 8号線コンコース",
-        },
-        walkMinutes: 3,
-        difficulty: "normal",
-      },
-      {
-        from: "8호선",
-        to: "2호선",
-        car: "1-1",
-        landmark: "escalator",
-        path: {
-          ko: "에스컬레이터 한 번이면 2호선 대합실",
-          en: "One escalator up to the Line 2 concourse",
-          zh: "乘一段扶梯即到2号线大厅",
-          ja: "エスカレーター1回で2号線コンコースへ",
-        },
-        walkMinutes: 2,
-        difficulty: "easy",
-      },
-    ],
     courses: [
       {
         id: "mall-line2",
@@ -369,7 +229,6 @@ const SAMPLES: Record<string, SampleTransfer> = {
     ],
   },
   광화문역: {
-    routes: [],
     courses: [
       {
         id: "exit1-platform",
@@ -429,22 +288,30 @@ function nameSeed(station: StationOption) {
   return [...station.name.ko].reduce((sum, char) => sum + char.charCodeAt(0), 0);
 }
 
-/** Line pairs without car-level detail, shown until real data exists for the station. */
+/** Line pairs without car-level detail, for transfer stations the official data doesn't cover. */
 function generatedRoutes(station: StationOption): TransferRoute[] {
   const lines = stationLines(station);
   return lines
     .flatMap((from) => lines.filter((to) => to !== from).map((to) => ({ from, to })))
     .slice(0, MAX_GENERATED_ROUTES)
-    .map(({ from, to }) => ({
-      id: `${from}>${to}`,
-      from,
-      to,
-      car: null,
-      landmark: "escalator",
-      path: null,
-      walkMinutes: null,
-      difficulty: null,
-    }));
+    .map(({ from, to }) => ({ id: `${from}>${to}`, from, to, options: [] }));
+}
+
+/** One route per line pair in the official data, ordered by the station's own line order. */
+function officialRoutes(station: StationOption): TransferRoute[] {
+  const lines = stationLines(station);
+  const rank = (line: string) => {
+    const index = lines.indexOf(line);
+    return index < 0 ? lines.length : index;
+  };
+  const routes = new Map<string, TransferRoute>();
+  for (const option of stationDoorOptions(station.name.ko)) {
+    const id = `${option.fromLine}>${option.toLine}`;
+    const route = routes.get(id) ?? { id, from: option.fromLine, to: option.toLine, options: [] };
+    route.options.push(option);
+    routes.set(id, route);
+  }
+  return [...routes.values()].sort((a, b) => rank(a.from) - rank(b.from) || rank(a.to) - rank(b.to));
 }
 
 function generatedFacilities(station: StationOption): Omit<Facility, "id">[] {
@@ -464,10 +331,9 @@ export function transferInfo(station: StationOption): StationTransfer {
     ...facility,
     id: facilityId(station, facility, index),
   }));
+  const official = officialRoutes(station);
   return {
-    routes: sample
-      ? sample.routes.map((route) => ({ ...route, id: `${route.from}>${route.to}` }))
-      : generatedRoutes(station),
+    routes: official.length > 0 ? official : generatedRoutes(station),
     courses: sample?.courses ?? [],
     facilities,
   };

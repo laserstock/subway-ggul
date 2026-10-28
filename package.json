@@ -15,6 +15,7 @@
     "icons:build": "node scripts/build-app-icons.mjs",
     "routes:fetch": "node scripts/fetch-subway-routes.mjs",
     "routes:build": "node scripts/build-subway-network.mjs",
+    "transfers:build": "node scripts/build-station-transfers.mjs",
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios"

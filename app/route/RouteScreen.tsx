@@ -23,6 +23,7 @@ import { useLocale } from "../_lib/locale";
 import { findRoute, networkStationId, type Route, type RouteLeg, type RouteMode, type RouteTransfer } from "../_lib/routeFinder";
 import { stationName, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { lineLabel } from "../_lib/subwayLine";
+import { routeTransferDoors, splitDoor, type DoorOption } from "../_lib/transferDoors";
 import { ROUTE_MODES, ROUTE_TITLE, RouteHeaderIcon } from "./header";
 import { routeHref } from "./params";
 
@@ -58,6 +59,18 @@ const COPY = {
   transfer: { ko: "환승 (도보 {walk})", en: "Transfer ({walk} walk)", zh: "换乘（步行{walk}）", ja: "乗換（徒歩{walk}）" },
   branch: { ko: "열차 갈아타기 (같은 노선)", en: "Change trains (same line)", zh: "换车（同一线路）", ja: "乗り換え（同じ路線）" },
   walkTo: { ko: "{station}으로 이동", en: "Walk to {station}", zh: "步行至{station}", ja: "{station}へ移動" },
+  doorTip: {
+    ko: "🚪 {car}번 칸 {door}번 문에서 내리면 환승이 가장 빨라요",
+    en: "🚪 Get off at car {car}, door {door} for the quickest transfer",
+    zh: "🚪 在{car}号车厢{door}号门下车换乘最快",
+    ja: "🚪 {car}号車{door}番ドアで降りると乗換が最速",
+  },
+  doorBoard: {
+    ko: "{line} 승강장은 {car}-{door} 문 쪽으로 나와요",
+    en: "You reach the {line} platform by door {car}-{door}",
+    zh: "到达{line}站台时靠近{car}-{door}号门",
+    ja: "{line}ホームには{car}-{door}番ドア付近に出ます",
+  },
   live: { ko: "실시간", en: "Live", zh: "实时", ja: "リアルタイム" },
   liveNone: {
     ko: "지금 이 방향 도착 정보가 없어요",
@@ -280,7 +293,17 @@ function LegItem({
   );
 }
 
-function TransferItem({ transfer, sameLine, locale }: { transfer: RouteTransfer; sameLine: boolean; locale: Locale }) {
+function TransferItem({
+  transfer,
+  sameLine,
+  doors,
+  locale,
+}: {
+  transfer: RouteTransfer;
+  sameLine: boolean;
+  doors: DoorOption | null;
+  locale: Locale;
+}) {
   const walk = duration(transfer.walkSeconds, locale);
   const wait = Math.round(transfer.waitSeconds / 60);
   return (
@@ -300,6 +323,16 @@ function TransferItem({ transfer, sameLine, locale }: { transfer: RouteTransfer;
           <p className="mt-0.5 text-[12px] font-semibold text-neutral-500">
             {fill(t(COPY.walkTo, locale), { station: placeName(transfer.toStation, locale) })}
           </p>
+        ) : null}
+        {doors ? (
+          <div className="mt-1.5 rounded-xl bg-[#fff8e1] px-2.5 py-2">
+            <p className="text-[13px] font-extrabold leading-snug text-[#92400e]">
+              {fill(t(COPY.doorTip, locale), splitDoor(doors.alight))}
+            </p>
+            <p className="mt-0.5 text-[11.5px] font-semibold leading-snug text-[#a16207]">
+              {fill(t(COPY.doorBoard, locale), { line: t(lineLabel(doors.toLine), locale), ...splitDoor(doors.board) })}
+            </p>
+          </div>
         ) : null}
         {wait > 0 ? (
           <p className="mt-0.5 text-[11px] text-neutral-400">{fill(t(COPY.wait, locale), { m: duration(transfer.waitSeconds, locale) })}</p>
@@ -375,6 +408,7 @@ function RouteResult({
               <TransferItem
                 transfer={route.transfers[index]}
                 sameLine={route.legs[index + 1]?.line === leg.line}
+                doors={route.legs[index + 1] ? routeTransferDoors(leg, route.legs[index + 1], route.transfers[index]) : null}
                 locale={locale}
               />
             ) : null}

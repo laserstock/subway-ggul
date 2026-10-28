@@ -15,29 +15,25 @@ import { Toast, useToast } from "../_components/Toast";
 import { useFacilityVotes, voteFacility, type FacilityTally, type FacilityVote } from "../_lib/facilityVotes";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
-import { stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import { stationName, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { stepFreeMaps } from "../_lib/stepFree";
 import { lineLabel, stationLines } from "../_lib/subwayLine";
-import {
-  transferInfo,
-  type AccessCourse,
-  type Difficulty,
-  type Facility,
-  type FacilityStatus,
-  type Landmark,
-  type TransferRoute,
-} from "../_lib/transfer";
+import { transferInfo, type AccessCourse, type Facility, type FacilityStatus, type TransferRoute } from "../_lib/transfer";
+import { splitDoor, TRANSFER_DATA_DATE } from "../_lib/transferDoors";
 import { TRANSFER_TABS, TRANSFER_TITLE, TransferIcon, type TransferTab } from "./header";
 import StepFreeGuide from "./StepFreeGuide";
 
 const COPY = {
   chooseRoute: { ko: "환승 노선 선택", en: "Choose your transfer", zh: "选择换乘线路", ja: "乗換路線を選択" },
   transferOf: { ko: "{from} ➔ {to} 환승", en: "{from} ➔ {to}", zh: "{from} ➔ {to} 换乘", ja: "{from} ➔ {to} 乗換" },
+  fromDirection: { ko: "타고 오는 열차", en: "Train you're on", zh: "所乘列车", ja: "乗ってくる列車" },
+  toDirection: { ko: "갈아탈 열차", en: "Train you're changing to", zh: "换乘列车", ja: "乗り換える列車" },
+  toward: { ko: "{name} 방면", en: "Toward {name}", zh: "往{name}方向", ja: "{name}方面" },
   carTip: {
-    ko: "💡 {car}번 칸에서 내리면 {landmark} 바로 앞!",
-    en: "💡 Get off at car {car}: the {landmark} is right there!",
-    zh: "💡 在{car}号车厢下车，{landmark}就在眼前！",
-    ja: "💡 {car}号車で降りると{landmark}がすぐ目の前！",
+    ko: "💡 {car}번 칸 {door}번 문에서 내리면 환승 통로가 가장 가까워요!",
+    en: "💡 Get off at car {car}, door {door}: closest to the transfer passage!",
+    zh: "💡 在{car}号车厢{door}号门下车，离换乘通道最近！",
+    ja: "💡 {car}号車{door}番ドアで降りると乗換通路がいちばん近い！",
   },
   carUnknown: {
     ko: "🙋 아직 빠른 환승 칸 정보가 없어요. 아는 칸이 있다면 알려 주세요!",
@@ -45,10 +41,23 @@ const COPY = {
     zh: "🙋 暂无最佳换乘车厢信息，知道的话请告诉我们！",
     ja: "🙋 まだ乗換に便利な号車情報がありません。ご存じなら教えてください！",
   },
-  walk: { ko: "도보 {n}분", en: "{n} min walk", zh: "步行{n}分钟", ja: "徒歩{n}分" },
-  walkUnknown: { ko: "소요 시간 준비 중", en: "Walk time coming soon", zh: "步行时间准备中", ja: "所要時間は準備中" },
-  alight: { ko: "{line} {car}번 칸 하차", en: "Get off {line} at car {car}", zh: "{line} {car}号车厢下车", ja: "{line} {car}号車で降車" },
-  arrive: { ko: "{line} 승강장 도착", en: "Arrive at the {line} platform", zh: "到达{line}站台", ja: "{line}ホームに到着" },
+  walk: { ko: "환승 {time}", en: "{time} transfer walk", zh: "换乘{time}", ja: "乗換{time}" },
+  minSec: { ko: "{m}분 {s}초", en: "{m} min {s} s", zh: "{m}分{s}秒", ja: "{m}分{s}秒" },
+  secOnly: { ko: "{s}초", en: "{s} s", zh: "{s}秒", ja: "{s}秒" },
+  walkUnknown: { ko: "환승 시간 정보 없음", en: "No walk time listed", zh: "暂无换乘时间", ja: "乗換時間の情報なし" },
+  alight: {
+    ko: "{line} {toward} · {car}번 칸 {door}번 문에서 하차",
+    en: "{line} {toward}: get off at car {car}, door {door}",
+    zh: "{line} {toward} · 在{car}号车厢{door}号门下车",
+    ja: "{line} {toward} · {car}号車{door}番ドアで降車",
+  },
+  passage: { ko: "환승 통로 따라 이동", en: "Follow the transfer passage", zh: "沿换乘通道前行", ja: "乗換通路を進む" },
+  board: {
+    ko: "{line} {toward} 승강장 · {car}번 칸 {door}번 문 쪽으로 나와요",
+    en: "{line} {toward} platform: you come out by car {car}, door {door}",
+    zh: "{line} {toward}站台 · 出来就是{car}号车厢{door}号门附近",
+    ja: "{line} {toward}ホーム · {car}号車{door}番ドア付近に出ます",
+  },
   reverse: { ko: "반대 방향", en: "Reverse", zh: "反方向", ja: "逆方向" },
   noTransferTitle: {
     ko: "{station}은 환승역이 아니에요",
@@ -64,10 +73,10 @@ const COPY = {
   },
   goBarrierFree: { ko: "♿ 계단 없는 길 보기", en: "♿ See step-free route", zh: "♿ 查看无台阶路线", ja: "♿ 階段なしルートを見る" },
   fastNote: {
-    ko: "베타 샘플: 칸 번호·소요 시간은 예시이며 실제와 다를 수 있어요.",
-    en: "Beta sample: car numbers and times are examples and may differ.",
-    zh: "测试样例：车厢号与时间仅供参考，可能与实际不同。",
-    ja: "ベータ版サンプル：号車・所要時間は例であり、実際と異なる場合があります。",
+    ko: "출처: 서울교통공사 서울 도시철도 환승정보 ({date}). 소요시간은 걸음 속도에 따라 달라요.",
+    en: "Source: Seoul Metro transfer data ({date}). Walk times vary with your pace.",
+    zh: "来源：首尔交通公社首尔城市铁路换乘信息（{date}）。步行时间因人而异。",
+    ja: "出典：ソウル交通公社 ソウル都市鉄道乗換情報（{date}）。所要時間は歩く速さで変わります。",
   },
   stepFreeBadge: { ko: "계단 0개", en: "0 stairs", zh: "0台阶", ja: "階段0" },
   stepFreeTitle: {
@@ -175,18 +184,28 @@ const TAB_META: Record<TransferTab, { emoji: string; label: Localized; caption: 
   },
 };
 
+type Difficulty = "easy" | "normal" | "hard";
+
 const DIFFICULTY_META: Record<Difficulty, { label: Localized; className: string }> = {
-  easy: { label: { ko: "🟢 쉬움", en: "🟢 Easy", zh: "🟢 简单", ja: "🟢 かんたん" }, className: "bg-[#e7f8ee] text-[#15803d]" },
+  easy: {
+    label: { ko: "🟢 짧은 환승", en: "🟢 Short transfer", zh: "🟢 换乘距离短", ja: "🟢 短い乗換" },
+    className: "bg-[#e7f8ee] text-[#15803d]",
+  },
   normal: { label: { ko: "🟡 보통", en: "🟡 Moderate", zh: "🟡 一般", ja: "🟡 ふつう" }, className: "bg-[#fff6d6] text-[#a16207]" },
-  hard: { label: { ko: "🔴 어려움", en: "🔴 Hard", zh: "🔴 较难", ja: "🔴 むずかしい" }, className: "bg-[#fdecec] text-[#dc2626]" },
+  hard: {
+    label: { ko: "🔴 긴 환승", en: "🔴 Long transfer", zh: "🔴 换乘距离长", ja: "🔴 長い乗換" },
+    className: "bg-[#fdecec] text-[#dc2626]",
+  },
 };
 
-const LANDMARK_META: Record<Landmark, { emoji: string; label: Localized }> = {
-  escalator: { emoji: "↗️", label: { ko: "에스컬레이터", en: "escalator", zh: "扶梯", ja: "エスカレーター" } },
-  elevator: { emoji: "🛗", label: { ko: "엘리베이터", en: "elevator", zh: "电梯", ja: "エレベーター" } },
-  stairs: { emoji: "🪜", label: { ko: "계단", en: "stairs", zh: "楼梯", ja: "階段" } },
-  corridor: { emoji: "➡️", label: { ko: "환승통로 입구", en: "transfer passage", zh: "换乘通道入口", ja: "乗換通路の入口" } },
-};
+/** Official walk times up to these many seconds count as short / moderate transfers. */
+const SHORT_TRANSFER_SECONDS = 180;
+const MODERATE_TRANSFER_SECONDS = 360;
+
+function difficulty(seconds: number): Difficulty {
+  if (seconds <= SHORT_TRANSFER_SECONDS) return "easy";
+  return seconds <= MODERATE_TRANSFER_SECONDS ? "normal" : "hard";
+}
 
 const FACILITY_KIND_META: Record<Facility["kind"], { emoji: string; label: Localized }> = {
   escalator: { emoji: "↗️", label: { ko: "에스컬레이터", en: "Escalator", zh: "扶梯", ja: "エスカレーター" } },
@@ -217,7 +236,55 @@ function fill(template: string, values: Record<string, string | number>) {
 
 function lineName(station: StationOption, line: string, locale: Locale) {
   const index = stationLines(station).indexOf(line);
-  return (index >= 0 ? t(station.lines, locale).split(" · ")[index] : undefined) ?? line;
+  return (index >= 0 ? t(station.lines, locale).split(" · ")[index] : undefined) ?? t(lineLabel(line), locale);
+}
+
+function towardText(name: string, locale: Locale) {
+  return fill(t(COPY.toward, locale), { name: t(stationName(name), locale).replace(/(역|駅|站)$/, "") });
+}
+
+function walkTime(seconds: number, locale: Locale) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? fill(t(COPY.minSec, locale), { m, s }) : fill(t(COPY.secOnly, locale), { s });
+}
+
+function DirectionChips({
+  label,
+  values,
+  value,
+  onChange,
+  locale,
+}: {
+  label: string;
+  values: string[];
+  value: string;
+  onChange: (value: string) => void;
+  locale: Locale;
+}) {
+  return (
+    <div className="mt-3">
+      <p className="text-[12px] font-bold text-neutral-500">{label}</p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {values.map((candidate) => {
+          const active = candidate === value;
+          return (
+            <button
+              key={candidate}
+              type="button"
+              onClick={() => onChange(candidate)}
+              aria-pressed={active}
+              className={`rounded-full border px-3 py-1.5 text-[13px] font-bold leading-snug transition active:scale-95 ${
+                active ? "border-[#2563eb] bg-[#2563eb] text-white" : "border-neutral-200 bg-white text-neutral-600"
+              }`}
+            >
+              {towardText(candidate, locale)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function LineMark({
@@ -274,6 +341,8 @@ function FastTransferPanel({
   onReport: () => void;
 }) {
   const [routeId, setRouteId] = useState<string | null>(null);
+  const [fromPick, setFromPick] = useState<string | null>(null);
+  const [toPick, setToPick] = useState<string | null>(null);
   const route = routes.find((candidate) => candidate.id === routeId) ?? routes[0];
 
   if (!route) {
@@ -300,7 +369,14 @@ function FastTransferPanel({
   const from = lineName(station, route.from, locale);
   const to = lineName(station, route.to, locale);
   const reverse = routes.find((candidate) => candidate.from === route.to && candidate.to === route.from);
-  const landmark = LANDMARK_META[route.landmark];
+  const fromTowards = [...new Set(route.options.map((option) => option.fromToward))];
+  const fromToward = fromPick && fromTowards.includes(fromPick) ? fromPick : fromTowards[0];
+  const sameFrom = route.options.filter((option) => option.fromToward === fromToward);
+  const toTowards = [...new Set(sameFrom.map((option) => option.toToward))];
+  const toToward = toPick && toTowards.includes(toPick) ? toPick : toTowards[0];
+  const option = sameFrom.find((candidate) => candidate.toToward === toToward) ?? null;
+  const alight = option ? splitDoor(option.alight) : null;
+  const board = option ? splitDoor(option.board) : null;
 
   return (
     <>
@@ -372,10 +448,66 @@ function FastTransferPanel({
         </div>
 
         <div className="px-4 pb-4">
-          {route.car ? (
-            <p className="rounded-2xl border-2 border-[#fbbf24] bg-[#fff8e1] px-3.5 py-3 text-[16px] font-extrabold leading-snug text-[#92400e]">
-              {fill(t(COPY.carTip, locale), { car: route.car, landmark: t(landmark.label, locale) })}
-            </p>
+          {option && alight && board ? (
+            <>
+              <DirectionChips
+                label={t(COPY.fromDirection, locale)}
+                values={fromTowards}
+                value={fromToward}
+                onChange={setFromPick}
+                locale={locale}
+              />
+              <DirectionChips
+                label={t(COPY.toDirection, locale)}
+                values={toTowards}
+                value={toToward}
+                onChange={setToPick}
+                locale={locale}
+              />
+
+              <p className="mt-4 rounded-2xl border-2 border-[#fbbf24] bg-[#fff8e1] px-3.5 py-3 text-[16px] font-extrabold leading-snug text-[#92400e]">
+                {fill(t(COPY.carTip, locale), alight)}
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full bg-[#eef4ff] px-3 py-1.5 text-[13px] font-bold text-[#1d4ed8]">
+                  🚶{" "}
+                  {option.seconds !== null
+                    ? fill(t(COPY.walk, locale), { time: walkTime(option.seconds, locale) })
+                    : t(COPY.walkUnknown, locale)}
+                </span>
+                {option.seconds !== null ? (
+                  <span
+                    className={`rounded-full px-3 py-1.5 text-[13px] font-bold ${DIFFICULTY_META[difficulty(option.seconds)].className}`}
+                  >
+                    {t(DIFFICULTY_META[difficulty(option.seconds)].label, locale)}
+                  </span>
+                ) : null}
+              </div>
+
+              <ol className="mt-4">
+                <li className="flex items-center gap-2.5 rounded-xl bg-neutral-50 px-3 py-2.5 text-[14px] font-bold leading-snug text-neutral-800">
+                  <LineMark station={station} line={route.from} locale={locale} />
+                  <span className="min-w-0 break-words">
+                    {fill(t(COPY.alight, locale), { line: from, toward: towardText(fromToward, locale), ...alight })}
+                  </span>
+                </li>
+                <BigArrow />
+                <li className="flex items-center gap-2.5 rounded-xl bg-neutral-50 px-3 py-2.5 text-[14px] font-bold leading-snug text-neutral-800">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center text-[18px]" aria-hidden>
+                    🚶
+                  </span>
+                  <span className="min-w-0 break-words">{t(COPY.passage, locale)}</span>
+                </li>
+                <BigArrow />
+                <li className="flex items-center gap-2.5 rounded-xl bg-neutral-50 px-3 py-2.5 text-[14px] font-bold leading-snug text-neutral-800">
+                  <LineMark station={station} line={route.to} locale={locale} />
+                  <span className="min-w-0 break-words">
+                    {fill(t(COPY.board, locale), { line: to, toward: towardText(toToward, locale), ...board })}
+                  </span>
+                </li>
+              </ol>
+            </>
           ) : (
             <div className="rounded-2xl border-2 border-dashed border-neutral-300 bg-neutral-50 px-3.5 py-3">
               <p className="text-[13px] font-semibold leading-snug text-neutral-600">{t(COPY.carUnknown, locale)}</p>
@@ -384,42 +516,14 @@ function FastTransferPanel({
               </button>
             </div>
           )}
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full bg-[#eef4ff] px-3 py-1.5 text-[13px] font-bold text-[#1d4ed8]">
-              🚶 {route.walkMinutes !== null ? fill(t(COPY.walk, locale), { n: route.walkMinutes }) : t(COPY.walkUnknown, locale)}
-            </span>
-            {route.difficulty ? (
-              <span className={`rounded-full px-3 py-1.5 text-[13px] font-bold ${DIFFICULTY_META[route.difficulty].className}`}>
-                {t(DIFFICULTY_META[route.difficulty].label, locale)}
-              </span>
-            ) : null}
-          </div>
-
-          {route.car ? (
-            <ol className="mt-4">
-              <li className="flex items-center gap-2.5 rounded-xl bg-neutral-50 px-3 py-2.5 text-[14px] font-bold text-neutral-800">
-                <LineMark station={station} line={route.from} locale={locale} />
-                {fill(t(COPY.alight, locale), { line: from, car: route.car })}
-              </li>
-              <BigArrow />
-              <li className="flex items-center gap-2.5 rounded-xl bg-neutral-50 px-3 py-2.5 text-[14px] font-bold text-neutral-800">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center text-[18px]" aria-hidden>
-                  {landmark.emoji}
-                </span>
-                {route.path ? t(route.path, locale) : t(landmark.label, locale)}
-              </li>
-              <BigArrow />
-              <li className="flex items-center gap-2.5 rounded-xl bg-neutral-50 px-3 py-2.5 text-[14px] font-bold text-neutral-800">
-                <LineMark station={station} line={route.to} locale={locale} />
-                {fill(t(COPY.arrive, locale), { line: to })}
-              </li>
-            </ol>
-          ) : null}
         </div>
       </SectionCard>
 
-      <p className="mt-3 text-[11px] leading-relaxed text-neutral-400">{t(COPY.fastNote, locale)}</p>
+      {option ? (
+        <p className="mt-3 text-[11px] leading-relaxed text-neutral-400">
+          {fill(t(COPY.fastNote, locale), { date: TRANSFER_DATA_DATE })}
+        </p>
+      ) : null}
     </>
   );
 }
