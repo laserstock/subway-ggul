@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
 import { Toast, useToast } from "../_components/Toast";
+import { elevatorText, floorLabel } from "../_lib/arrivalTips";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import {
@@ -17,9 +19,11 @@ import {
   type MyRoute,
 } from "../_lib/myStations";
 import { addRecentStation } from "../_lib/recentStations";
-import { routeSummary } from "../_lib/routeTips";
+import { routeSummary, useNearestStarbucks } from "../_lib/routeTips";
 import { setDestinationStation, useDestinationStation } from "../_lib/selectedStation";
-import { stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import { stationName, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import type { StationToilet } from "../_lib/stationToilets";
+import { routeHref } from "../route/params";
 import { MY_TITLE } from "./header";
 import { placeLabel, PlaceSheet, RouteSheet } from "./MySheets";
 
@@ -68,38 +72,62 @@ const COPY = {
     ja: "出発駅と到着駅をセットにすると、乗車位置とコツをまとめて表示します",
   },
   addRoute: { ko: "+ 자주 가는 동선 추가", en: "+ Add a frequent route", zh: "+ 添加常用路线", ja: "+ よく使うルートを追加" },
-  boarding: {
-    ko: "{line} 탑승 위치: {car}번 칸 ({note})",
-    en: "{line} boarding: car {car} ({note})",
-    zh: "{line} 乘车位置：{car}号车厢（{note}）",
-    ja: "{line} 乗車位置：{car}号車（{note}）",
+  rideDirect: {
+    ko: "약 {min}분 · 환승 없이 {stops}개 역",
+    en: "About {min} min · {stops} stops, no transfer",
+    zh: "约{min}分钟 · 直达{stops}站",
+    ja: "約{min}分 · 乗り換えなし{stops}駅",
   },
-  direct: {
-    ko: "{line} 한 번에 가요 · 탑승 칸 정보 준비 중",
-    en: "Direct on {line} · boarding car info coming soon",
-    zh: "{line}直达 · 乘车位置信息准备中",
-    ja: "{line}で乗り換えなし · 乗車位置は準備中",
+  rideTransfer: {
+    ko: "약 {min}분 · {stations}에서 환승 {n}회",
+    en: "About {min} min · {n} transfer(s) at {stations}",
+    zh: "约{min}分钟 · 在{stations}换乘{n}次",
+    ja: "約{min}分 · {stations}で乗り換え{n}回",
   },
-  transfer: {
-    ko: "{from} → {to} 환승이 필요해요",
-    en: "Transfer needed: {from} → {to}",
-    zh: "需要换乘：{from} → {to}",
-    ja: "乗り換えが必要：{from} → {to}",
+  noRoute: {
+    ko: "노선 정보로 경로를 찾지 못했어요",
+    en: "Couldn't find a route on the network",
+    zh: "未能根据线路找到路线",
+    ja: "路線情報からルートが見つかりませんでした",
   },
-  noTips: {
-    ko: "아직 꿀팁이 없어요 · 제보로 채워 주세요",
-    en: "No tips yet · Share one with a report",
-    zh: "还没有小贴士 · 欢迎上报补充",
-    ja: "まだ情報がありません · 投稿で教えてください",
+  routeDetail: { ko: "경로 자세히", en: "Route details", zh: "路线详情", ja: "ルート詳細" },
+  toilet: {
+    ko: "{station} 화장실: 개찰구 {side} · {floor}{exit}",
+    en: "{station} restroom: {side} the gates · {floor}{exit}",
+    zh: "{station}洗手间：检票口{side} · {floor}{exit}",
+    ja: "{station}のトイレ：改札{side} · {floor}{exit}",
+  },
+  inside: { ko: "안", en: "inside", zh: "内", ja: "内" },
+  outside: { ko: "밖", en: "outside", zh: "外", ja: "外" },
+  toiletExit: { ko: " · {n}번 출구 방향", en: " · toward Exit {n}", zh: " · {n}号出口方向", ja: " · {n}番出口方面" },
+  starbucks: {
+    ko: "{station} 근처 스타벅스: {name} · {from} 도보 {min}분",
+    en: "Starbucks near {station}: {name} · {min} min walk from {from}",
+    zh: "{station}附近星巴克：{name} · 从{from}步行{min}分钟",
+    ja: "{station}近くのスタバ：{name} · {from}から徒歩{min}分",
+  },
+  fromExit: { ko: "{n}번 출구에서", en: "Exit {n}", zh: "{n}号出口", ja: "{n}番出口" },
+  fromStation: { ko: "역에서", en: "the station", zh: "车站", ja: "駅" },
+  starbucksLoading: {
+    ko: "{station} 근처 스타벅스 찾는 중…",
+    en: "Looking for Starbucks near {station}…",
+    zh: "正在查找{station}附近的星巴克…",
+    ja: "{station}近くのスタバを検索中…",
+  },
+  starbucksNone: {
+    ko: "{station} 500m 안에는 스타벅스가 없어요",
+    en: "No Starbucks within 500 m of {station}",
+    zh: "{station}500米内没有星巴克",
+    ja: "{station}から500m以内にスタバはありません",
   },
   stationInfo: { ko: "{station} 꿀정보", en: "{station} tips", zh: "{station} 信息", ja: "{station}の情報" },
   reverse: { ko: "방향 바꾸기", en: "Reverse", zh: "反向", ja: "逆方向" },
   remove: { ko: "삭제", en: "Delete", zh: "删除", ja: "削除" },
   savedNote: {
-    ko: "💾 이 기기에 자동 저장돼요 · 동선 꿀팁 일부는 베타 샘플이에요",
-    en: "💾 Saved on this device automatically · Some route tips are beta samples",
-    zh: "💾 自动保存在本设备 · 部分路线技巧为测试样例",
-    ja: "💾 この端末に自動保存 · 一部のルート情報はベータ版サンプルです",
+    ko: "💾 이 기기에 자동 저장돼요 · 화장실·엘리베이터는 서울교통공사 공공데이터, 매장은 카카오맵 기준이에요",
+    en: "💾 Saved on this device · Restrooms and elevators from Seoul Metro open data, stores from Kakao Map",
+    zh: "💾 自动保存在本设备 · 洗手间与电梯来自首尔交通公社公开数据，店铺来自Kakao地图",
+    ja: "💾 この端末に自動保存 · トイレ・エレベーターはソウル交通公社の公開データ、店舗はカカオマップ基準",
   },
   placeSaved: { ko: "My 역을 저장했어요", en: "My Station saved", zh: "已保存 My 车站", ja: "My 駅を保存しました" },
   placeRemoved: { ko: "My 역을 삭제했어요", en: "My Station removed", zh: "已删除 My 车站", ja: "My 駅を削除しました" },
@@ -107,16 +135,9 @@ const COPY = {
   routeRemoved: { ko: "동선을 삭제했어요", en: "Route removed", zh: "已删除路线", ja: "ルートを削除しました" },
 } satisfies Record<string, Localized>;
 
-function localizedLine(line: string, locale: Locale) {
-  const number = line.match(/^(\d+)호선$/)?.[1];
-  if (!number) return line;
-  const byLocale: Record<Locale, string> = {
-    ko: line,
-    en: `Line ${number}`,
-    zh: `${number}号线`,
-    ja: `${number}号線`,
-  };
-  return byLocale[locale];
+/** "대림" rather than "대림역" when the name sits inside a phrase. */
+function bareName(ko: string, locale: Locale) {
+  return t(stationName(ko), locale).replace(/(역|駅|站)$/, "");
 }
 
 function fill(template: string, values: Record<string, string | number>) {
@@ -185,25 +206,34 @@ function RouteCard({
   onRemove: () => void;
 }) {
   const { from, to } = route;
-  const summary = routeSummary(from.station, to.station);
-  const lineText = (line: string) => localizedLine(line, locale);
+  const summary = useMemo(() => routeSummary(from.station, to.station), [from.station, to.station]);
+  const starbucks = useNearestStarbucks(to.station);
+  const { route: path } = summary;
 
-  let rideLine: string;
-  if (summary.boarding) {
-    rideLine = fill(t(COPY.boarding, locale), {
-      line: lineText(summary.boarding.line),
-      car: summary.boarding.car,
-      note: t(summary.boarding.note, locale),
-    });
-  } else if (summary.directLine) {
-    rideLine = fill(t(COPY.direct, locale), { line: lineText(summary.directLine) });
-  } else {
-    rideLine = fill(t(COPY.transfer, locale), {
-      from: summary.fromLine ? lineText(summary.fromLine) : "?",
-      to: summary.toLine ? lineText(summary.toLine) : "?",
-    });
+  let rideLine = t(COPY.noRoute, locale);
+  if (path) {
+    const minutes = Math.max(1, Math.round(path.seconds / 60));
+    rideLine =
+      path.transfers.length === 0
+        ? fill(t(COPY.rideDirect, locale), {
+            min: minutes,
+            stops: path.legs.reduce((sum, leg) => sum + leg.stations.length - 1, 0),
+          })
+        : fill(t(COPY.rideTransfer, locale), {
+            min: minutes,
+            n: path.transfers.length,
+            stations: path.transfers.map((transfer) => bareName(transfer.station, locale)).join(", "),
+          });
   }
-  const rideIcon = summary.boarding?.line ?? summary.directLine ?? summary.fromLine;
+
+  const toiletLine = (station: StationOption, toilet: StationToilet) =>
+    fill(t(COPY.toilet, locale), {
+      station: t(station.name, locale),
+      side: t(toilet.gate === "inside" ? COPY.inside : COPY.outside, locale),
+      floor: floorLabel(toilet.floor, locale),
+      exit: toilet.exit ? fill(t(COPY.toiletExit, locale), { n: toilet.exit }) : "",
+    });
+  const toName = t(to.station.name, locale);
 
   return (
     <li className="overflow-hidden rounded-3xl bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] ring-1 ring-neutral-200/70">
@@ -244,25 +274,71 @@ function RouteCard({
         )}
       </div>
       <ul className="flex flex-col gap-1.5 px-4 py-3 text-[13px] leading-snug text-neutral-700">
-        <li className="flex gap-1.5">
-          {rideIcon ? (
-            <LineIcon line={rideIcon} locale={locale} size="xs" className="mt-px" />
-          ) : (
-            <span aria-hidden>🚇</span>
-          )}
-          <span className={summary.boarding ? "font-bold text-neutral-900" : ""}>{rideLine}</span>
+        <li>
+          <Link
+            href={routeHref(from.station, to.station)}
+            className="flex items-start gap-1.5 rounded-lg active:opacity-70"
+          >
+            {path ? (
+              <span className="mt-px flex shrink-0 items-center gap-0.5">
+                {path.legs.map((leg, index) => (
+                  <Fragment key={index}>
+                    {index > 0 ? (
+                      <span className="text-[10px] text-neutral-400" aria-hidden>
+                        ›
+                      </span>
+                    ) : null}
+                    <LineIcon line={leg.line} locale={locale} size="xs" />
+                  </Fragment>
+                ))}
+              </span>
+            ) : (
+              <span aria-hidden>🚇</span>
+            )}
+            <span className="min-w-0 flex-1 font-bold text-neutral-900">{rideLine}</span>
+            <span className="shrink-0 text-[12px] font-bold text-[#2563eb]">{t(COPY.routeDetail, locale)} ›</span>
+          </Link>
         </li>
-        {summary.tips.length > 0 ? (
-          summary.tips.map((tip) => (
-            <li key={tip.ko} className="flex gap-1.5">
-              <span aria-hidden>🍯</span>
-              <span>{t(tip, locale)}</span>
+        {summary.elevator ? (
+          <li className="flex gap-1.5">
+            <span aria-hidden>🛗</span>
+            <span>
+              {toName}: {elevatorText(summary.elevator, locale)}
+            </span>
+          </li>
+        ) : null}
+        {(
+          [
+            [from.station, summary.fromToilet],
+            [to.station, summary.toToilet],
+          ] as const
+        ).map(([station, toilet], index) =>
+          toilet ? (
+            <li key={index} className="flex gap-1.5">
+              <span aria-hidden>🚽</span>
+              <span>{toiletLine(station, toilet)}</span>
             </li>
-          ))
-        ) : (
-          <li className="flex gap-1.5 text-neutral-400">
-            <span aria-hidden>💬</span>
-            <span>{t(COPY.noTips, locale)}</span>
+          ) : null,
+        )}
+        {starbucks.status === "failed" ? null : (
+          <li className="flex gap-1.5">
+            <span aria-hidden>☕</span>
+            {starbucks.status === "loading" ? (
+              <span className="text-neutral-400">{fill(t(COPY.starbucksLoading, locale), { station: toName })}</span>
+            ) : starbucks.store ? (
+              <a href={starbucks.store.url} target="_blank" rel="noreferrer" className="underline-offset-2 active:underline">
+                {fill(t(COPY.starbucks, locale), {
+                  station: toName,
+                  name: starbucks.store.name,
+                  from: starbucks.store.exit
+                    ? fill(t(COPY.fromExit, locale), { n: starbucks.store.exit })
+                    : t(COPY.fromStation, locale),
+                  min: starbucks.store.minutes,
+                })}
+              </a>
+            ) : (
+              <span className="text-neutral-400">{fill(t(COPY.starbucksNone, locale), { station: toName })}</span>
+            )}
           </li>
         )}
       </ul>

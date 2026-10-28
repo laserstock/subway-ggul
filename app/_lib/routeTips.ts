@@ -1,61 +1,97 @@
-import { STATION_TIPS } from "./stationTips";
-import { sameLine, stationLines } from "./subwayLine";
-import type { Localized, StationOption } from "./stations";
+"use client";
 
-export type Boarding = { line: string; car: string; note: Localized };
+import { useEffect, useState } from "react";
+import type { LatLng } from "../KakaoMap";
+import { loadKakaoMaps } from "../kakao-sdk";
+import { searchNearby } from "../kakao-places";
+import { elevatorTip, restroomTip, type ElevatorTip } from "./arrivalTips";
+import { loadExits, nearestExit, walkMinutes, walkUrl } from "./exits";
+import { findRoute, networkStationId, type Route } from "./routeFinder";
+import type { StationOption } from "./stations";
+import type { StationToilet } from "./stationToilets";
+import { sameLine } from "./subwayLine";
 
 export type RouteSummary = {
-  /** Line shared by both stations (ride without transferring), if any. */
-  directLine: string | null;
-  fromLine: string | null;
-  toLine: string | null;
-  boarding: Boarding | null;
-  tips: Localized[];
-};
-
-/** Beta sample tips keyed "출발역>도착역" by Korean station name. */
-const ROUTE_SAMPLES: Record<string, { boarding: Boarding; tips: Localized[] }> = {
-  "장한평역>광화문역": {
-    boarding: {
-      line: "5호선",
-      car: "3-2",
-      note: {
-        ko: "군자역 환승 시 에스컬레이터 바로 앞",
-        en: "Right by the escalator if you transfer at Gunja",
-        zh: "在君子站换乘时扶梯就在眼前",
-        ja: "君子駅で乗り換えるならエスカレーターのすぐ前",
-      },
-    },
-    tips: [
-      {
-        ko: "장한평역 개찰구 안 화장실",
-        en: "Restroom inside the gate at Janghanpyeong",
-        zh: "长汉坪站闸机内有卫生间",
-        ja: "長漢坪駅の改札内にトイレあり",
-      },
-      {
-        ko: "광화문역 5번 출구 지하 연결통로 스벅",
-        en: "Starbucks via the Exit 5 underground passage at Gwanghwamun",
-        zh: "光化门站5号出口地下通道直达星巴克",
-        ja: "光化門駅5番出口の地下連絡通路にスタバ",
-      },
-    ],
-  },
+  /** Fastest route from the bundled network (official Seoul Metro times); null outside its coverage. */
+  route: Route | null;
+  /** Car nearest the platform elevator at the destination, for the direction the route arrives from. */
+  elevator: ElevatorTip | null;
+  /** Seoul Metro restroom data for the boarding and alighting lines. */
+  fromToilet: StationToilet | null;
+  toToilet: StationToilet | null;
 };
 
 export function routeSummary(from: StationOption, to: StationOption): RouteSummary {
-  const fromLines = stationLines(from);
-  const toLines = stationLines(to);
-  const directLine = fromLines.find((line) => toLines.some((other) => sameLine(line, other))) ?? null;
-  const sample = ROUTE_SAMPLES[`${from.name.ko}>${to.name.ko}`];
-  const stationTips = [STATION_TIPS[from.name.ko], STATION_TIPS[to.name.ko]].filter(
-    (tip): tip is Localized => Boolean(tip),
-  );
+  const a = networkStationId(from.name.ko, from.center);
+  const b = networkStationId(to.name.ko, to.center);
+  const route = a !== null && b !== null && a !== b ? findRoute(a, b, "fastest") : null;
+  const first = route?.legs[0] ?? null;
+  const last = route?.legs[route.legs.length - 1] ?? null;
+  const previous = last && last.stations.length >= 2 ? last.stations[last.stations.length - 2] : null;
+  const tip = previous ? elevatorTip(to, previous) : null;
   return {
-    directLine,
-    fromLine: fromLines[0] ?? null,
-    toLine: toLines[0] ?? null,
-    boarding: sample?.boarding ?? null,
-    tips: sample?.tips ?? stationTips,
+    route,
+    elevator: tip && last && sameLine(tip.line, last.line) ? tip : null,
+    fromToilet: restroomTip(from, first?.line ?? null),
+    toToilet: restroomTip(to, last?.line ?? null),
   };
+}
+
+export type NearbyStore = { name: string; exit: string | null; minutes: number; url: string };
+
+/** Starbucks this close to the station counts as "at the station"; farther ones aren't a route tip. */
+const STORE_RADIUS = 500;
+const storeCache = new Map<string, Promise<NearbyStore | null>>();
+
+function findStarbucks(station: StationOption): Promise<NearbyStore | null> {
+  const cached = storeCache.get(station.key);
+  if (cached) return cached;
+  const request = loadKakaoMaps()
+    .then(() =>
+      Promise.all([
+        searchNearby(
+          { kind: "keyword", keyword: "스타벅스", radius: STORE_RADIUS, category: "CE7", brand: true },
+          station.center,
+        ),
+        loadExits(station),
+      ]),
+    )
+    .then(([places, exits]) => {
+      const place = [...places].sort((x, y) => x.distance - y.distance)[0];
+      if (!place) return null;
+      const near = nearestExit(exits, place.position);
+      const start: { name: string; position: LatLng } = near
+        ? { name: `${station.name.ko} ${near.exit.label}번 출구`, position: near.exit.position }
+        : { name: station.name.ko, position: station.center };
+      return {
+        name: place.name,
+        exit: near?.exit.label ?? null,
+        minutes: walkMinutes(near ? near.meters : place.distance),
+        url: walkUrl(start, { name: place.name, position: place.position }),
+      };
+    })
+    .catch((error: unknown) => {
+      storeCache.delete(station.key);
+      throw error;
+    });
+  storeCache.set(station.key, request);
+  return request;
+}
+
+export type StoreLookup = { status: "loading" } | { status: "done"; store: NearbyStore | null } | { status: "failed" };
+
+/** Nearest Starbucks around a station from Kakao Places, with the closest numbered exit. */
+export function useNearestStarbucks(station: StationOption): StoreLookup {
+  const [result, setResult] = useState<{ key: string; lookup: StoreLookup } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    findStarbucks(station).then(
+      (store) => alive && setResult({ key: station.key, lookup: { status: "done", store } }),
+      () => alive && setResult({ key: station.key, lookup: { status: "failed" } }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [station]);
+  return result?.key === station.key ? result.lookup : { status: "loading" };
 }

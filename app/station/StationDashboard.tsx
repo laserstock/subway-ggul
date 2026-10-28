@@ -14,7 +14,6 @@ import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import { useStationReports } from "../_lib/reports";
 import { setDestinationStation } from "../_lib/selectedStation";
-import { STATION_TIPS } from "../_lib/stationTips";
 import { stationParams, t, type Localized, type StationOption } from "../_lib/stations";
 import { loadUrgent, type StationUrgent } from "../_lib/urgent";
 import AlarmBanner from "./AlarmBanner";
@@ -31,7 +30,6 @@ const COPY = {
     ja: "駅情報が見つかりません。もう一度検索してください",
   },
   tipTitle: { ko: "1초 꿀팁", en: "1-second tip", zh: "1秒小贴士", ja: "1秒お役立ち情報" },
-  tipSample: { ko: "베타 샘플", en: "Beta sample", zh: "测试样例", ja: "ベータ版サンプル" },
   tipLive: { ko: "실시간 제보", en: "Live report", zh: "实时上报", ja: "リアルタイム投稿" },
   tipEmpty: {
     ko: "아직 꿀팁이 없어요. 이 역의 첫 꿀팁을 남겨 주세요!",
@@ -85,7 +83,6 @@ export default function StationDashboard({ station }: { station: StationOption |
     router.push(`/station?${stationParams(next)}`);
   }
 
-  const curatedTip = station ? STATION_TIPS[station.name.ko] : undefined;
   const liveTip = reports[0];
 
   return (
@@ -132,18 +129,14 @@ export default function StationDashboard({ station }: { station: StationOption |
               <section className="mt-4 rounded-2xl bg-gradient-to-br from-[#fff7e6] to-[#fffdf8] px-4 py-3.5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
                 <div className="flex items-center justify-between">
                   <h2 className="text-[14px] font-extrabold text-neutral-900">🍯 {t(COPY.tipTitle, locale)}</h2>
-                  {curatedTip || liveTip ? (
+                  {liveTip ? (
                     <span className="rounded-full bg-white px-2 py-[2px] text-[10px] font-bold text-[#b45309]">
-                      {t(curatedTip ? COPY.tipSample : COPY.tipLive, locale)}
+                      {t(COPY.tipLive, locale)}
                     </span>
                   ) : null}
                 </div>
                 <p className="mt-1.5 text-[14px] font-semibold leading-relaxed text-neutral-800">
-                  {curatedTip
-                    ? `💡 ${t(curatedTip, locale)}`
-                    : liveTip
-                      ? `💬 ${t(liveTip.text, locale)}`
-                      : t(COPY.tipEmpty, locale)}
+                  {liveTip ? `💬 ${t(liveTip.text, locale)}` : t(COPY.tipEmpty, locale)}
                 </p>
                 <button
                   type="button"
