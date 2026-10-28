@@ -11,6 +11,7 @@ import starbucksIcon from "@/public/icons/starbucks.png";
 import type { LatLng } from "../KakaoMap";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
 import { loadKakaoMaps } from "../kakao-sdk";
+import DragScroll from "../_components/DragScroll";
 import { ExitIcon, PinIcon } from "../_components/icons";
 import PlaceInfoSheet from "../_components/PlaceInfoSheet";
 import { DEPARTMENT_QUERY, departmentLogo, uniqueDepartmentStores } from "../_lib/departmentStores";
@@ -550,7 +551,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
       ) : (
         <>
           <p className="mt-0.5 text-[12px] font-semibold text-neutral-500">{t(COPY.pick, locale)}</p>
-          <div className="no-scrollbar -mx-4 mt-1 flex gap-1.5 overflow-x-auto px-4 pb-1 pt-1.5" role="group">
+          <DragScroll className="-mx-4 mt-1 flex gap-1.5 px-4 pb-1 pt-1.5" role="group">
             {exitList.map((exit) => {
               const active = exit.label === selected?.label;
               const hubTag = hubForExit(hub, exit.label).tags[0];
@@ -585,7 +586,7 @@ export default function ExitGuide({ station, locale }: { station: StationOption;
                 </button>
               );
             })}
-          </div>
+          </DragScroll>
         </>
       )}
 

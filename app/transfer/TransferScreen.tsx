@@ -6,6 +6,7 @@ import { flushSync } from "react-dom";
 import { lineColor } from "../kakao-places";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
+import DragScroll from "../_components/DragScroll";
 import { PinIcon } from "../_components/icons";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
@@ -304,7 +305,7 @@ function FastTransferPanel({
   return (
     <>
       <h2 className="mb-2 text-[13px] font-bold text-neutral-500">{t(COPY.chooseRoute, locale)}</h2>
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      <DragScroll className="-mx-4 flex gap-2 px-4 pb-1">
         {routes.map((candidate) => {
           const active = candidate.id === route.id;
           return (
@@ -331,7 +332,7 @@ function FastTransferPanel({
             </button>
           );
         })}
-      </div>
+      </DragScroll>
 
       <SectionCard className="mt-3 overflow-hidden">
         <div className="bg-gradient-to-br from-[#eef4ff] to-white px-4 pb-4 pt-4">

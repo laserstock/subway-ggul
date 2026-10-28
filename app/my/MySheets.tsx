@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, type ReactNode } from "react";
+import DragScroll from "../_components/DragScroll";
 import LineBadges from "../_components/LineBadges";
 import StationSearch from "../_components/StationSearch";
 import { useLocale } from "../_lib/locale";
@@ -303,7 +304,7 @@ function EndpointPicker({
       ) : (
         <>
           {places.length > 0 ? (
-            <div className="no-scrollbar -mx-5 mb-2 flex gap-1.5 overflow-x-auto px-5">
+            <DragScroll className="-mx-5 mb-2 flex gap-1.5 px-5">
               {places.map((place) => (
                 <button
                   key={place.id}
@@ -315,7 +316,7 @@ function EndpointPicker({
                   {placeLabel(place, locale)} · {t(place.station.name, locale)}
                 </button>
               ))}
-            </div>
+            </DragScroll>
           ) : null}
           <StationSearch
             locale={locale}

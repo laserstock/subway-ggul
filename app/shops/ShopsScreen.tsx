@@ -10,6 +10,7 @@ import KakaoMap, { type LatLng, type MapFit, type MapOverlay } from "../KakaoMap
 import { useKakaoMaps } from "../kakao-sdk";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
 import AppHeader from "../_components/AppHeader";
+import DragScroll from "../_components/DragScroll";
 import PlaceInfoSheet from "../_components/PlaceInfoSheet";
 import StationSearch from "../_components/StationSearch";
 import { walkUrl } from "../_lib/exits";
@@ -663,7 +664,7 @@ export default function ShopsScreen({
           placeholder={t(COPY.search, locale)}
         />
 
-        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-4 pb-3">
+        <DragScroll className="mt-3 flex gap-2 px-4 pb-3">
           {[{ id: "all" as const, name: ALL_FILTER }, ...CATEGORIES].map((item) => {
             const selected = item.id === category;
             return (
@@ -683,7 +684,7 @@ export default function ShopsScreen({
               </button>
             );
           })}
-        </div>
+        </DragScroll>
 
         <div ref={areaRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#eef1f3]">
           <div className="relative isolate min-h-0 flex-1">

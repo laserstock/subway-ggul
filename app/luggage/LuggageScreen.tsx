@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
+import DragScroll from "../_components/DragScroll";
 import { LineIcon } from "../_components/LineBadges";
 import StationSearch from "../_components/StationSearch";
 import { useLocale } from "../_lib/locale";
@@ -644,7 +645,7 @@ export default function LuggageScreen({
                 </button>
               ))}
             </div>
-            <div className="no-scrollbar mt-1.5 flex gap-1.5 overflow-x-auto">
+            <DragScroll className="mt-1.5 flex gap-1.5">
               {HOUR_CHOICES.map((value) => (
                 <button
                   key={value}
@@ -660,7 +661,7 @@ export default function LuggageScreen({
                   {fill(COPY.hoursUnit, locale, { n: value })}
                 </button>
               ))}
-            </div>
+            </DragScroll>
 
             <p className="mt-3 text-[12px] font-extrabold text-[#15803d]">
               🔐 {t(COPY.tLocker, locale)} <span className="font-semibold text-neutral-400">· {t(COPY.selfService, locale)}</span>

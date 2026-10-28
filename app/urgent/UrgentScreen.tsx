@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
+import DragScroll from "../_components/DragScroll";
 import { LineIcon } from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import { Toast, useToast } from "../_components/Toast";
@@ -550,7 +551,7 @@ export default function UrgentScreen({
       <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
         <AppHeader backHref="/" title={URGENT_TITLE} icon={<UrgentIcon />} />
 
-        <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-2">
+        <DragScroll className="flex shrink-0 gap-1.5 px-4 pb-2">
           {TABS.map((item) => {
             const active = item.id === tab;
             return (
@@ -570,7 +571,7 @@ export default function UrgentScreen({
               </button>
             );
           })}
-        </div>
+        </DragScroll>
 
         <main className="no-scrollbar flex-1 overflow-y-auto px-4 pb-5">
           {current ? (

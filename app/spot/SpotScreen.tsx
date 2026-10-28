@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
+import DragScroll from "../_components/DragScroll";
 import { LineIcon } from "../_components/LineBadges";
 import { Toast, useToast } from "../_components/Toast";
 import { t, type Locale, type Localized } from "../_lib/i18n";
@@ -368,7 +369,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
 
         {ready ? (
           <>
-            <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-2">
+            <DragScroll className="flex shrink-0 gap-1.5 px-4 pb-2">
               {plazaLines.map((candidate) => {
                 const active = candidate === line;
                 return (
@@ -386,9 +387,9 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
                   </button>
                 );
               })}
-            </div>
+            </DragScroll>
 
-            <div role="tablist" className="no-scrollbar flex shrink-0 gap-4 overflow-x-auto border-b border-line px-4">
+            <DragScroll role="tablist" className="flex shrink-0 gap-4 border-b border-line px-4">
               {SPOT_TABS.map((id) => {
                 const active = id === tab;
                 const meta = TAB_META[id];
@@ -408,7 +409,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
                   </button>
                 );
               })}
-            </div>
+            </DragScroll>
 
             {searchOpen ? (
               <div className="shrink-0 px-4 pt-3">

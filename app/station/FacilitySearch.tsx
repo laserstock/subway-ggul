@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { searchNearby, type NearbyPlace, type NearbyQuery } from "../kakao-places";
 import { loadKakaoMaps } from "../kakao-sdk";
+import DragScroll from "../_components/DragScroll";
 import { SearchIcon } from "../_components/icons";
 import { loadExits, nearestExit, walkMinutes, walkUrl, type StationExit } from "../_lib/exits";
 import { formatDistance, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
@@ -410,7 +411,7 @@ export default function FacilitySearch({
         </label>
       </form>
 
-      <div className="no-scrollbar -mx-4 mt-2 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5">
+      <DragScroll className="-mx-4 mt-2 flex items-center gap-1.5 px-4 pb-0.5">
         <span className="shrink-0 text-[11px] font-bold text-ink-muted">{t(COPY.popular, locale)}</span>
         {POPULAR.map((id) => {
           const item = INTENTS.find((entry) => entry.id === id);
@@ -431,7 +432,7 @@ export default function FacilitySearch({
             </button>
           );
         })}
-      </div>
+      </DragScroll>
 
       {resolved ? (
         <div className="mt-2.5 overflow-hidden rounded-2xl bg-surface ring-1 ring-line" aria-live="polite">

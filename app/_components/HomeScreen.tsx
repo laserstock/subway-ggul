@@ -7,6 +7,7 @@ import { flushSync } from "react-dom";
 import AppHeader from "./AppHeader";
 import BottomNav from "./BottomNav";
 import DestinationAlarm from "./DestinationAlarm";
+import DragScroll from "./DragScroll";
 import { SearchIcon, StarIcon } from "./icons";
 import LineBadges from "./LineBadges";
 import LiveFeed from "./LiveFeed";
@@ -194,7 +195,7 @@ export default function HomeScreen() {
           </button>
 
           {myPlaces.length > 0 ? (
-            <div className="no-scrollbar -mx-4 mt-2.5 flex items-center gap-1.5 overflow-x-auto px-4">
+            <DragScroll className="-mx-4 mt-2.5 flex items-center gap-1.5 px-4">
               <span className="flex shrink-0 items-center gap-1 text-[12px] font-extrabold text-ink">
                 <StarIcon className="text-honey" />
                 {m.nav.station}:
@@ -223,7 +224,7 @@ export default function HomeScreen() {
               >
                 ⚙️ {t(COPY.editMy, locale)}
               </Link>
-            </div>
+            </DragScroll>
           ) : null}
 
           <DestinationAlarm
