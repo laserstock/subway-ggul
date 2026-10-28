@@ -443,7 +443,12 @@ export default function ShopsScreen({
   const [station, setStation] = useState<StationOption>(
     () => initialStation ?? curatedOption(STATIONS[0]),
   );
-  const [query, setQuery] = useState(() => (initialStation ? initialStation.name.ko : ""));
+  const [query, setQuery] = useState(() => (initialStation ? t(initialStation.name, locale) : ""));
+  const [queryLocale, setQueryLocale] = useState(locale);
+  if (queryLocale !== locale) {
+    setQueryLocale(locale);
+    if (query === t(station.name, queryLocale)) setQuery(t(station.name, locale));
+  }
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [nearby, setNearby] = useState<{ key: string; items: ListItem[] | null }>({
@@ -645,14 +650,10 @@ export default function ShopsScreen({
     if (!tracking && !pinned && tracker.issue !== "denied") startTracking();
   }
 
-  function onLocaleChange(next: Locale, previous: Locale) {
-    if (query === t(station.name, previous)) setQuery(t(station.name, next));
-  }
-
   return (
     <div className="flex min-h-dvh justify-center bg-frame">
       <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
-        <AppHeader backHref="/" onLocaleChange={onLocaleChange} />
+        <AppHeader backHref="/" />
 
         <StationSearch
           className="mx-4"

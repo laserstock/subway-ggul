@@ -291,18 +291,13 @@ function SpotRow({
         <span className="w-6 shrink-0 text-center text-[17px]" aria-hidden>
           {kind.emoji}
         </span>
-        <span className="w-[62px] shrink-0 text-[14px] font-bold text-neutral-900">{t(kind.label, locale)}</span>
+        <span className="min-w-[62px] shrink-0 text-[14px] font-bold text-neutral-900">{t(kind.label, locale)}</span>
         <span
-          className="flex min-w-0 flex-1 items-center gap-1 text-[13px] font-extrabold"
+          className="flex min-w-0 flex-1 items-center gap-1 text-[13px] font-extrabold leading-tight"
           style={{ color: zone.color }}
         >
-          {t(zone.label, locale)}
+          <span className="min-w-0">{t(zone.label, locale)}</span>
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: zone.color }} />
-          {recommended ? (
-            <span className="ml-0.5 shrink-0 rounded-full bg-[#f59e0b] px-1.5 py-[1px] text-[10px] font-bold text-white">
-              {t(COPY.recommended, locale)}
-            </span>
-          ) : null}
         </span>
         {spot.walkMinutes !== null ? (
           <span className="shrink-0 text-[12px] font-semibold text-neutral-700">
@@ -311,6 +306,11 @@ function SpotRow({
         ) : null}
       </div>
       <p className="ml-[30px] mt-0.5 text-[11px] leading-snug text-neutral-500">
+        {recommended ? (
+          <span className="mr-1 inline-block rounded-full bg-[#f59e0b] px-1.5 py-[1px] text-[10px] font-bold text-white">
+            {t(COPY.recommended, locale)}
+          </span>
+        ) : null}
         {t(spot.detail, locale)}
         {spot.hours ? <span className="ml-1 font-semibold text-[#7c3aed]">· {t(spot.hours, locale)}</span> : null}
         {spot.exitLinked ? (
@@ -379,7 +379,7 @@ function StationCard({
                   <span className="w-6 shrink-0 text-center text-[17px]" aria-hidden>
                     {KIND_META[kind].emoji}
                   </span>
-                  <span className="w-[62px] shrink-0 text-[14px] font-bold text-neutral-900">
+                  <span className="min-w-[62px] shrink-0 text-[14px] font-bold text-neutral-900">
                     {t(KIND_META[kind].label, locale)}
                   </span>
                   {t(KIND_META[kind].empty, locale)}
