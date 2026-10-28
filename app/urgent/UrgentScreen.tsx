@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
 import DragScroll from "../_components/DragScroll";
+import FlagSheet, { FlagButton, type FlagRequest } from "../_components/FlagSheet";
 import { LineIcon } from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import { Toast, useToast } from "../_components/Toast";
@@ -414,6 +415,7 @@ export default function UrgentScreen({
   const [lineStations, setLineStations] = useState<Record<string, KakaoStation[]>>({});
   const [urgent, setUrgent] = useState<Record<string, StationUrgent>>({});
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [flagging, setFlagging] = useState<FlagRequest | null>(null);
   const { toast, showToast } = useToast();
   const lastFixRef = useRef<{ position: LatLng; station: StationOption } | null>(null);
 
@@ -697,6 +699,11 @@ export default function UrgentScreen({
                             <span aria-hidden>👍</span>
                             {report.likes}
                           </button>
+                          {report.mine ? null : (
+                            <FlagButton
+                              onClick={() => setFlagging({ target: "report", id: report.id, authorId: report.authorId })}
+                            />
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -740,6 +747,8 @@ export default function UrgentScreen({
         <BottomNav />
 
         <Toast message={toast} />
+
+        {flagging ? <FlagSheet request={flagging} onClose={() => setFlagging(null)} onToast={showToast} /> : null}
 
         {sheetOpen ? (
           <ReportSheet

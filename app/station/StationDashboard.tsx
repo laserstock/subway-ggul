@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
+import FlagSheet, { FlagButton, type FlagRequest } from "../_components/FlagSheet";
 import LineBadges from "../_components/LineBadges";
 import ReportSheet from "../_components/ReportSheet";
 import SearchOverlay from "../_components/SearchOverlay";
@@ -56,6 +57,7 @@ export default function StationDashboard({ station }: { station: StationOption |
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [flagging, setFlagging] = useState<FlagRequest | null>(null);
   const [urgent, setUrgent] = useState<StationUrgent | null>(null);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
 
@@ -141,13 +143,16 @@ export default function StationDashboard({ station }: { station: StationOption |
                 <p className="mt-1.5 text-[14px] font-semibold leading-relaxed text-neutral-800">
                   {liveTip ? `💬 ${t(liveTip.text, locale)}` : t(COPY.tipEmpty, locale)}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setSheetOpen(true)}
-                  className="mt-2.5 text-[12px] font-bold text-[#b45309]"
-                >
-                  ✏️ {t(COPY.tipCta, locale)} →
-                </button>
+                <div className="mt-2.5 flex items-center justify-between gap-2">
+                  <button type="button" onClick={() => setSheetOpen(true)} className="text-[12px] font-bold text-[#b45309]">
+                    ✏️ {t(COPY.tipCta, locale)} →
+                  </button>
+                  {liveTip && !liveTip.mine ? (
+                    <FlagButton
+                      onClick={() => setFlagging({ target: "report", id: liveTip.id, authorId: liveTip.authorId })}
+                    />
+                  ) : null}
+                </div>
               </section>
             </>
           ) : (
@@ -167,6 +172,8 @@ export default function StationDashboard({ station }: { station: StationOption |
         <BottomNav active="home" />
 
         <Toast message={toast} />
+
+        {flagging ? <FlagSheet request={flagging} onClose={() => setFlagging(null)} onToast={showToast} /> : null}
 
         {sheetOpen ? (
           <ReportSheet
