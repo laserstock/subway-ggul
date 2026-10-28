@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { THEME_COLORS, THEME_STORAGE_KEY } from "./themeInit";
+import { THEME_COLORS, THEME_STORAGE_KEY } from "./bootScript";
 
 export const THEMES = ["light", "dark"] as const;
 export type Theme = (typeof THEMES)[number];

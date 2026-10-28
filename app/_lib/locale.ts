@@ -1,12 +1,42 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { DEFAULT_LOCALE, LANGUAGES, isLocale, type Locale } from "./i18n";
+import { LOCALE_STORAGE_KEY as STORAGE_KEY } from "./bootScript";
+import { DEFAULT_LOCALE, LANGUAGES, LOCALES, isLocale, type Locale } from "./i18n";
 import { getMessages, type Messages } from "./messages";
+import { guideLocale } from "./site";
 
-const STORAGE_KEY = "subway-ggul:locale";
+const BOT_AGENT = /bot|crawl|spider|slurp|lighthouse|headless/i;
 const listeners = new Set<() => void>();
-let fallback: Locale = DEFAULT_LOCALE;
+
+/** First supported language in the browser's list; other languages get English rather than Korean. */
+function browserLocale(): Locale {
+  for (const tag of navigator.languages?.length ? navigator.languages : [navigator.language]) {
+    const base = tag?.toLowerCase().split("-")[0];
+    if ((LOCALES as readonly string[]).includes(base)) return base as Locale;
+  }
+  return "en";
+}
+
+/**
+ * ?lang= (links from the /en, /zh, /ja guides) is remembered; otherwise first-time visitors get their
+ * browser's language. Crawlers keep Korean so the server-rendered home page stays the Korean one.
+ */
+function initialLocale(): Locale {
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get("lang");
+    if (isLocale(fromUrl)) {
+      window.localStorage.setItem(STORAGE_KEY, fromUrl);
+      return fromUrl;
+    }
+    if (BOT_AGENT.test(navigator.userAgent)) return DEFAULT_LOCALE;
+    return browserLocale();
+  } catch {
+    return DEFAULT_LOCALE;
+  }
+}
+
+let fallback: Locale = typeof window === "undefined" ? DEFAULT_LOCALE : initialLocale();
 
 function readLocale(): Locale {
   try {
@@ -15,6 +45,10 @@ function readLocale(): Locale {
   } catch {
     return fallback;
   }
+}
+
+if (typeof window !== "undefined" && !guideLocale(window.location.pathname)) {
+  document.documentElement.lang = LANGUAGES[readLocale()].htmlLang;
 }
 
 function subscribe(listener: () => void) {

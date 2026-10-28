@@ -5,7 +5,8 @@ import BadgeCelebration from "./_components/BadgeCelebration";
 import PreloadResources from "./_components/PreloadResources";
 import ServerErrorToast from "./_components/ServerErrorToast";
 import SplashScreen from "./_components/SplashScreen";
-import { THEME_COLORS, THEME_INIT_SCRIPT } from "./_lib/themeInit";
+import { BOOT_SCRIPT, THEME_COLORS } from "./_lib/bootScript";
+import { SITE_URL } from "./_lib/site";
 import "./globals.css";
 
 const notoSansKr = Noto_Sans_KR({
@@ -17,7 +18,7 @@ const notoSansKr = Noto_Sans_KR({
 const DESCRIPTION = "역 주변과 동선 상의 시설을 가장 빠르게 찾아보세요.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://subway-ggul.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title: "지하철꿀정보",
   description: DESCRIPTION,
   applicationName: "지하철꿀정보",
@@ -47,7 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${notoSansKr.variable} h-full antialiased`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>
       <body className={`${notoSansKr.className} min-h-full flex flex-col`}>
         <PreloadResources />

@@ -1,6 +1,8 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useId, useSyncExternalStore, type AnimationEvent } from "react";
+import { guideLocale } from "../_lib/site";
 import { TrainMark } from "./icons";
 
 /** Per tab session: a new launch shows the logo again, reloads and in-app navigation don't. */
@@ -51,7 +53,8 @@ function InlineScript({ html }: { html: string }) {
 export default function SplashScreen() {
   const id = useId();
   const done = useSyncExternalStore(subscribe, readFinished, () => false);
-  if (done) return null;
+  const pathname = usePathname();
+  if (done || guideLocale(pathname)) return null;
 
   function onAnimationEnd(event: AnimationEvent<HTMLDivElement>) {
     if (event.target === event.currentTarget && event.animationName === "splash-out") finish();
