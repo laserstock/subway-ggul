@@ -235,7 +235,7 @@ export default function SideDrawer({
           if (event.target === event.currentTarget && !isOpen) resetInnerState();
         }}
         className={`absolute inset-y-0 left-0 flex w-[84%] max-w-[330px] flex-col rounded-r-[28px] bg-surface pt-[max(12px,env(safe-area-inset-top))] shadow-[8px_0_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+48px)]"
         }`}
       >
         <div className="flex items-start justify-between gap-2 px-5 pb-4 pt-2">
