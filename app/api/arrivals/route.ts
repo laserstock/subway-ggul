@@ -68,7 +68,10 @@ function toTrain(raw: RawArrival): Train | null {
   };
 }
 
-async function upstream(key: string, name: string): Promise<Train[]> {
+/** Seoul answers ERROR-500 now and then when one key makes simultaneous calls; a moment later it succeeds. */
+const RETRY_DELAY_MS = 400;
+
+async function upstream(key: string, name: string, retried = false): Promise<Train[]> {
   const url = `http://swopenapi.seoul.go.kr/api/subway/${encodeURIComponent(key)}/json/realtimeStationArrival/0/40/${encodeURIComponent(name)}`;
   const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(5000) });
   if (!response.ok) throw new Error(`seoul ${response.status}`);
@@ -79,6 +82,10 @@ async function upstream(key: string, name: string): Promise<Train[]> {
   };
   const code = data.errorMessage?.code ?? data.code;
   if (code === "INFO-200") return [];
+  if (code === "ERROR-500" && !retried) {
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    return upstream(key, name, true);
+  }
   if (code !== "INFO-000") throw new Error(`seoul ${code}`);
   return (data.realtimeArrivalList ?? []).flatMap((raw) => toTrain(raw) ?? []);
 }
