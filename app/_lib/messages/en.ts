@@ -32,7 +32,7 @@ const en: Messages = {
     shareCopied: "Link copied",
     shareFailed: "Couldn't share. Copy the link from the address bar",
     shareText: "Find restrooms, pharmacies and exit shops in 3 seconds on the subway",
-    reset: "Reset to home screen",
+    reset: "Go to home screen",
     myReportsEmpty: "No reports yet. Post one from a station!",
     myReportsNote: "Your reports are tied to this device's anonymous account · clearing browser data removes delete access",
     delete: "Delete",
@@ -44,7 +44,6 @@ const en: Messages = {
     theme: "Display mode",
     themeLight: "Light",
     themeDark: "Dark",
-    themeSoon: "Soon",
   },
 };
 

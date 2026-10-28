@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type CSSProperties, type ReactNode } from "react";
 import DragScroll from "../_components/DragScroll";
 import LineBadges from "../_components/LineBadges";
 import StationSearch from "../_components/StationSearch";
@@ -225,10 +225,16 @@ export function PlaceSheet({
               type="button"
               onClick={() => setPreset(id)}
               aria-pressed={active}
-              className={`flex items-center justify-center gap-1 rounded-2xl border-2 px-2 py-2.5 text-[13px] font-bold transition active:scale-95 ${
+              className={`tint-bg flex items-center justify-center gap-1 rounded-2xl border-2 px-2 py-2.5 text-[13px] font-bold transition active:scale-95 ${
                 active ? "text-neutral-900 shadow-sm" : "border-transparent text-neutral-600"
               }`}
-              style={{ backgroundColor: item.bg, borderColor: active ? item.ring : "transparent" }}
+              style={
+                {
+                  "--tint": item.bg,
+                  "--tint-accent": item.ring,
+                  borderColor: active ? item.ring : "transparent",
+                } as CSSProperties
+              }
             >
               <span aria-hidden>{item.emoji}</span>
               <span className="min-w-0 break-words text-center leading-tight">{t(item.label, locale)}</span>

@@ -5,6 +5,7 @@ import BadgeCelebration from "./_components/BadgeCelebration";
 import PreloadResources from "./_components/PreloadResources";
 import ServerErrorToast from "./_components/ServerErrorToast";
 import SplashScreen from "./_components/SplashScreen";
+import { THEME_COLORS, THEME_INIT_SCRIPT } from "./_lib/themeInit";
 import "./globals.css";
 
 const notoSansKr = Noto_Sans_KR({
@@ -33,15 +34,21 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#14161c" },
-  ],
+  themeColor: THEME_COLORS.light,
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" data-theme="light" className={`${notoSansKr.variable} h-full antialiased`}>
+    <html
+      lang="ko"
+      data-theme="light"
+      suppressHydrationWarning
+      className={`${notoSansKr.variable} h-full antialiased`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className={`${notoSansKr.className} min-h-full flex flex-col`}>
         <PreloadResources />
         {children}

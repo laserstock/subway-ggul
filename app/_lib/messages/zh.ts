@@ -32,7 +32,7 @@ const zh: Messages = {
     shareCopied: "链接已复制",
     shareFailed: "分享失败，请复制地址栏中的链接",
     shareText: "乘地铁时3秒找到卫生间·药店·出口商店的应用——地铁小贴士",
-    reset: "重置到主页（返回首页）",
+    reset: "前往首页",
     myReportsEmpty: "还没有上报记录，在车站留下1秒上报吧！",
     myReportsNote: "我的上报与本设备的匿名账号绑定 · 清除浏览器数据后将无法删除",
     delete: "删除",
@@ -44,7 +44,6 @@ const zh: Messages = {
     theme: "显示模式",
     themeLight: "浅色",
     themeDark: "深色",
-    themeSoon: "即将推出",
   },
 };
 

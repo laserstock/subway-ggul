@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export type ActionKind = "urgent" | "shops" | "transfer" | "luggage";
 
@@ -99,8 +99,10 @@ export default function ActionTile({
   return (
     <Link
       href={href}
-      className="flex min-h-[54px] items-center gap-2 rounded-[22px] border py-2 pl-3 pr-1.5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition active:scale-[0.98]"
-      style={{ backgroundColor: theme.bg, borderColor: `${theme.accent}40` }}
+      className="tint-bg flex min-h-[54px] items-center gap-2 rounded-[22px] border py-2 pl-3 pr-1.5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition active:scale-[0.98]"
+      style={
+        { "--tint": theme.bg, "--tint-accent": theme.accent, borderColor: `${theme.accent}40` } as CSSProperties
+      }
     >
       <span className="h-[28px] w-[41px] shrink-0 [&_svg]:h-full [&_svg]:w-full">{theme.art}</span>
       <span className="min-w-0 flex-1">

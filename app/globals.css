@@ -17,7 +17,7 @@
   color-scheme: light;
 }
 
-/* Dark palette for the upcoming theme switch (not selectable yet). */
+/* Dark theme: only applied when the user picks 어둡게 in the drawer, never from the OS setting. */
 [data-theme="dark"] {
   --app-frame: #0b0d12;
   --app-bg: #14161c;
@@ -29,7 +29,307 @@
   --honey: #ffbe2e;
   --honey-strong: #ffcf5c;
   --honey-soft: #3a2f12;
+  --background: var(--app-frame);
+  --foreground: var(--ink);
   color-scheme: dark;
+
+  /* Many screens still use Tailwind's neutral/gray scale directly, so invert it here. */
+  --color-neutral-50: #22262e;
+  --color-neutral-100: #282c35;
+  --color-neutral-200: #343944;
+  --color-neutral-300: #4a505c;
+  --color-neutral-400: #8b929e;
+  --color-neutral-500: #a1a8b3;
+  --color-neutral-600: #b9bfc8;
+  --color-neutral-700: #cfd3da;
+  --color-neutral-800: #e2e5ea;
+  --color-neutral-900: #f1f3f5;
+  --color-neutral-950: #f8f9fa;
+  --color-gray-50: #22262e;
+  --color-gray-100: #282c35;
+  --color-gray-200: #343944;
+  --color-gray-300: #4a505c;
+  --color-gray-400: #8b929e;
+  --color-gray-500: #a1a8b3;
+  --color-gray-600: #b9bfc8;
+  --color-gray-700: #cfd3da;
+  --color-gray-800: #e2e5ea;
+  --color-gray-900: #f1f3f5;
+  --color-amber-50: #352a10;
+  --color-amber-700: #fbbf24;
+  --color-amber-800: #fcd34d;
+  --color-sky-50: #11293a;
+
+  --dk-blue: #1a2540;
+  --dk-red: #3a1c21;
+  --dk-green: #15301f;
+  --dk-amber: #352a10;
+  --dk-violet: #2a2245;
+  --dk-sky: #11293a;
+  --dk-orange: #3a2314;
+  --dk-line-blue: #2d3d63;
+  --dk-line-red: #5c2a30;
+  --dk-line-green: #1f4d2e;
+  --dk-line-amber: #5a4818;
+  --dk-line-violet: #3f3566;
+  --dk-line-sky: #1f4560;
+}
+
+/* Background-color from a --tint custom property (inline data colors), toned down in dark mode. */
+.tint-bg {
+  background-color: var(--tint);
+}
+
+[data-theme="dark"] .tint-bg {
+  background-color: color-mix(in srgb, var(--tint-accent, var(--tint)) 18%, var(--surface));
+}
+
+/* Dark text that sits on bright yellow chips keeps its light-theme color. */
+[data-theme="dark"]
+  :is(.bg-\[\#f5b800\], .bg-\[\#f1d24f\], .bg-\[\#fee500\], .bg-\[\#ffc83d\]) {
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+}
+
+/* Solid dark chips (toasts, badges) stay dark instead of following the inverted scale. */
+[data-theme="dark"] :is(.bg-neutral-900, .bg-neutral-800) {
+  background-color: #3a3f4a;
+}
+
+[data-theme="dark"] .bg-neutral-900\/90 {
+  background-color: rgb(58 63 74 / 0.94);
+}
+
+/* White surfaces */
+[data-theme="dark"] .bg-white {
+  background-color: var(--surface);
+}
+
+[data-theme="dark"] .bg-white\/60 {
+  background-color: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+[data-theme="dark"] .bg-white\/70 {
+  background-color: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+[data-theme="dark"] .bg-white\/80 {
+  background-color: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
+[data-theme="dark"] .bg-white\/85 {
+  background-color: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+
+[data-theme="dark"] .bg-white\/90 {
+  background-color: color-mix(in srgb, var(--surface) 90%, transparent);
+}
+
+[data-theme="dark"] .bg-white\/95 {
+  background-color: color-mix(in srgb, var(--surface) 95%, transparent);
+}
+
+[data-theme="dark"] .border-white {
+  border-color: var(--surface);
+}
+
+[data-theme="dark"] .ring-white {
+  --tw-ring-color: var(--surface);
+}
+
+/* Light pastel backgrounds */
+[data-theme="dark"]
+  :is(
+    .bg-\[\#f7f8fa\],
+    .bg-\[\#f3f4f6\],
+    .bg-\[\#eef1f3\],
+    .bg-\[\#eef1f5\],
+    .bg-\[\#f2f4f6\]
+  ) {
+  background-color: var(--surface-muted);
+}
+
+[data-theme="dark"]
+  :is(
+    .bg-\[\#eef4ff\],
+    .bg-\[\#e5efff\],
+    .bg-\[\#eff5ff\],
+    .bg-\[\#e8f0ff\],
+    .bg-\[\#f3f7ff\],
+    .bg-\[\#f5f8ff\],
+    .bg-\[\#eef3ff\],
+    .bg-\[\#f3f6fb\]
+  ) {
+  background-color: var(--dk-blue);
+}
+
+[data-theme="dark"]
+  :is(.bg-\[\#fdecec\], .bg-\[\#fef2f2\], .bg-\[\#fee2e2\], .bg-\[\#fde9ec\]) {
+  background-color: var(--dk-red);
+}
+
+[data-theme="dark"]
+  :is(
+    .bg-\[\#e7f8ee\],
+    .bg-\[\#eefaf2\],
+    .bg-\[\#e6f5e9\],
+    .bg-\[\#e3f6ea\],
+    .bg-\[\#ecfdf3\],
+    .bg-\[\#dcfce7\]
+  ) {
+  background-color: var(--dk-green);
+}
+
+[data-theme="dark"]
+  :is(
+    .bg-\[\#fff3c4\],
+    .bg-\[\#fff8e1\],
+    .bg-\[\#fef3c7\],
+    .bg-\[\#fff6d6\],
+    .bg-\[\#fff1d6\],
+    .bg-\[\#fff8d6\],
+    .bg-\[\#fff1c2\],
+    .bg-\[\#fff8e8\],
+    .bg-\[\#fffaf0\]
+  ) {
+  background-color: var(--dk-amber);
+}
+
+[data-theme="dark"] :is(.bg-\[\#efe9ff\], .bg-\[\#f5f1ff\]) {
+  background-color: var(--dk-violet);
+}
+
+[data-theme="dark"] .bg-\[\#e0f2fe\] {
+  background-color: var(--dk-sky);
+}
+
+[data-theme="dark"] :is(.bg-\[\#fff1e6\], .bg-\[\#ffedd5\]) {
+  background-color: var(--dk-orange);
+}
+
+/* Light gradient stops */
+[data-theme="dark"] :is(.from-\[\#eef4ff\], .from-\[\#f6f9ff\]) {
+  --tw-gradient-from: var(--dk-blue);
+}
+
+[data-theme="dark"] .from-\[\#eef8ff\] {
+  --tw-gradient-from: var(--dk-sky);
+}
+
+[data-theme="dark"]
+  :is(.from-\[\#fff8db\], .from-\[\#fff6dc\], .from-\[\#fff7e6\], .from-\[\#fff8e1\]) {
+  --tw-gradient-from: var(--dk-amber);
+}
+
+[data-theme="dark"] :is(.to-\[\#fffdf3\], .to-\[\#fffdf6\], .to-\[\#fffdf8\], .to-white) {
+  --tw-gradient-to: var(--surface);
+}
+
+[data-theme="dark"] .via-white {
+  --tw-gradient-via: var(--surface);
+}
+
+[data-theme="dark"] :is(.to-\[\#eef4ff\], .to-\[\#eef3fb\]) {
+  --tw-gradient-to: var(--dk-blue);
+}
+
+[data-theme="dark"] .to-\[\#dff1fd\] {
+  --tw-gradient-to: var(--dk-sky);
+}
+
+[data-theme="dark"] .to-\[\#f5f0ff\] {
+  --tw-gradient-to: var(--dk-violet);
+}
+
+/* Pastel borders and rings */
+[data-theme="dark"]
+  :is(.border-\[\#f5d76e\], .border-\[\#f0d58a\], .border-\[\#fde3b0\], .border-\[\#f5d76e\]\/70) {
+  border-color: var(--dk-line-amber);
+}
+
+[data-theme="dark"] :is(.border-\[\#d6e2ff\], .border-\[\#c7d7f5\], .border-\[\#93c5fd\]) {
+  border-color: var(--dk-line-blue);
+}
+
+[data-theme="dark"] .border-\[\#bfe3fb\] {
+  border-color: var(--dk-line-sky);
+}
+
+[data-theme="dark"] .border-\[\#fecaca\] {
+  border-color: var(--dk-line-red);
+}
+
+[data-theme="dark"] :is(.ring-\[\#f6e3a8\], .ring-\[\#fff3cf\]) {
+  --tw-ring-color: var(--dk-line-amber);
+}
+
+[data-theme="dark"] :is(.ring-\[\#d6e2ff\], .ring-\[\#dbeafe\]) {
+  --tw-ring-color: var(--dk-line-blue);
+}
+
+[data-theme="dark"] .ring-\[\#fecaca\] {
+  --tw-ring-color: var(--dk-line-red);
+}
+
+[data-theme="dark"] .ring-\[\#bbf7d0\] {
+  --tw-ring-color: var(--dk-line-green);
+}
+
+[data-theme="dark"] .ring-\[\#ddd3ff\] {
+  --tw-ring-color: var(--dk-line-violet);
+}
+
+/* Dark accent text, lifted for contrast on dark surfaces */
+[data-theme="dark"] :is(.text-\[\#2563eb\], .text-\[\#2f6bff\]) {
+  color: #7aa2ff;
+}
+
+[data-theme="dark"] .text-\[\#1d4ed8\] {
+  color: #93b4ff;
+}
+
+[data-theme="dark"] :is(.text-\[\#1e3a8a\], .text-\[\#4b5d8f\], .text-\[\#6b7aa6\]) {
+  color: #a9b8e8;
+}
+
+[data-theme="dark"] :is(.text-\[\#15803d\], .text-\[\#16a34a\]) {
+  color: #4ade80;
+}
+
+[data-theme="dark"]
+  :is(.text-\[\#b45309\], .text-\[\#92400e\], .text-\[\#a16207\], .text-\[\#d97706\]) {
+  color: #fbbf24;
+}
+
+[data-theme="dark"] :is(.text-\[\#dc2626\], .text-\[\#b91c1c\]) {
+  color: #f87171;
+}
+
+[data-theme="dark"]
+  :is(
+    .text-\[\#6d5df5\],
+    .text-\[\#6d28d9\],
+    .text-\[\#5b3fd6\],
+    .text-\[\#7c3aed\],
+    .text-\[\#4c2fd1\]
+  ) {
+  color: #b9a8ff;
+}
+
+[data-theme="dark"] .text-\[\#0369a1\] {
+  color: #7dd3fc;
+}
+
+[data-theme="dark"] :is(.text-\[\#ea580c\], .text-\[\#c2410c\]) {
+  color: #fb923c;
+}
+
+[data-theme="dark"] .text-\[\#b0662f\] {
+  color: #e3a26f;
+}
+
+[data-theme="dark"] .text-\[\#6b7588\] {
+  color: #a3abba;
 }
 
 @theme inline {

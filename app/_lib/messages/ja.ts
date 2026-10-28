@@ -32,7 +32,7 @@ const ja: Messages = {
     shareCopied: "リンクをコピーしました",
     shareFailed: "共有できませんでした。アドレスバーのリンクをコピーしてください",
     shareText: "地下鉄でトイレ・薬局・出口ショップを3秒で探せるアプリ「地下鉄おトク情報」",
-    reset: "ホーム画面にリセット（ホームへ移動）",
+    reset: "ホーム画面へ移動",
     myReportsEmpty: "まだ投稿がありません。駅で1秒投稿をしてみましょう！",
     myReportsNote: "自分の投稿はこの端末の匿名アカウントに紐づきます · ブラウザのデータを消すと削除できなくなります",
     delete: "削除",
@@ -44,7 +44,6 @@ const ja: Messages = {
     theme: "表示モード",
     themeLight: "ライト",
     themeDark: "ダーク",
-    themeSoon: "準備中",
   },
 };
 

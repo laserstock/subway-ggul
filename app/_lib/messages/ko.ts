@@ -30,7 +30,7 @@ const ko = {
     shareCopied: "링크를 복사했어요",
     shareFailed: "공유하지 못했어요. 주소창의 링크를 복사해 주세요",
     shareText: "지하철 탈 때 화장실·약국·출구 매장을 3초 만에 찾는 앱, 지하철꿀정보",
-    reset: "메인 화면으로 리셋 (홈으로 이동)",
+    reset: "홈 화면으로 이동하기",
     myReportsEmpty: "아직 남긴 제보가 없어요. 역에서 1초 제보를 남겨 보세요!",
     myReportsNote: "내 제보는 이 기기의 익명 계정에 연결돼요 · 브라우저 데이터를 지우면 삭제 권한이 사라져요",
     delete: "삭제",
@@ -42,7 +42,6 @@ const ko = {
     theme: "화면 모드",
     themeLight: "밝게",
     themeDark: "어둡게",
-    themeSoon: "준비 중",
   },
 };
 

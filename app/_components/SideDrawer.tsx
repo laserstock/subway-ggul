@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { saveFeedback } from "../_lib/feedback";
 import { requestHomeReset } from "../_lib/homeReset";
 import { t, type Localized } from "../_lib/i18n";
@@ -10,7 +10,7 @@ import { PRIVACY_TITLE } from "../_lib/legal";
 import { useLocale, useMessages } from "../_lib/locale";
 import { deleteReport, formatRelativeTime, useMyReports, useNow } from "../_lib/reports";
 import { clearSelectedStation, setDestinationStation } from "../_lib/selectedStation";
-import { TrainLogo } from "./icons";
+import { HomeIcon, TrainLogo } from "./icons";
 import ThemePicker from "./ThemePicker";
 
 export const APP_VERSION = "1.0.0";
@@ -20,11 +20,11 @@ type ShareStatus = "copied" | "failed" | null;
 
 type MenuId = Exclude<DrawerView, "menu"> | "share";
 
-const MENU: { id: MenuId; emoji: string; tint: string }[] = [
-  { id: "notices", emoji: "📢", tint: "#fff1d6" },
-  { id: "myReports", emoji: "✏️", tint: "#e5efff" },
-  { id: "feedback", emoji: "💬", tint: "#e6f5e9" },
-  { id: "share", emoji: "🔗", tint: "#f3e8ff" },
+const MENU: { id: MenuId; emoji: string; tint: string; accent: string }[] = [
+  { id: "notices", emoji: "📢", tint: "#fff1d6", accent: "#f5a700" },
+  { id: "myReports", emoji: "✏️", tint: "#e5efff", accent: "#3b7cf6" },
+  { id: "feedback", emoji: "💬", tint: "#e6f5e9", accent: "#22a559" },
+  { id: "share", emoji: "🔗", tint: "#f3e8ff", accent: "#a855f7" },
 ];
 
 const TERMS_LINK: Localized = { ko: "이용약관", en: "Terms", zh: "使用条款", ja: "利用規約" };
@@ -276,8 +276,8 @@ export default function SideDrawer({
                     className="flex w-full items-center gap-3 rounded-2xl px-2 py-3.5 text-left transition-colors active:bg-neutral-100"
                   >
                     <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] text-[18px]"
-                      style={{ backgroundColor: item.tint }}
+                      className="tint-bg flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] text-[18px]"
+                      style={{ "--tint": item.tint, "--tint-accent": item.accent } as CSSProperties}
                       aria-hidden
                     >
                       {item.emoji}
@@ -431,10 +431,12 @@ export default function SideDrawer({
           <button
             type="button"
             onClick={resetToHome}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1e3a8a] py-4 text-[15px] font-bold text-white shadow-[0_6px_16px_rgba(30,58,138,0.25)] transition-transform active:scale-[0.98]"
+            className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#1e3a8a] py-3.5 text-[15px] font-bold text-white shadow-[0_6px_16px_rgba(30,58,138,0.25)] transition-transform active:scale-[0.98]"
           >
-            <span aria-hidden>🏠</span>
-            {m.drawer.reset}
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-white/15">
+              <HomeIcon size={19} doorColor="var(--honey)" />
+            </span>
+            <span className="min-w-0 break-words">{m.drawer.reset}</span>
           </button>
         </div>
       </aside>

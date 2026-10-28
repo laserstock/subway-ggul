@@ -78,6 +78,30 @@ export function PinIcon({ size = 20, className = "" }: { size?: number; classNam
   );
 }
 
+export function HomeIcon({
+  size = 20,
+  className = "",
+  doorColor = "currentColor",
+}: {
+  size?: number;
+  className?: string;
+  doorColor?: string;
+}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M3.8 10.4 12 3.6l8.2 6.8v8.6a1.8 1.8 0 0 1-1.8 1.8H5.6a1.8 1.8 0 0 1-1.8-1.8z"
+        fill="currentColor"
+        fillOpacity="0.16"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M9.6 20.8v-4.6a2.4 2.4 0 0 1 4.8 0v4.6" stroke={doorColor} strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function ElevatorIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
