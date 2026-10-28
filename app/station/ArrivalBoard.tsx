@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { LineIcon } from "../_components/LineBadges";
 import {
+  clockTime,
   directionLabel,
   groupTrains,
   trainBound,
@@ -10,6 +10,7 @@ import {
   trainTags,
   towardLabel,
   useArrivals,
+  useElapsed,
 } from "../_lib/arrivals";
 import { t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 
@@ -32,27 +33,15 @@ const COPY = {
   source: { ko: "서울시 실시간 지하철 정보", en: "Seoul real-time subway data", zh: "首尔市实时地铁信息", ja: "ソウル市リアルタイム地下鉄情報" },
 } satisfies Record<string, Localized>;
 
-const TICK_MS = 5_000;
 const TRAINS_PER_GROUP = 2;
 
-function clock(ms: number) {
-  const date = new Date(ms);
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
 export default function ArrivalBoard({ station, locale }: { station: StationOption; locale: Locale }) {
-  const { board, refresh } = useArrivals(station);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
+  const { board, refresh } = useArrivals(station.name.ko);
+  const elapsed = useElapsed(board);
 
   if (board.status === "unconfigured") return null;
 
   const groups = board.status === "ok" ? groupTrains(board.trains) : [];
-  const elapsed = board.status === "ok" ? Math.max(0, (now - board.fetchedAt) / 1000) : 0;
 
   return (
     <section className="mt-4 overflow-hidden rounded-2xl bg-surface shadow-[0_1px_3px_rgba(15,23,42,0.05)] ring-1 ring-line">
@@ -70,7 +59,7 @@ export default function ArrivalBoard({ station, locale }: { station: StationOpti
           aria-label={t(COPY.refresh, locale)}
           className="flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-bold text-neutral-500 active:scale-95"
         >
-          {board.status === "ok" ? t(COPY.updated, locale).replace("{time}", clock(board.fetchedAt)) : null}
+          {board.status === "ok" ? t(COPY.updated, locale).replace("{time}", clockTime(board.fetchedAt)) : null}
           <span aria-hidden>↻</span>
         </button>
       </div>

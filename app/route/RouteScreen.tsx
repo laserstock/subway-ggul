@@ -8,6 +8,17 @@ import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
 import SearchOverlay from "../_components/SearchOverlay";
+import {
+  clockTime,
+  trainBound,
+  trainStatus,
+  trainTags,
+  trainWait,
+  trainsToward,
+  useArrivals,
+  useElapsed,
+  type Train,
+} from "../_lib/arrivals";
 import { useLocale } from "../_lib/locale";
 import { findRoute, networkStationId, type Route, type RouteLeg, type RouteMode, type RouteTransfer } from "../_lib/routeFinder";
 import { stationName, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
@@ -47,6 +58,20 @@ const COPY = {
   transfer: { ko: "환승 (도보 {walk})", en: "Transfer ({walk} walk)", zh: "换乘（步行{walk}）", ja: "乗換（徒歩{walk}）" },
   branch: { ko: "열차 갈아타기 (같은 노선)", en: "Change trains (same line)", zh: "换车（同一线路）", ja: "乗り換え（同じ路線）" },
   walkTo: { ko: "{station}으로 이동", en: "Walk to {station}", zh: "步行至{station}", ja: "{station}へ移動" },
+  live: { ko: "실시간", en: "Live", zh: "实时", ja: "リアルタイム" },
+  liveNone: {
+    ko: "지금 이 방향 도착 정보가 없어요",
+    en: "No live trains this way right now",
+    zh: "此方向暂无实时到站信息",
+    ja: "この方向の到着情報は現在ありません",
+  },
+  eta: { ko: "지금 출발하면 {time} 도착 예정", en: "Leave now, arrive ~{time}", zh: "现在出发约{time}到达", ja: "今出発すると{time}頃到着" },
+  etaBasis: {
+    ko: "{status} 오는 {bound} 열차 탑승 기준",
+    en: "If you board the {bound} train ({status})",
+    zh: "按乘坐{bound}列车（{status}）计算",
+    ja: "{status}の{bound}列車に乗る場合",
+  },
   wait: { ko: "평균 대기 {m} 포함", en: "incl. ~{m} average wait", zh: "含平均等候{m}", ja: "平均待ち{m}を含む" },
   sameStation: {
     ko: "출발역과 도착역이 같아요",
@@ -144,7 +169,45 @@ function StationRow({
   );
 }
 
-function LegItem({ leg, last, locale }: { leg: RouteLeg; last: boolean; locale: Locale }) {
+function LiveTrains({ trains, elapsed, locale }: { trains: Train[]; elapsed: number; locale: Locale }) {
+  return (
+    <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12px]">
+      <span className="flex items-center gap-1 font-extrabold text-[#16a34a]">
+        <span className="relative flex h-1.5 w-1.5" aria-hidden>
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e]/60" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
+        </span>
+        {t(COPY.live, locale)}
+      </span>
+      {trains.length === 0 ? (
+        <span className="font-semibold text-neutral-400">{t(COPY.liveNone, locale)}</span>
+      ) : (
+        trains.slice(0, 2).map((train) => {
+          const tags = trainTags(train, locale);
+          return (
+            <span key={train.order} className="rounded-full bg-[#eef4ff] px-2 py-0.5 font-bold text-[#1d4ed8]">
+              <span className="font-black">{trainStatus(train, elapsed, locale)}</span> · {trainBound(train, locale)}
+              {tags.length > 0 ? <span className="ml-1 font-extrabold text-[#dc2626]">{tags.join(" · ")}</span> : null}
+            </span>
+          );
+        })
+      )}
+    </p>
+  );
+}
+
+function LegItem({
+  leg,
+  last,
+  live,
+  locale,
+}: {
+  leg: RouteLeg;
+  last: boolean;
+  /** Live trains boarding this leg, for the first leg only. */
+  live: { trains: Train[]; elapsed: number } | null;
+  locale: Locale;
+}) {
   const [open, setOpen] = useState(false);
   const color = lineColor([leg.line]);
   const label = t(lineLabel(leg.line), locale);
@@ -167,6 +230,7 @@ function LegItem({ leg, last, locale }: { leg: RouteLeg; last: boolean; locale: 
             <span aria-hidden>|</span>
             <span>{fill(t(COPY.toward, locale), { station: bareName(leg.stations[1], locale) })}</span>
           </p>
+          {live ? <LiveTrains trains={live.trains} elapsed={live.elapsed} locale={locale} /> : null}
           <button
             type="button"
             onClick={() => setOpen((value) => !value)}
@@ -245,8 +309,27 @@ function TransferItem({ transfer, sameLine, locale }: { transfer: RouteTransfer;
   );
 }
 
-function RouteResult({ route, note, locale }: { route: Route; note: string | null; locale: Locale }) {
+function RouteResult({
+  route,
+  from,
+  note,
+  locale,
+}: {
+  route: Route;
+  from: StationOption;
+  note: string | null;
+  locale: Locale;
+}) {
   const stops = route.legs.reduce((sum, leg) => sum + leg.stations.length - 1, 0);
+  const first = route.legs[0];
+  const { board } = useArrivals(from.name.ko);
+  const elapsed = useElapsed(board);
+  const liveTrains = board.status === "ok" ? trainsToward(board.trains, first.line, first.stations[1]) : null;
+  const catchable = liveTrains
+    ?.map((train) => ({ train, wait: trainWait(train, elapsed) }))
+    .find((entry): entry is { train: Train; wait: number } => entry.wait !== null);
+  const arriveAt =
+    board.status === "ok" && catchable ? board.fetchedAt + (elapsed + catchable.wait + route.seconds) * 1000 : null;
   return (
     <section className="rounded-2xl border border-neutral-200/70 bg-white px-4 pb-2 pt-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
       <p className="text-[12px] font-bold text-neutral-500">{t(COPY.duration, locale)}</p>
@@ -256,6 +339,19 @@ function RouteResult({ route, note, locale }: { route: Route; note: string | nul
           ? fill(t(COPY.summary, locale), { n: route.transfers.length, s: stops })
           : fill(t(COPY.noTransfer, locale), { s: stops })}
       </p>
+      {arriveAt !== null && catchable ? (
+        <div className="mt-2 rounded-xl bg-[#ecfdf3] px-3 py-2">
+          <p className="text-[14px] font-extrabold text-[#15803d]">
+            🟢 {fill(t(COPY.eta, locale), { time: clockTime(arriveAt) })}
+          </p>
+          <p className="mt-0.5 text-[11.5px] font-semibold text-[#16a34a]">
+            {fill(t(COPY.etaBasis, locale), {
+              status: trainStatus(catchable.train, elapsed, locale),
+              bound: trainBound(catchable.train, locale),
+            })}
+          </p>
+        </div>
+      ) : null}
       {note ? <p className="mt-1.5 text-[12px] font-bold text-[#15803d]">✓ {note}</p> : null}
       <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-neutral-100" aria-hidden>
         {route.legs.map((leg, index) => (
@@ -269,7 +365,12 @@ function RouteResult({ route, note, locale }: { route: Route; note: string | nul
       <ol className="mt-4">
         {route.legs.map((leg, index) => (
           <Fragment key={`${leg.line}-${leg.stations[0]}-${index}`}>
-            <LegItem leg={leg} last={index === route.legs.length - 1} locale={locale} />
+            <LegItem
+              leg={leg}
+              last={index === route.legs.length - 1}
+              live={index === 0 && liveTrains ? { trains: liveTrains, elapsed } : null}
+              locale={locale}
+            />
             {route.transfers[index] ? (
               <TransferItem
                 transfer={route.transfers[index]}
@@ -411,8 +512,13 @@ export default function RouteScreen({
               <Message emoji="🧭" text={t(COPY.pickBoth, locale)} />
             ) : result.same ? (
               <Message emoji="📍" text={t(COPY.sameStation, locale)} />
-            ) : route ? (
-              <RouteResult route={route} note={fewestIsFastest ? t(COPY.sameAsFastest, locale) : null} locale={locale} />
+            ) : route && from ? (
+              <RouteResult
+                route={route}
+                from={from}
+                note={fewestIsFastest ? t(COPY.sameAsFastest, locale) : null}
+                locale={locale}
+              />
             ) : (
               <Message emoji="🚧" text={t(COPY.notFound, locale)} />
             )}

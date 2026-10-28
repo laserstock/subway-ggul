@@ -48,11 +48,18 @@ const MEMO_LIMIT = 500;
 
 const bare = (name: string) => name.replace(/\(.*?\)/g, "").replace(/역$/, "").trim();
 
-function toTrain(raw: RawArrival): Train | null {
+/** Beyond this the ordkey's stop count is noise (Line 2's loop trains report e.g. 38). */
+const MAX_STOPS_AWAY = 30;
+/** Arriving / arrived / departed codes; Seoul sometimes sends 1 for trains still several stops back. */
+const AT_STATION_CODES = new Set([0, 1, 2]);
+
+function toTrain(raw: RawArrival, station: string): Train | null {
   const line = LINES[raw.subwayId];
   if (!line) return null;
   const heading = bare((raw.trainLineNm.split(" - ")[1] ?? "").replace(/방면$/, ""));
   const away = Number(raw.ordkey.slice(2, 5));
+  const at = bare(raw.arvlMsg3 ?? "");
+  const code = Number(raw.arvlCd);
   return {
     line,
     direction: raw.updnLine,
@@ -60,9 +67,9 @@ function toTrain(raw: RawArrival): Train | null {
     terminal: bare(raw.bstatnNm),
     express: raw.btrainSttus && raw.btrainSttus !== "일반" ? raw.btrainSttus : null,
     seconds: Number(raw.barvlDt) || 0,
-    code: Number(raw.arvlCd),
-    stationsAway: Number.isFinite(away) ? away : null,
-    at: bare(raw.arvlMsg3 ?? ""),
+    code: AT_STATION_CODES.has(code) && at !== station ? 99 : code,
+    stationsAway: Number.isFinite(away) && away <= MAX_STOPS_AWAY ? away : null,
+    at,
     order: raw.ordkey,
     last: raw.lstcarAt === "1",
   };
@@ -87,7 +94,7 @@ async function upstream(key: string, name: string, retried = false): Promise<Tra
     return upstream(key, name, true);
   }
   if (code !== "INFO-000") throw new Error(`seoul ${code}`);
-  return (data.realtimeArrivalList ?? []).flatMap((raw) => toTrain(raw) ?? []);
+  return (data.realtimeArrivalList ?? []).flatMap((raw) => toTrain(raw, bare(name)) ?? []);
 }
 
 async function load(key: string, station: string): Promise<Payload> {

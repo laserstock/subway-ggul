@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { bareStationName } from "./arrivalTips";
-import { stationName, t, type Locale, type Localized, type StationOption } from "./stations";
+import { stationName, t, type Locale, type Localized } from "./stations";
 import { sameLine } from "./subwayLine";
 
 export type Train = {
@@ -49,9 +49,9 @@ function fetchBoard(name: string): Promise<ArrivalBoard> {
   return request;
 }
 
-/** Live arrivals for a station, refreshed every 15 s while the screen is visible. */
-export function useArrivals(station: StationOption | null): { board: ArrivalBoard; refresh: () => void } {
-  const name = station?.name.ko ?? "";
+/** Live arrivals for a station (Korean name, e.g. "장한평역"), refreshed every 15 s while the screen is visible. */
+export function useArrivals(stationName: string | null): { board: ArrivalBoard; refresh: () => void } {
+  const name = stationName ?? "";
   const [state, setState] = useState<{ name: string; board: ArrivalBoard } | null>(null);
   const [tick, setTick] = useState(0);
 
@@ -87,6 +87,31 @@ export function useArrivals(station: StationOption | null): { board: ArrivalBoar
       setTick((value) => value + 1);
     },
   };
+}
+
+const TICK_MS = 5_000;
+
+/** Seconds since the board was fetched, ticking so countdowns stay current between polls. */
+export function useElapsed(board: ArrivalBoard) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), TICK_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+  return board.status === "ok" ? Math.max(0, (now - board.fetchedAt) / 1000) : 0;
+}
+
+/** "09:05" in the device's time zone. */
+export function clockTime(ms: number) {
+  const date = new Date(ms);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+/** Seconds until the train can be boarded, or null when Seoul only gives its position. Departing trains are gone. */
+export function trainWait(train: Train, elapsed: number): number | null {
+  if (train.code === 2) return null;
+  if (train.code === 0 || train.code === 1) return 0;
+  return train.seconds > 0 ? Math.max(0, train.seconds - elapsed) : null;
 }
 
 /** Trains on `line` whose next stop is `nextStop`, soonest first. */

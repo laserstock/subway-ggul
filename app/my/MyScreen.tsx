@@ -8,7 +8,7 @@ import BottomNav from "../_components/BottomNav";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
 import { Toast, useToast } from "../_components/Toast";
 import { elevatorText, floorLabel } from "../_lib/arrivalTips";
-import { trainBound, trainStatus, trainsToward, useArrivals } from "../_lib/arrivals";
+import { trainBound, trainStatus, trainsToward, useArrivals, useElapsed } from "../_lib/arrivals";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import {
@@ -20,7 +20,6 @@ import {
   type MyRoute,
 } from "../_lib/myStations";
 import { addRecentStation } from "../_lib/recentStations";
-import { useNow } from "../_lib/reports";
 import { routeSummary, useNearestStarbucks } from "../_lib/routeTips";
 import { setDestinationStation, useDestinationStation } from "../_lib/selectedStation";
 import { stationName, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
@@ -223,8 +222,8 @@ function RouteCard({
   const summary = useMemo(() => routeSummary(from.station, to.station), [from.station, to.station]);
   const starbucks = useNearestStarbucks(to.station);
   const { route: path } = summary;
-  const { board: arrivals } = useArrivals(from.station);
-  const now = useNow();
+  const { board: arrivals } = useArrivals(from.station.name.ko);
+  const elapsed = useElapsed(arrivals);
 
   let rideLine = t(COPY.noRoute, locale);
   if (path) {
@@ -257,7 +256,6 @@ function RouteCard({
     arrivals.status === "ok" && firstLeg && nextStop
       ? trainsToward(arrivals.trains, firstLeg.line, nextStop).slice(0, 2)
       : null;
-  const elapsed = arrivals.status === "ok" && now ? Math.max(0, (now - arrivals.fetchedAt) / 1000) : 0;
   const fromName = t(from.station.name, locale);
 
   return (
