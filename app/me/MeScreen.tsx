@@ -239,8 +239,8 @@ function PostRow({
     <li className="flex items-start gap-2.5 rounded-2xl bg-surface-muted px-3 py-2.5">
       <LineIcon line={post.line} locale={locale} size="md" className="mt-0.5" />
       <Link href={`/spot?line=${encodeURIComponent(post.line)}`} className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-bold text-ink">{post.title}</p>
-        <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+        <p className="break-words text-[14px] font-bold leading-snug text-ink">{post.title}</p>
+        <p className="mt-0.5 break-words text-[11px] leading-snug text-ink-muted">
           {authorLabel(post.station, post.author)}
           {now !== null ? ` · ${formatRelativeTime(post.createdAt, now, locale)}` : ""} · 👍 {post.likes} · 💬{" "}
           {post.commentCount}
@@ -364,10 +364,10 @@ function BadgeRow({
     >
       <BadgeMedal badge={badge} size={42} locked={!unlocked} />
       <div className="min-w-0 flex-1">
-        <p className={`truncate text-[14px] font-extrabold ${unlocked ? "text-ink" : "text-ink-muted"}`}>
+        <p className={`break-words text-[14px] font-extrabold leading-snug ${unlocked ? "text-ink" : "text-ink-muted"}`}>
           {t(badge.short, locale)}
         </p>
-        <p className="mt-0.5 truncate text-[11px] font-semibold text-ink-muted">{goalText}</p>
+        <p className="mt-0.5 break-words text-[11px] font-semibold leading-snug text-ink-muted">{goalText}</p>
         {unlocked ? null : (
           <div className="mt-1.5 flex items-center gap-2">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line" aria-hidden>
@@ -462,13 +462,13 @@ export default function MeScreen() {
                 </span>
               </button>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[19px] font-extrabold tracking-tight text-ink">
+                <p className="break-words text-[19px] font-extrabold leading-tight tracking-tight text-ink">
                   {authorLabel(primary ? t(primary.name, locale) : null, profile.nickname)}
                 </p>
                 {equipped ? (
                   <p className="mt-1 flex">
                     <span
-                      className={`min-w-0 truncate rounded-full px-2 py-0.5 text-[12px] font-extrabold ${TIER_PILL[equipped.tier]}`}
+                      className={`min-w-0 break-words rounded-full px-2 py-0.5 text-[12px] font-extrabold leading-snug ${TIER_PILL[equipped.tier]}`}
                     >
                       {equipped.emoji} {t(equipped.short, locale)}
                     </span>
@@ -482,7 +482,7 @@ export default function MeScreen() {
               <p className="text-[12px] font-bold text-ink-muted">{t(COPY.nickname, locale)}</p>
               {nicknameDraft === null ? (
                 <div className="mt-1 flex items-center justify-between gap-2">
-                  <p className="truncate text-[16px] font-extrabold text-ink">{profile.nickname}</p>
+                  <p className="min-w-0 break-words text-[16px] font-extrabold text-ink">{profile.nickname}</p>
                   <button
                     type="button"
                     onClick={() => setNicknameDraft(profile.nickname)}
@@ -528,9 +528,9 @@ export default function MeScreen() {
               <p className="text-[12px] font-bold text-ink-muted">{t(COPY.homeStation, locale)}</p>
               <div className="mt-1 flex items-center justify-between gap-2">
                 {primary ? (
-                  <p className="flex min-w-0 items-center gap-1.5 text-[16px] font-extrabold text-ink">
+                  <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-[16px] font-extrabold leading-snug text-ink">
                     <LineBadges station={primary} locale={locale} size="md" />
-                    <span className="truncate">{t(primary.name, locale)}</span>
+                    <span className="min-w-0 break-words">{t(primary.name, locale)}</span>
                   </p>
                 ) : (
                   <p className="text-[14px] font-semibold text-neutral-400">{t(COPY.notSet, locale)}</p>
@@ -563,7 +563,7 @@ export default function MeScreen() {
             {stats.map((value, index) => (
               <li key={statLabels[index]} className="rounded-2xl bg-surface px-1 py-2.5 text-center ring-1 ring-line">
                 <p className="text-[18px] font-extrabold text-ink">{value}</p>
-                <p className="mt-0.5 truncate text-[11px] font-semibold text-ink-muted">{statLabels[index]}</p>
+                <p className="mt-0.5 break-words text-[11px] font-semibold leading-tight text-ink-muted">{statLabels[index]}</p>
               </li>
             ))}
           </ul>

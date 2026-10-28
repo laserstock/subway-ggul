@@ -181,7 +181,7 @@ export default function DestinationAlarm({
             <span className="whitespace-nowrap font-semibold text-gray-500">{t(COPY.from, locale)} :</span>
             {current ? (
               <span className="flex flex-wrap items-center gap-1">
-                <span className="whitespace-nowrap font-bold">{t(current.name, locale)}</span>
+                <span className="break-words font-bold">{t(current.name, locale)}</span>
                 <LineBadges station={current} locale={locale} size="chip" />
                 {currentDistance !== null ? (
                   <span
@@ -193,7 +193,7 @@ export default function DestinationAlarm({
                 ) : null}
               </span>
             ) : (
-              <span className="whitespace-nowrap text-gray-400">
+              <span className="text-gray-400">
                 {t(locating ? COPY.locating : COPY.noLocation, locale)}
               </span>
             )}
@@ -210,11 +210,11 @@ export default function DestinationAlarm({
             <span className="whitespace-nowrap text-sm font-semibold text-gray-500">{t(COPY.to, locale)} :</span>
             {destination ? (
               <span className="flex flex-wrap items-center gap-1">
-                <span className="whitespace-nowrap">{name}</span>
+                <span className="break-words">{name}</span>
                 <LineBadges station={destination} locale={locale} size="chip" />
               </span>
             ) : (
-              <span className="whitespace-nowrap text-sm font-semibold text-gray-400">{t(COPY.noDestination, locale)}</span>
+              <span className="text-sm font-semibold text-gray-400">{t(COPY.noDestination, locale)}</span>
             )}
           </button>
           <button
@@ -260,7 +260,7 @@ export default function DestinationAlarm({
           />
         </button>
       </div>
-      <p className={`mt-0.5 truncate text-xs ${on ? "font-bold text-[#15803d]" : "text-gray-500"}`}>
+      <p className={`mt-0.5 text-xs leading-snug ${on ? "font-bold text-[#15803d]" : "text-gray-500"}`}>
         {on
           ? t(isNativeApp() ? COPY.onNative : COPY.on, locale)
           : prev

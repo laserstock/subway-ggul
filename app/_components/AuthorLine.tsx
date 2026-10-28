@@ -21,8 +21,8 @@ export default function AuthorLine({
 }) {
   const equipped = badgeById(badge);
   return (
-    <span className="flex min-w-0 items-center gap-1">
-      <span className="truncate">{authorLabel(station, nickname)}</span>
+    <span className="flex min-w-0 flex-wrap items-center gap-1">
+      <span className="min-w-0 break-words">{authorLabel(station, nickname)}</span>
       <BeeAvatar id={avatar} size={avatarSize} />
       {equipped ? (
         <span

@@ -682,7 +682,7 @@ export default function UrgentScreen({
                           <span className="text-[12px] text-neutral-400" aria-hidden>
                             •
                           </span>
-                          <p className="min-w-0 flex-1 truncate text-[13px] text-neutral-800">
+                          <p className="min-w-0 flex-1 break-words text-[13px] leading-snug text-neutral-800">
                             {t(report.text, locale)}
                           </p>
                           <button

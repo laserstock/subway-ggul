@@ -120,7 +120,7 @@ export default function PlaceInfoSheet({
             {renderIcon(place)}
           </span>
           <span className="min-w-0">
-            <span className="block truncate">{place.name}</span>
+            <span className="block break-words">{place.name}</span>
             {trail ? <span className="block text-[12px] font-semibold text-ink-muted">{trail}</span> : null}
           </span>
         </span>
@@ -216,7 +216,7 @@ export default function PlaceInfoSheet({
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg">
                         {renderIcon(other)}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold text-neutral-900">{other.name}</span>
+                      <span className="min-w-0 flex-1 break-words text-[13.5px] font-bold leading-snug text-neutral-900">{other.name}</span>
                       <span className="shrink-0 text-[12px] font-semibold text-neutral-500">
                         {fill(COPY.walkShort, locale, { min: walkMinutes(otherMeters), m: otherMeters })}
                       </span>

@@ -80,7 +80,7 @@ export default function ArrivalBoard({ station, locale }: { station: StationOpti
             <li key={group.key} className="flex items-center gap-2.5 px-4 py-2.5">
               <LineIcon line={group.line} locale={locale} size="sm" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13.5px] font-extrabold text-neutral-900">
+                <span className="block break-words text-[13.5px] font-extrabold leading-snug text-neutral-900">
                   {towardLabel(group.heading, locale)}
                 </span>
                 <span className="block text-[11px] font-semibold text-neutral-400">
@@ -91,11 +91,11 @@ export default function ArrivalBoard({ station, locale }: { station: StationOpti
                 {group.trains.slice(0, TRAINS_PER_GROUP).map((train) => {
                   const tags = trainTags(train, locale);
                   return (
-                    <span key={train.order} className="w-[76px] text-right">
-                      <span className="block text-[13.5px] font-black text-[#2563eb]">
+                    <span key={train.order} className="w-[80px] break-words text-right">
+                      <span className="block text-[13.5px] font-black leading-tight text-[#2563eb]">
                         {trainStatus(train, elapsed, locale)}
                       </span>
-                      <span className="block truncate text-[10.5px] font-semibold text-neutral-500">
+                      <span className="mt-0.5 block text-[10.5px] font-semibold leading-tight text-neutral-500">
                         {tags.length > 0 ? (
                           <span className="mr-1 font-extrabold text-[#dc2626]">{tags.join(" · ")}</span>
                         ) : null}

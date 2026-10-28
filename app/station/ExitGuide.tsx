@@ -294,7 +294,7 @@ function DepartmentCard({
                   className="h-9 w-9 shrink-0 rounded-[10px] object-contain"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-extrabold text-neutral-900">{place.name}</span>
+                  <span className="block break-words text-[13.5px] font-extrabold leading-snug text-neutral-900">{place.name}</span>
                   <span className="mt-0.5 block text-[11.5px] font-semibold text-neutral-500">
                     {fill(COPY.walk, locale, walkMinutes(meters))}
                     {exit ? ` · ${fill(COPY.deptFromExit, locale, exit.label)}` : ""}
@@ -356,7 +356,7 @@ function ShopRowItem({
       <span className="min-w-0 flex-1">
         <span className="block text-[11.5px] font-bold text-neutral-500">{t(row.kind.label, locale)}</span>
         {nearest ? (
-          <span className="block truncate text-[14px] font-extrabold text-neutral-900">{nearest.name}</span>
+          <span className="block break-words text-[14px] font-extrabold leading-snug text-neutral-900">{nearest.name}</span>
         ) : (
           <span className="block text-[13px] font-semibold text-neutral-400">{t(COPY.none, locale)}</span>
         )}

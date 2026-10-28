@@ -191,7 +191,7 @@ export default function HomeScreen() {
             className="flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-muted px-3.5 py-3 text-left transition active:scale-[0.99]"
           >
             <SearchIcon />
-            <span className="min-w-0 flex-1 truncate text-[13px] text-neutral-400">{t(COPY.search, locale)}</span>
+            <span className="min-w-0 flex-1 break-words text-[13px] leading-snug text-neutral-400">{t(COPY.search, locale)}</span>
           </button>
 
           {myPlaces.length > 0 ? (

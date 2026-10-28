@@ -277,7 +277,7 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
         <span className={alarm.stage === "arrived" ? "" : "animate-pulse"} aria-hidden>
           🔔
         </span>
-        <p className="min-w-0 flex-1 truncate text-[12.5px] font-bold" role="status">
+        <p className="min-w-0 flex-1 break-words text-[12.5px] font-bold leading-snug" role="status">
           {status}
         </p>
         <button

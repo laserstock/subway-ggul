@@ -353,7 +353,7 @@ function FastTransferPanel({
           <div className="mt-4 flex items-center gap-2">
             <div className="flex w-[72px] shrink-0 flex-col items-center gap-1">
               <LineMark station={station} line={route.from} locale={locale} size="lg" />
-              <span className="max-w-full truncate text-[11px] font-bold text-neutral-600">{from}</span>
+              <span className="max-w-full break-words text-center text-[11px] font-bold leading-tight text-neutral-600">{from}</span>
             </div>
             <div className="flex flex-1 items-center pb-5" aria-hidden>
               <span
@@ -366,7 +366,7 @@ function FastTransferPanel({
             </div>
             <div className="flex w-[72px] shrink-0 flex-col items-center gap-1">
               <LineMark station={station} line={route.to} locale={locale} size="lg" />
-              <span className="max-w-full truncate text-[11px] font-bold text-neutral-600">{to}</span>
+              <span className="max-w-full break-words text-center text-[11px] font-bold leading-tight text-neutral-600">{to}</span>
             </div>
           </div>
         </div>
@@ -767,11 +767,11 @@ export default function TransferScreen({
   }
 
   const subtitle = station ? (
-    <>
+    <span className="flex flex-wrap items-center gap-1">
       <PinIcon size={14} className="shrink-0 text-honey" />
-      <span className="truncate">{t(station.name, locale)}</span>
+      <span className="min-w-0 break-words">{t(station.name, locale)}</span>
       <LineBadges station={station} locale={locale} size="xs" />
-    </>
+    </span>
   ) : undefined;
 
   return (
@@ -798,11 +798,13 @@ export default function TransferScreen({
                       active ? "bg-[#2563eb] text-white shadow-[0_2px_8px_rgba(37,99,235,0.3)]" : "text-neutral-600 active:bg-neutral-100"
                     }`}
                   >
-                    <span className="flex max-w-full items-center gap-1 text-[13px] font-extrabold">
+                    <span className="flex max-w-full items-center justify-center gap-1 text-center text-[13px] font-extrabold leading-tight">
                       <span aria-hidden>{meta.emoji}</span>
-                      <span className="truncate">{t(meta.label, locale)}</span>
+                      <span className="min-w-0 break-words">{t(meta.label, locale)}</span>
                     </span>
-                    <span className={`mt-0.5 max-w-full truncate text-[10px] font-semibold ${active ? "text-white/80" : "text-neutral-400"}`}>
+                    <span
+                      className={`mt-0.5 max-w-full break-words text-center text-[10px] font-semibold leading-tight ${active ? "text-white/80" : "text-neutral-400"}`}
+                    >
                       {t(meta.caption, locale)}
                     </span>
                   </button>

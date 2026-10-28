@@ -81,7 +81,7 @@ export default function AppHeader({
         </button>
         <div className="min-w-0">
           <h1
-            className={`truncate tracking-tight ${
+            className={`break-words leading-tight tracking-tight ${
               title ? "font-bold text-ink" : "font-extrabold text-honey-strong"
             } ${subtitle ? "text-[16px] leading-tight" : title ? "text-[18px]" : "text-[21px]"} ${
               titlePrefix ? "flex items-center gap-1.5" : ""
@@ -89,7 +89,7 @@ export default function AppHeader({
           >
             {titlePrefix}
             {titlePrefix ? (
-              <span className="truncate">{title ? t(title, locale) : m.app.name}</span>
+              <span className="min-w-0 break-words">{title ? t(title, locale) : m.app.name}</span>
             ) : title ? (
               t(title, locale)
             ) : (
@@ -97,7 +97,7 @@ export default function AppHeader({
             )}
           </h1>
           {subtitle ? (
-            <div className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-[12px] font-semibold leading-tight text-neutral-500">
+            <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 break-words text-[12px] font-semibold leading-tight text-neutral-500">
               {subtitle}
             </div>
           ) : null}

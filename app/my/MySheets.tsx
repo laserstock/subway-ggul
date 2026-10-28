@@ -60,7 +60,7 @@ function StationWithLines({ station, locale }: { station: StationOption; locale:
   return (
     <span className="inline-flex min-w-0 items-center gap-1 align-middle">
       <LineBadges station={station} locale={locale} size="sm" />
-      <span className="truncate">{t(station.name, locale)}</span>
+      <span className="min-w-0 break-words">{t(station.name, locale)}</span>
     </span>
   );
 }
@@ -139,7 +139,7 @@ function SelectedStation({
       style={{ backgroundColor: `${station.color}14`, borderColor: `${station.color}55` }}
     >
       <LineBadges station={station} locale={locale} size="md" />
-      <span className="min-w-0 flex-1 truncate text-[15px] font-extrabold text-neutral-900">
+      <span className="min-w-0 flex-1 break-words text-[15px] font-extrabold leading-snug text-neutral-900">
         {t(station.name, locale)}
       </span>
       <button
@@ -231,7 +231,7 @@ export function PlaceSheet({
               style={{ backgroundColor: item.bg, borderColor: active ? item.ring : "transparent" }}
             >
               <span aria-hidden>{item.emoji}</span>
-              <span className="truncate">{t(item.label, locale)}</span>
+              <span className="min-w-0 break-words text-center leading-tight">{t(item.label, locale)}</span>
             </button>
           );
         })}

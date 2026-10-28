@@ -391,7 +391,7 @@ function RouteCard({
             className="flex min-w-0 items-center justify-center gap-1 rounded-xl bg-surface-muted px-2 py-2 text-[12px] font-bold text-neutral-700 active:scale-95"
           >
             <LineBadges station={endpoint.station} locale={locale} size="xs" />
-            <span className="truncate">
+            <span className="min-w-0 break-words text-center leading-snug">
               {fill(t(COPY.stationInfo, locale), { station: t(endpoint.station.name, locale) })} ›
             </span>
           </button>

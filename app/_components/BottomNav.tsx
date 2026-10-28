@@ -83,7 +83,7 @@ export default function BottomNav({ active, onReselect }: { active?: NavTab; onR
             }`}
           >
             <NavIcon name={tab} active={isActive} />
-            <span className="max-w-full truncate px-1">{m.nav[tab]}</span>
+            <span className="max-w-full break-words px-1 text-center leading-tight">{m.nav[tab]}</span>
           </Link>
         );
       })}

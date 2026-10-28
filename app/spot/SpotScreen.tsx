@@ -329,13 +329,13 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
   const [onlineBefore, onlineAfter] = fill(t(COPY.online, locale), { plaza }).split("{n}");
   const subtitle =
     online !== null ? (
-      <span className="truncate">
+      <span>
         {onlineBefore}
         <b className="font-extrabold text-honey-strong">{online.toLocaleString()}</b>
         {onlineAfter}
       </span>
     ) : (
-      <span className="truncate">{t(SERVER_CONFIGURED ? COPY.connecting : COPY.offline, locale)}</span>
+      <span>{t(SERVER_CONFIGURED ? COPY.connecting : COPY.offline, locale)}</span>
     );
 
   return (
@@ -430,7 +430,7 @@ export default function SpotScreen({ initialLine }: { initialLine: string | null
                 onClick={startWriting}
                 className="flex w-full items-center rounded-2xl border border-line bg-surface px-4 py-3 text-left text-[14px] text-neutral-400 shadow-[0_2px_10px_rgba(15,23,42,0.04)] transition active:scale-[0.99]"
               >
-                <span className="min-w-0 flex-1 truncate">
+                <span className="min-w-0 flex-1 break-words leading-snug">
                   {fill(t(COPY.composer, locale), { line: t(lineLabel(line), locale) })}
                 </span>
                 <span aria-hidden>✏️</span>

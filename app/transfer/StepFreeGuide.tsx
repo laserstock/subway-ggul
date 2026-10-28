@@ -506,7 +506,7 @@ function Segmented<T extends string | number>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(option.value)}
-            className={`min-w-0 truncate rounded-lg px-2 py-2 text-[13px] font-extrabold transition active:scale-[0.97] ${
+            className={`min-w-0 break-words rounded-lg px-2 py-2 text-[13px] font-extrabold leading-tight transition active:scale-[0.97] ${
               active ? "bg-white text-ink shadow-[0_1px_4px_rgba(15,23,42,0.12)]" : "text-ink-muted"
             }`}
           >
@@ -576,7 +576,7 @@ function MapModal({ map, title, locale, onClose }: { map: StepFreeMap; title: st
       >
         <header className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-[max(12px,env(safe-area-inset-top))]">
           <LineIcon line={map.line} locale={locale} size="sm" />
-          <h2 id={titleId} className="min-w-0 flex-1 truncate text-[15px] font-extrabold">
+          <h2 id={titleId} className="min-w-0 flex-1 break-words text-[15px] font-extrabold leading-snug">
             {title}
           </h2>
           <button

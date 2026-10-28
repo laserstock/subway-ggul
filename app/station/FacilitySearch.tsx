@@ -271,8 +271,8 @@ function PlaceRow({
         className="flex items-center gap-3 px-3 py-2.5 transition active:bg-surface-muted"
       >
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5">
-            <span className="truncate text-[14px] font-extrabold text-ink">{place.name}</span>
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="min-w-0 break-words text-[14px] font-extrabold leading-snug text-ink">{place.name}</span>
             {inStation ? (
               <span className="shrink-0 rounded-md bg-[#e0f2fe] px-1.5 py-[1px] text-[10.5px] font-extrabold text-[#0369a1]">
                 {t(COPY.inStation, locale)}
@@ -288,7 +288,7 @@ function PlaceRow({
                 {fill(COPY.fromExit, locale, { n: near.exit.label })}
               </span>
             ) : null}
-            {kind ? <span className="truncate">{kind}</span> : null}
+            {kind ? <span className="min-w-0 break-words">{kind}</span> : null}
           </span>
         </span>
         <span className="flex shrink-0 items-center gap-2">

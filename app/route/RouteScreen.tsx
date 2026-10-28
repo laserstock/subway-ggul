@@ -159,11 +159,11 @@ function StationRow({
       </span>
       {station ? (
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-[16px] font-extrabold text-neutral-900">{t(station.name, locale)}</span>
+          <span className="min-w-0 break-words text-[16px] font-extrabold leading-snug text-neutral-900">{t(station.name, locale)}</span>
           <LineBadges station={station} locale={locale} size="chip" />
         </span>
       ) : (
-        <span className="truncate text-[15px] font-semibold text-neutral-400">{t(placeholder, locale)}</span>
+        <span className="min-w-0 break-words text-[15px] font-semibold leading-snug text-neutral-400">{t(placeholder, locale)}</span>
       )}
     </button>
   );
@@ -221,7 +221,7 @@ function LegItem({
           <span className="-my-0.5 w-[6px] flex-1" style={{ backgroundColor: color }} aria-hidden />
         </div>
         <div className="min-w-0 flex-1 pb-4 pt-1">
-          <p className="truncate text-[16px] font-extrabold leading-tight text-neutral-900">{placeName(leg.stations[0], locale)}</p>
+          <p className="break-words text-[16px] font-extrabold leading-tight text-neutral-900">{placeName(leg.stations[0], locale)}</p>
           <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[12px] font-semibold text-neutral-500">
             <span style={{ color }}>{label}</span>
             {leg.express ? (
@@ -274,7 +274,7 @@ function LegItem({
             {t(last ? COPY.arrive : COPY.alight, locale)}
           </span>
         </div>
-        <p className="min-w-0 truncate text-[16px] font-extrabold text-neutral-900">{placeName(leg.stations.at(-1)!, locale)}</p>
+        <p className="min-w-0 break-words text-[16px] font-extrabold leading-tight text-neutral-900">{placeName(leg.stations.at(-1)!, locale)}</p>
       </li>
     </>
   );

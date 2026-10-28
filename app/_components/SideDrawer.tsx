@@ -248,7 +248,7 @@ export default function SideDrawer({
                   v{APP_VERSION}
                 </span>
               </p>
-              <p className="mt-0.5 truncate text-[12px] text-neutral-500">{m.app.tagline}</p>
+              <p className="mt-0.5 break-words text-[12px] leading-snug text-neutral-500">{m.app.tagline}</p>
             </div>
           </div>
           <button

@@ -53,11 +53,11 @@ export default function UtilityTiles({
 }) {
   return (
     <section className={className}>
-      <h2 className="mb-2 flex items-center gap-1 text-[15px] font-extrabold tracking-tight text-neutral-900">
-        <span className="mr-0.5 shrink-0 text-[#b45309]">{t(COPY.check, locale)}</span>
+      <h2 className="mb-2 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[15px] font-extrabold leading-snug tracking-tight text-neutral-900">
+        <span className="mr-0.5 text-[#b45309]">{t(COPY.check, locale)}</span>
         {station ? (
           <>
-            <span className="min-w-0 truncate">{t(station.name, locale)}</span>
+            <span className="min-w-0 break-words">{t(station.name, locale)}</span>
             <LineBadges station={station} locale={locale} size="sm" className="shrink-0" />
           </>
         ) : null}

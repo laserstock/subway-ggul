@@ -73,12 +73,12 @@ const TILE_THEMES: Record<ActionKind, TileTheme> = {
   luggage: { accent: "#22a559", bg: "#eefaf2", art: <LuggageArt color="#22a559" /> },
 };
 
-/** "올영 · 카페 · 편의점" wraps only between items, never inside one. */
+/** "올영 · 카페 · 편의점" wraps only between items, never inside one (a single long item still breaks). */
 function SubParts({ text }: { text: string }) {
   return text.split(" · ").map((part, index) => (
     <span key={part}>
       {index > 0 ? " · " : null}
-      <span className="whitespace-nowrap">{part}</span>
+      <span className="inline-block max-w-full break-words">{part}</span>
     </span>
   ));
 }
@@ -104,9 +104,11 @@ export default function ActionTile({
     >
       <span className="h-[28px] w-[41px] shrink-0 [&_svg]:h-full [&_svg]:w-full">{theme.art}</span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14.5px] font-extrabold leading-tight tracking-tight text-ink">{title}</span>
+        <span className="block text-[14.5px] font-extrabold leading-tight tracking-tight text-ink">
+          <SubParts text={title} />
+        </span>
         <span
-          className="mt-0.5 line-clamp-2 text-[11.5px] font-bold leading-snug tracking-tight"
+          className="mt-0.5 block text-[11.5px] font-bold leading-snug tracking-tight"
           style={{ color: theme.accent }}
         >
           <SubParts text={sub} />

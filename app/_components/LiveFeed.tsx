@@ -185,7 +185,7 @@ export default function LiveFeed({
   return (
     <section className="mt-4 rounded-2xl border border-line bg-surface px-4 py-3.5 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="min-w-0 truncate text-[14px] font-extrabold text-neutral-900">
+        <h2 className="min-w-0 break-words text-[14px] font-extrabold leading-snug text-neutral-900">
           <span aria-hidden>💬 </span>
           {station ? `${t(station.name, locale)} ` : ""}
           {t(COPY.title, locale)}

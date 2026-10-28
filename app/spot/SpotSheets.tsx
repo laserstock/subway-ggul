@@ -369,7 +369,7 @@ export function CommentSheet({
       >
         <span className="flex max-w-[38%] shrink-0 items-center gap-1 rounded-full bg-honey-soft py-1 pl-1 pr-2 text-[11px] font-bold text-honey-strong">
           <BeeAvatar id={author.avatar} size={18} />
-          <span className="truncate">{authorLabel(author.station, author.nickname)}</span>
+          <span className="min-w-0 break-words">{authorLabel(author.station, author.nickname)}</span>
         </span>
         <input
           value={draft}

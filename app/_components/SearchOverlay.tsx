@@ -253,7 +253,7 @@ export default function SearchOverlay({
                       </svg>
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[16px] font-bold text-neutral-900">
+                      <span className="block break-words text-[16px] font-bold leading-snug text-neutral-900">
                         <Highlighted text={t(station.name, locale)} query={query} />
                       </span>
                       <span className="mt-1 flex items-center gap-1.5">
