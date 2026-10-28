@@ -17,6 +17,7 @@ import { setDestinationStation } from "../_lib/selectedStation";
 import { stationParams, t, type Localized, type StationOption } from "../_lib/stations";
 import { loadUrgent, type StationUrgent } from "../_lib/urgent";
 import AlarmBanner from "./AlarmBanner";
+import ArrivalBoard from "./ArrivalBoard";
 import ExitGuide from "./ExitGuide";
 import FacilitySearch from "./FacilitySearch";
 import { DASHBOARD_TITLE } from "./header";
@@ -114,6 +115,8 @@ export default function StationDashboard({ station }: { station: StationOption |
           {station ? (
             <>
               <FacilitySearch station={station} urgent={urgent} locale={locale} />
+
+              <ArrivalBoard station={station} locale={locale} />
 
               <AlarmBanner station={station} locale={locale} />
 

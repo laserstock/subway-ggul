@@ -8,6 +8,7 @@ import BottomNav from "../_components/BottomNav";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
 import { Toast, useToast } from "../_components/Toast";
 import { elevatorText, floorLabel } from "../_lib/arrivalTips";
+import { trainBound, trainStatus, trainsToward, useArrivals } from "../_lib/arrivals";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import {
@@ -19,6 +20,7 @@ import {
   type MyRoute,
 } from "../_lib/myStations";
 import { addRecentStation } from "../_lib/recentStations";
+import { useNow } from "../_lib/reports";
 import { routeSummary, useNearestStarbucks } from "../_lib/routeTips";
 import { setDestinationStation, useDestinationStation } from "../_lib/selectedStation";
 import { stationName, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
@@ -89,6 +91,18 @@ const COPY = {
     en: "Couldn't find a route on the network",
     zh: "未能根据线路找到路线",
     ja: "路線情報からルートが見つかりませんでした",
+  },
+  nextTrain: {
+    ko: "{station} 다음 열차: {times}",
+    en: "Next from {station}: {times}",
+    zh: "{station}下一班：{times}",
+    ja: "{station}の次の電車：{times}",
+  },
+  noTrain: {
+    ko: "{station}에서 이 방향 도착 정보가 지금은 없어요",
+    en: "No live trains this way from {station} right now",
+    zh: "{station}此方向暂无到站信息",
+    ja: "{station}からこの方向の到着情報は現在ありません",
   },
   routeDetail: { ko: "경로 자세히", en: "Route details", zh: "路线详情", ja: "ルート詳細" },
   toilet: {
@@ -209,6 +223,8 @@ function RouteCard({
   const summary = useMemo(() => routeSummary(from.station, to.station), [from.station, to.station]);
   const starbucks = useNearestStarbucks(to.station);
   const { route: path } = summary;
+  const { board: arrivals } = useArrivals(from.station);
+  const now = useNow();
 
   let rideLine = t(COPY.noRoute, locale);
   if (path) {
@@ -234,6 +250,15 @@ function RouteCard({
       exit: toilet.exit ? fill(t(COPY.toiletExit, locale), { n: toilet.exit }) : "",
     });
   const toName = t(to.station.name, locale);
+
+  const firstLeg = path?.legs[0] ?? null;
+  const nextStop = firstLeg?.stations[1] ?? null;
+  const nextTrains =
+    arrivals.status === "ok" && firstLeg && nextStop
+      ? trainsToward(arrivals.trains, firstLeg.line, nextStop).slice(0, 2)
+      : null;
+  const elapsed = arrivals.status === "ok" && now ? Math.max(0, (now - arrivals.fetchedAt) / 1000) : 0;
+  const fromName = t(from.station.name, locale);
 
   return (
     <li className="overflow-hidden rounded-3xl bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] ring-1 ring-neutral-200/70">
@@ -299,6 +324,23 @@ function RouteCard({
             <span className="shrink-0 text-[12px] font-bold text-[#2563eb]">{t(COPY.routeDetail, locale)} ›</span>
           </Link>
         </li>
+        {nextTrains ? (
+          <li className="flex gap-1.5">
+            <span aria-hidden>⏱</span>
+            {nextTrains.length > 0 ? (
+              <span className="font-bold text-[#2563eb]">
+                {fill(t(COPY.nextTrain, locale), {
+                  station: fromName,
+                  times: nextTrains
+                    .map((train) => `${trainStatus(train, elapsed, locale)} (${trainBound(train, locale)})`)
+                    .join(" · "),
+                })}
+              </span>
+            ) : (
+              <span className="text-neutral-400">{fill(t(COPY.noTrain, locale), { station: fromName })}</span>
+            )}
+          </li>
+        ) : null}
         {summary.elevator ? (
           <li className="flex gap-1.5">
             <span aria-hidden>🛗</span>
