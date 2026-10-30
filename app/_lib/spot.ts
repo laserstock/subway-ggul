@@ -1,6 +1,5 @@
 "use client";
 
-import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   currentUserId,
@@ -8,6 +7,7 @@ import {
   ensureUser,
   getSupabase,
   isDuplicate,
+  listenTopic,
   notifyServerError,
   onUserChange,
   TEMP_PREFIX,
@@ -29,8 +29,10 @@ export const DEFAULT_PLAZA_LINE = "2호선";
 export const SPOT_TITLE_MAX = 40;
 export const SPOT_BODY_MAX = 300;
 export const SPOT_COMMENT_MAX = 150;
-/** Comments loaded per post (newest first on the server, shown oldest first). */
+/** Comments loaded when a post is opened (newest first on the server, shown oldest first). */
 export const SPOT_COMMENTS_SHOWN = 50;
+/** Comments embedded per post in list loads, for the reply preview under each card. */
+const PREVIEW_COMMENTS = 1;
 /** Likes needed before a post shows up in the "popular" tab. */
 const POPULAR_MIN_LIKES = 5;
 
@@ -109,6 +111,8 @@ type State = {
   scrapIds: string[];
   liked: ReadonlySet<string>;
   myCommentCount: number;
+  /** Posts whose full comment list has arrived. */
+  commentsLoaded: ReadonlySet<string>;
 };
 
 const BASE_POST_COLUMNS =
@@ -125,7 +129,7 @@ function commentColumns() {
   return profileColumns ? `${BASE_COMMENT_COLUMNS}, avatar, badge` : BASE_COMMENT_COLUMNS;
 }
 
-function withComments() {
+function withPreview() {
   return `${postColumns()}, spot_comments(${commentColumns()})`;
 }
 
@@ -161,12 +165,14 @@ let state: State = {
   scrapIds: [],
   liked: new Set(),
   myCommentCount: 0,
+  commentsLoaded: new Set(),
 };
 const listeners = new Set<() => void>();
 const fetchedAt = new Map<string, number>();
+/** Posts whose full comment list (not just the preview) has been requested. */
+const commentsFetchedAt = new Map<string, number>();
 const viewed = new Set<string>();
 let ownFor: string | null = null;
-let realtimeStarted = false;
 
 function setState(patch: Partial<State>) {
   state = { ...state, ...patch };
@@ -188,14 +194,22 @@ function byNewest(ids: Iterable<string>, posts: Readonly<Record<string, PostRow>
     .sort((a, b) => Date.parse(posts[b].created_at) - Date.parse(posts[a].created_at));
 }
 
-/** Folds fetched posts (and their embedded comments) into the normalized cache. */
+function oldestFirst(rows: CommentRow[]) {
+  return [...rows].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+}
+
+/** Folds fetched posts (and their embedded preview comments) into the normalized cache. */
 function mergePosts(rows: PostWithComments[]) {
   const posts = { ...state.posts };
   const comments = { ...state.comments };
   for (const { spot_comments, ...post } of rows) {
     posts[post.id] = post;
-    if (spot_comments) {
-      comments[post.id] = [...spot_comments].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+    if (!spot_comments) continue;
+    if (commentsFetchedAt.has(post.id)) {
+      const known = new Set((comments[post.id] ?? []).map((item) => item.id));
+      comments[post.id] = oldestFirst([...(comments[post.id] ?? []), ...spot_comments.filter((item) => !known.has(item.id))]);
+    } else {
+      comments[post.id] = oldestFirst(spot_comments);
     }
   }
   return { posts, comments };
@@ -248,36 +262,20 @@ function dropComment(id: string) {
   });
 }
 
-function onPostChange(payload: RealtimePostgresChangesPayload<PostRow>) {
-  if (payload.eventType === "DELETE") {
-    if (payload.old.id) dropPost(payload.old.id);
-  } else {
-    if (payload.eventType === "UPDATE" || state.lineIds[payload.new.line]) putPost(payload.new);
-    if (myLikeCounts.has(payload.new.id) && myLikeCounts.get(payload.new.id) !== payload.new.like_count) {
-      myLikeCounts.set(payload.new.id, payload.new.like_count);
-      syncReceivedLikes();
-    }
-  }
+/** "spot:<line>" topic: posts added to or removed from a line plaza. */
+function onLineEvent(event: string, payload: Record<string, unknown>) {
+  const id = typeof payload.id === "string" ? payload.id : null;
+  if (!id) return;
+  if (event === "DELETE") dropPost(id);
+  else if (event === "INSERT" && !state.posts[id]) putPost(payload as unknown as PostRow);
 }
 
-function onCommentChange(payload: RealtimePostgresChangesPayload<CommentRow>) {
-  if (payload.eventType === "DELETE") {
-    if (payload.old.id) dropComment(payload.old.id);
-  } else if (state.posts[payload.new.post_id]) {
-    putComment(payload.new);
-  }
-}
-
-function startRealtime() {
-  if (realtimeStarted) return;
-  const supabase = getSupabase();
-  if (!supabase) return;
-  realtimeStarted = true;
-  supabase
-    .channel("spot")
-    .on<PostRow>("postgres_changes", { event: "*", schema: "public", table: "spot_posts" }, onPostChange)
-    .on<CommentRow>("postgres_changes", { event: "*", schema: "public", table: "spot_comments" }, onCommentChange)
-    .subscribe();
+/** "spot-post:<id>" topic: comments added to or removed from one post. */
+function onPostEvent(event: string, payload: Record<string, unknown>) {
+  const id = typeof payload.id === "string" ? payload.id : null;
+  if (!id) return;
+  if (event === "DELETE") dropComment(id);
+  else if (event === "INSERT" && state.posts[payload.post_id as string]) putComment(payload as unknown as CommentRow);
 }
 
 async function fetchLine(line: string) {
@@ -286,11 +284,11 @@ async function fetchLine(line: string) {
   fetchedAt.set(line, Date.now());
   const { data, error } = await supabase
     .from("spot_posts")
-    .select(withComments())
+    .select(withPreview())
     .eq("line", line)
     .order("created_at", { ascending: false })
-    .order("created_at", { ascending: false, referencedTable: "spot_comments" })
-    .limit(SPOT_COMMENTS_SHOWN, { referencedTable: "spot_comments" })
+    .order("created_at", { ascending: true, referencedTable: "spot_comments" })
+    .limit(PREVIEW_COMMENTS, { referencedTable: "spot_comments" })
     .limit(LINE_LIMIT);
   if (error) {
     fetchedAt.delete(line);
@@ -304,9 +302,42 @@ async function fetchLine(line: string) {
 }
 
 function ensureLine(line: string) {
-  startRealtime();
   const last = fetchedAt.get(line);
   if (last === undefined || Date.now() - last > REFRESH_MS) void fetchLine(line);
+}
+
+async function fetchComments(postId: string) {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  commentsFetchedAt.set(postId, Date.now());
+  const { data, error } = await supabase
+    .from("spot_comments")
+    .select(commentColumns())
+    .eq("post_id", postId)
+    .order("created_at", { ascending: false })
+    .limit(SPOT_COMMENTS_SHOWN);
+  if (error) {
+    commentsFetchedAt.delete(postId);
+    if (missingProfileColumns(error)) await fetchComments(postId);
+    return;
+  }
+  const pending = (state.comments[postId] ?? []).filter((item) => item.id.startsWith(TEMP_PREFIX));
+  const rows = data as unknown as CommentRow[];
+  const fetched = new Set(rows.map((row) => row.id));
+  // Comments that arrived live while the request was in flight aren't in the response yet.
+  const newest = rows[0] ? Date.parse(rows[0].created_at) : 0;
+  const live = (state.comments[postId] ?? []).filter(
+    (item) => !fetched.has(item.id) && !item.id.startsWith(TEMP_PREFIX) && Date.parse(item.created_at) > newest,
+  );
+  setState({
+    comments: { ...state.comments, [postId]: [...oldestFirst([...rows, ...live]), ...pending] },
+    commentsLoaded: state.commentsLoaded.has(postId) ? state.commentsLoaded : new Set(state.commentsLoaded).add(postId),
+  });
+}
+
+function ensureComments(postId: string) {
+  const last = commentsFetchedAt.get(postId);
+  if (last === undefined || Date.now() - last > REFRESH_MS) void fetchComments(postId);
 }
 
 /** Own posts, scraps, likes and comment count — reloaded whenever the device account changes. */
@@ -318,16 +349,18 @@ async function fetchOwn() {
   const [mine, scraps, likes, commentCount, likeCounts] = await Promise.all([
     supabase
       .from("spot_posts")
-      .select(withComments(), { count: "exact" })
+      .select(withPreview(), { count: "exact" })
       .eq("author_id", uid)
       .order("created_at", { ascending: false })
-      .order("created_at", { ascending: false, referencedTable: "spot_comments" })
-      .limit(SPOT_COMMENTS_SHOWN, { referencedTable: "spot_comments" })
+      .order("created_at", { ascending: true, referencedTable: "spot_comments" })
+      .limit(PREVIEW_COMMENTS, { referencedTable: "spot_comments" })
       .limit(MY_LIMIT),
     supabase
       .from("spot_scraps")
-      .select(`post_id, spot_posts(${withComments()})`)
+      .select(`post_id, spot_posts(${withPreview()})`)
       .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true, referencedTable: "spot_posts.spot_comments" })
+      .limit(PREVIEW_COMMENTS, { referencedTable: "spot_posts.spot_comments" })
       .limit(MY_LIMIT),
     supabase.from("spot_likes").select("post_id").order("created_at", { ascending: false }).limit(500),
     supabase.from("spot_comments").select("id", { count: "exact", head: true }).eq("author_id", uid),
@@ -425,12 +458,26 @@ export function useSpotPosts(line: string): SpotPost[] {
 
   useEffect(() => {
     ensureLine(line);
+    return listenTopic(`spot:${line}`, onLineEvent);
   }, [line]);
 
   return useMemo(
     () => buildPosts(snapshot, snapshot.lineIds[line] ?? NO_IDS, uid, safety),
     [snapshot, line, uid, safety],
   );
+}
+
+/** Loads a post's full comment list and keeps it live while open. Returns false until the first load lands. */
+export function useSpotComments(postId: string): boolean {
+  const snapshot = useSyncExternalStore(subscribe, readState, readState);
+
+  useEffect(() => {
+    if (postId.startsWith(TEMP_PREFIX)) return;
+    ensureComments(postId);
+    return listenTopic(`spot-post:${postId}`, onPostEvent);
+  }, [postId]);
+
+  return snapshot.commentsLoaded.has(postId);
 }
 
 export function filterSpotPosts(posts: SpotPost[], tab: SpotTab, query: string) {

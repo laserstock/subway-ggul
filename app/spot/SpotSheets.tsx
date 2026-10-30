@@ -18,6 +18,7 @@ import {
   SPOT_COMMENT_MAX,
   SPOT_COMMENTS_SHOWN,
   SPOT_TITLE_MAX,
+  useSpotComments,
   type SpotCategory,
   type SpotComment,
   type SpotPost,
@@ -36,6 +37,7 @@ const COPY = {
   postAs: { ko: "이 이름으로 올라가요", en: "Posting as", zh: "将以此身份发布", ja: "この名前で投稿されます" },
   changeProfile: { ko: "마이에서 변경", en: "Change in Me", zh: "在我的中修改", ja: "マイで変更" },
   submit: { ko: "올리기", en: "Post", zh: "发布", ja: "投稿する" },
+  submitting: { ko: "올리는 중…", en: "Posting…", zh: "发布中…", ja: "投稿中…" },
   rules: {
     ko: "글은 이 광장의 모든 이용자에게 공개돼요 · 욕설·비방·개인정보 노출 글은 숨김 처리될 수 있어요",
     en: "Posts are public to everyone in this plaza · Abusive or private-info posts may be hidden",
@@ -168,11 +170,13 @@ export function WriteSheet({
   const [category, setCategory] = useState<SpotCategory>("free");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const ready = title.trim().length > 0 && body.trim().length > 0;
 
-  function submit() {
-    if (!ready) return;
-    addSpotPost({
+  async function submit() {
+    if (!ready || submitting) return;
+    setSubmitting(true);
+    const ok = await addSpotPost({
       line,
       station: author.station,
       author: author.nickname,
@@ -182,7 +186,9 @@ export function WriteSheet({
       title: title.trim(),
       body: body.trim(),
     });
-    onPosted();
+    // On failure the error toast explains why; the draft stays so the user can retry.
+    if (ok) onPosted();
+    else setSubmitting(false);
   }
 
   return (
@@ -191,7 +197,7 @@ export function WriteSheet({
         className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5"
         onSubmit={(event) => {
           event.preventDefault();
-          submit();
+          void submit();
         }}
       >
         <p className="mt-3 text-[12px] font-bold text-ink-muted">{t(COPY.category, locale)}</p>
@@ -235,10 +241,10 @@ export function WriteSheet({
         <p className="mt-2 text-[11px] leading-relaxed text-neutral-400">{t(COPY.rules, locale)}</p>
         <button
           type="submit"
-          disabled={!ready}
+          disabled={!ready || submitting}
           className="mb-1 mt-3 w-full rounded-2xl bg-[#2b2418] py-3.5 text-[15px] font-bold text-white transition active:scale-[0.98] disabled:bg-neutral-300"
         >
-          ✏️ {t(COPY.submit, locale)}
+          ✏️ {t(submitting ? COPY.submitting : COPY.submit, locale)}
         </button>
       </form>
     </Sheet>
@@ -303,20 +309,22 @@ export function CommentSheet({
   onFlag: (request: FlagRequest) => void;
 }) {
   const [draft, setDraft] = useState("");
-  const hidden = post.commentCount > post.comments.length;
+  const loaded = useSpotComments(post.id);
+  const hidden = loaded && post.commentCount > post.comments.length;
   const translation = usePostTranslation(post.id, postTexts(post), locale);
 
-  function send() {
+  async function send() {
     const text = draft.trim();
     if (!text) return;
-    addSpotComment(post.id, {
+    setDraft("");
+    const ok = await addSpotComment(post.id, {
       station: author.station,
       author: author.nickname,
       avatar: author.avatar,
       badge: author.badge,
       text,
     });
-    setDraft("");
+    if (!ok) setDraft((current) => current || text);
   }
 
   return (
@@ -364,7 +372,7 @@ export function CommentSheet({
         className="mt-2 flex items-center gap-2 border-t border-line px-4 pt-3"
         onSubmit={(event) => {
           event.preventDefault();
-          send();
+          void send();
         }}
       >
         <span className="flex max-w-[38%] shrink-0 items-center gap-1 rounded-full bg-honey-soft py-1 pl-1 pr-2 text-[11px] font-bold text-honey-strong">

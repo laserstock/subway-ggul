@@ -1,6 +1,5 @@
 "use client";
 
-import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { type Locale } from "./i18n";
 import { recordActivity, syncActivity } from "./profile";
@@ -11,6 +10,7 @@ import {
   ensureUser,
   getSupabase,
   isDuplicate,
+  listenTopic,
   notifyServerError,
   onUserChange,
   TEMP_PREFIX,
@@ -73,7 +73,6 @@ let state: State = { byStation: {}, mine: [], confirmed: new Set(), resolved: ne
 const listeners = new Set<() => void>();
 const fetchedAt = new Map<string, number>();
 let ownFor: string | null = null;
-let realtimeStarted = false;
 let clockNow = 0;
 
 function setState(patch: Partial<State>) {
@@ -162,23 +161,11 @@ function findRow(id: string) {
   );
 }
 
-function onRealtime(payload: RealtimePostgresChangesPayload<ReportRow>) {
-  if (payload.eventType === "DELETE") {
-    if (payload.old.id) removeRow(payload.old.id);
-    return;
-  }
-  upsertRow(payload.new);
-}
-
-function startRealtime() {
-  if (realtimeStarted) return;
-  const supabase = getSupabase();
-  if (!supabase) return;
-  realtimeStarted = true;
-  supabase
-    .channel("reports")
-    .on<ReportRow>("postgres_changes", { event: "*", schema: "public", table: "reports" }, onRealtime)
-    .subscribe();
+/** "reports:<station>" topic: reports at one station added, confirmed, resolved or removed. */
+function onStationEvent(event: string, payload: Record<string, unknown>) {
+  if (typeof payload.id !== "string") return;
+  if (event === "DELETE") removeRow(payload.id);
+  else upsertRow(payload as unknown as ReportRow);
 }
 
 async function fetchStation(key: string) {
@@ -202,7 +189,6 @@ async function fetchStation(key: string) {
 }
 
 function ensureStation(key: string) {
-  startRealtime();
   const last = fetchedAt.get(key);
   if (last === undefined || Date.now() - last > REFRESH_MS) void fetchStation(key);
 }
@@ -254,7 +240,9 @@ export function useStationReports(station: StationOption | null): Report[] {
   useOwnData();
 
   useEffect(() => {
-    if (key) ensureStation(key);
+    if (!key) return;
+    ensureStation(key);
+    return listenTopic(`reports:${key}`, onStationEvent);
   }, [key]);
 
   return useMemo(() => {

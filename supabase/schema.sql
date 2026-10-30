@@ -127,7 +127,8 @@ alter table public.spot_comments drop constraint if exists spot_comments_badge_c
 alter table public.spot_comments add constraint spot_comments_badge_check
   check (badge is null or badge ~ '^[a-z][a-z0-9-]{0,23}$');
 create index if not exists spot_comments_post_idx on public.spot_comments (post_id, created_at);
-create index if not exists spot_comments_author_idx on public.spot_comments (author_id);
+drop index if exists public.spot_comments_author_idx;
+create index if not exists spot_comments_author_recent_idx on public.spot_comments (author_id, created_at desc);
 
 create table if not exists public.spot_likes (
   post_id uuid not null references public.spot_posts (id) on delete cascade,
@@ -236,6 +237,7 @@ create table if not exists public.content_flags (
   primary key (target_type, target_id, user_id)
 );
 create index if not exists content_flags_recent_idx on public.content_flags (created_at desc);
+create index if not exists content_flags_user_idx on public.content_flags (user_id, created_at desc);
 
 create or replace function public.on_content_flag() returns trigger
 language plpgsql security definer set search_path = '' as $$
@@ -264,6 +266,14 @@ create table if not exists public.feedback (
   created_at timestamptz not null default now()
 );
 create index if not exists feedback_recent_idx on public.feedback (created_at desc);
+create index if not exists feedback_user_idx on public.feedback (user_id, created_at desc);
+
+-- "My likes / scraps / votes" are read by user_id; the primary keys lead with the target id instead.
+create index if not exists report_confirmations_user_idx on public.report_confirmations (user_id, created_at desc);
+create index if not exists report_resolutions_user_idx on public.report_resolutions (user_id, created_at desc);
+create index if not exists spot_likes_user_idx on public.spot_likes (user_id, created_at desc);
+create index if not exists spot_scraps_user_idx on public.spot_scraps (user_id, created_at desc);
+create index if not exists facility_votes_user_idx on public.facility_votes (user_id, updated_at desc);
 
 -- "Delete all my data": removing the auth user cascades to every row it owns.
 create or replace function public.delete_my_account() returns void
@@ -312,6 +322,38 @@ grant execute on function public.delete_my_account() to authenticated;
 
 -- ───────────────────────── Row level security ─────────────────────────
 
+-- A policy can't count rows of its own table (Postgres raises 42P17 "infinite recursion detected in policy"),
+-- so the per-user write limits count through this security definer helper, which reads past row level security.
+create or replace function public.recent_writes(target text, span interval) returns integer
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  since timestamptz := now() - span;
+  n integer := 0;
+begin
+  if uid is null then
+    return 0;
+  end if;
+  case target
+    when 'reports' then
+      select count(*) into n from public.reports where author_id = uid and created_at > since;
+    when 'spot_posts' then
+      select count(*) into n from public.spot_posts where author_id = uid and created_at > since;
+    when 'spot_comments' then
+      select count(*) into n from public.spot_comments where author_id = uid and created_at > since;
+    when 'content_flags' then
+      select count(*) into n from public.content_flags where user_id = uid and created_at > since;
+    when 'feedback' then
+      select count(*) into n from public.feedback where user_id = uid and created_at > since;
+    else
+      raise exception 'unknown rate limit target %', target;
+  end case;
+  return n;
+end $$;
+
+revoke all on function public.recent_writes(text, interval) from public, anon;
+grant execute on function public.recent_writes(text, interval) to authenticated;
+
 alter table public.reports enable row level security;
 alter table public.report_confirmations enable row level security;
 alter table public.report_resolutions enable row level security;
@@ -331,8 +373,7 @@ drop policy if exists "post own reports, 10 per 10 min" on public.reports;
 create policy "post own reports, 10 per 10 min" on public.reports for insert to authenticated
   with check (
     author_id = (select auth.uid())
-    and (select count(*) from public.reports r
-         where r.author_id = (select auth.uid()) and r.created_at > now() - interval '10 minutes') < 10
+    and (select public.recent_writes('reports', interval '10 minutes')) < 10
   );
 drop policy if exists "delete own reports" on public.reports;
 create policy "delete own reports" on public.reports for delete to authenticated
@@ -353,8 +394,7 @@ drop policy if exists "write own posts, 5 per 10 min" on public.spot_posts;
 create policy "write own posts, 5 per 10 min" on public.spot_posts for insert to authenticated
   with check (
     author_id = (select auth.uid())
-    and (select count(*) from public.spot_posts p
-         where p.author_id = (select auth.uid()) and p.created_at > now() - interval '10 minutes') < 5
+    and (select public.recent_writes('spot_posts', interval '10 minutes')) < 5
   );
 drop policy if exists "delete own posts" on public.spot_posts;
 create policy "delete own posts" on public.spot_posts for delete to authenticated
@@ -367,8 +407,7 @@ drop policy if exists "write own comments, 20 per 10 min" on public.spot_comment
 create policy "write own comments, 20 per 10 min" on public.spot_comments for insert to authenticated
   with check (
     author_id = (select auth.uid())
-    and (select count(*) from public.spot_comments c
-         where c.author_id = (select auth.uid()) and c.created_at > now() - interval '10 minutes') < 20
+    and (select public.recent_writes('spot_comments', interval '10 minutes')) < 20
   );
 drop policy if exists "delete own comments" on public.spot_comments;
 create policy "delete own comments" on public.spot_comments for delete to authenticated
@@ -398,8 +437,7 @@ drop policy if exists "flag content, 20 per 10 min" on public.content_flags;
 create policy "flag content, 20 per 10 min" on public.content_flags for insert to authenticated
   with check (
     user_id = (select auth.uid())
-    and (select count(*) from public.content_flags f
-         where f.user_id = (select auth.uid()) and f.created_at > now() - interval '10 minutes') < 20
+    and (select public.recent_writes('content_flags', interval '10 minutes')) < 20
   );
 
 drop policy if exists "read own feedback" on public.feedback;
@@ -409,22 +447,105 @@ drop policy if exists "send feedback, 5 per 10 min" on public.feedback;
 create policy "send feedback, 5 per 10 min" on public.feedback for insert to authenticated
   with check (
     user_id = (select auth.uid())
-    and (select count(*) from public.feedback f
-         where f.user_id = (select auth.uid()) and f.created_at > now() - interval '10 minutes') < 5
+    and (select public.recent_writes('feedback', interval '10 minutes')) < 5
   );
 
 -- ───────────────────────── Realtime ─────────────────────────
+-- Triggers push changes to private broadcast topics scoped to what a client is looking at:
+--   spot:<line>          new / removed posts in one line plaza
+--   spot-post:<post id>  new / removed comments on one post
+--   reports:<station>    reports at one station (new, confirmed, resolved, removed)
+-- Postgres Changes re-checks row level security for every subscriber on every row change (including each like
+-- and view counter update), which doesn't hold up with many concurrent users.
 
+create or replace function public.broadcast_change() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare
+  topic text;
+  event text := tg_op;
+  payload jsonb;
+begin
+  if tg_op = 'UPDATE' and tg_table_name in ('spot_posts', 'spot_comments') then
+    -- Only "just got hidden by flags" goes out, as a removal.
+    if not (old.flag_count < 3 and new.flag_count >= 3) then
+      return null;
+    end if;
+    event := 'DELETE';
+  elsif tg_op = 'UPDATE' and tg_table_name = 'reports' then
+    if old.flag_count < 3 and new.flag_count >= 3 then
+      event := 'DELETE';
+    elsif new.flag_count >= 3 then
+      return null;
+    end if;
+  end if;
+
+  if tg_table_name = 'spot_posts' then
+    if event = 'DELETE' then
+      topic := 'spot:' || old.line;
+      payload := jsonb_build_object('id', old.id);
+    else
+      topic := 'spot:' || new.line;
+      payload := to_jsonb(new);
+    end if;
+  elsif tg_table_name = 'spot_comments' then
+    if event = 'DELETE' then
+      topic := 'spot-post:' || old.post_id;
+      payload := jsonb_build_object('id', old.id, 'post_id', old.post_id);
+    else
+      topic := 'spot-post:' || new.post_id;
+      payload := to_jsonb(new);
+    end if;
+  else
+    if event = 'DELETE' then
+      topic := 'reports:' || old.station_key;
+      payload := jsonb_build_object('id', old.id);
+    else
+      topic := 'reports:' || new.station_key;
+      payload := to_jsonb(new);
+    end if;
+  end if;
+
+  -- Live updates are best effort: never fail the write because of them.
+  begin
+    perform realtime.send(payload, event, topic, true);
+  exception when others then
+    raise warning 'broadcast to % failed: %', topic, sqlerrm;
+  end;
+  return null;
+end $$;
+
+revoke all on function public.broadcast_change() from public, anon, authenticated;
+
+-- "update of flag_count": like/view/comment counter updates don't fire these.
+drop trigger if exists spot_posts_broadcast on public.spot_posts;
+create trigger spot_posts_broadcast after insert or update of flag_count or delete on public.spot_posts
+  for each row execute function public.broadcast_change();
+drop trigger if exists spot_comments_broadcast on public.spot_comments;
+create trigger spot_comments_broadcast after insert or update of flag_count or delete on public.spot_comments
+  for each row execute function public.broadcast_change();
+drop trigger if exists reports_broadcast on public.reports;
+create trigger reports_broadcast after insert or update or delete on public.reports
+  for each row execute function public.broadcast_change();
+
+-- Anyone may listen on these private topics; with no insert policy, only the triggers above can send to them.
+drop policy if exists "receive app broadcasts" on realtime.messages;
+create policy "receive app broadcasts" on realtime.messages for select to anon, authenticated
+  using (
+    realtime.messages.extension = 'broadcast'
+    and split_part((select realtime.topic()), ':', 1) in ('spot', 'spot-post', 'reports')
+  );
+
+-- Earlier versions streamed these tables through Postgres Changes.
 do $$
 declare
   t text;
 begin
   foreach t in array array['reports', 'spot_posts', 'spot_comments'] loop
-    if not exists (
+    if exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
     ) then
-      execute format('alter publication supabase_realtime add table public.%I', t);
+      execute format('alter publication supabase_realtime drop table public.%I', t);
     end if;
   end loop;
 end $$;

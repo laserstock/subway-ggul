@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type RealtimeChannel, type SupabaseClient } from "@supabase/supabase-js";
 import { useSyncExternalStore } from "react";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -82,12 +82,17 @@ export function ensureUser(): Promise<string | null> {
   return signingIn;
 }
 
-export type ServerErrorKind = "offline" | "limit";
+export type ServerErrorKind = "offline" | "limit" | "failed";
 const errorListeners = new Set<(kind: ServerErrorKind) => void>();
 
-/** Postgres 42501 = row level security refused the insert, which here means the per-user rate limit. */
-export function notifyServerError(error?: { code?: string } | null) {
-  const kind: ServerErrorKind = error?.code === "42501" ? "limit" : "offline";
+/**
+ * Postgres 42501 = row level security refused the insert, which here means the per-user rate limit.
+ * No code = the request never got an answer (network down, sign-in failed).
+ */
+export function notifyServerError(error?: { code?: string; message?: string } | null) {
+  const code = error?.code;
+  const kind: ServerErrorKind = code === "42501" ? "limit" : !code || code === "offline" ? "offline" : "failed";
+  if (kind === "failed") console.error("[supabase]", code, error?.message);
   errorListeners.forEach((listener) => listener(kind));
 }
 
@@ -95,6 +100,39 @@ export function onServerError(listener: (kind: ServerErrorKind) => void) {
   errorListeners.add(listener);
   return () => {
     errorListeners.delete(listener);
+  };
+}
+
+export type TopicListener = (event: string, payload: Record<string, unknown>) => void;
+const topics = new Map<string, { channel: RealtimeChannel; listeners: Set<TopicListener> }>();
+
+/**
+ * Listens on a private broadcast topic fed by database triggers (see supabase/schema.sql), e.g. "spot:2호선".
+ * One channel per topic however many components listen; it leaves when the last one does.
+ */
+export function listenTopic(topic: string, listener: TopicListener) {
+  const supabase = getSupabase();
+  if (!supabase) return () => {};
+  let entry = topics.get(topic);
+  if (!entry) {
+    const listeners = new Set<TopicListener>();
+    const channel = supabase
+      .channel(topic, { config: { private: true } })
+      .on("broadcast", { event: "*" }, (message) => {
+        const payload = (message.payload ?? {}) as Record<string, unknown>;
+        listeners.forEach((each) => each(message.event, payload));
+      })
+      .subscribe();
+    entry = { channel, listeners };
+    topics.set(topic, entry);
+  }
+  const current = entry;
+  current.listeners.add(listener);
+  return () => {
+    current.listeners.delete(listener);
+    if (current.listeners.size > 0 || topics.get(topic) !== current) return;
+    topics.delete(topic);
+    void supabase.removeChannel(current.channel);
   };
 }
 

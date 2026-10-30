@@ -18,6 +18,12 @@ const COPY: Record<ServerErrorKind, Localized> = {
     zh: "发布太频繁了，请稍后再试",
     ja: "投稿が早すぎます。少し待ってからお試しください",
   },
+  failed: {
+    ko: "저장하지 못했어요. 잠시 후 다시 시도해 주세요",
+    en: "Couldn't save that. Please try again shortly",
+    zh: "保存失败，请稍后再试",
+    ja: "保存できませんでした。しばらくしてからお試しください",
+  },
 };
 
 /** One app-wide toast for failed writes; optimistic updates roll back on their own. */
