@@ -39,8 +39,8 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
           {
             "@context": "https://schema.org",
             "@type": "WebSite",
-            name: t(BRAND, lang),
-            alternateName: ["K-Sub", "K-SUB", "지하철꿀정보"],
+            name: "K-Sub",
+            alternateName: [t(BRAND, lang), "지하철꿀정보"],
             url: `${SITE_URL}/${lang}`,
             inLanguage: LANGUAGES[lang].htmlLang,
             publisher: { "@id": `${SITE_URL}/#organization` },
