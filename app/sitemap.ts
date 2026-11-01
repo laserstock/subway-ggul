@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { GUIDE_STATIONS } from "./_lib/guide";
+import { ALL_LINES, GUIDE_STATIONS, lineSlug } from "./_lib/guide";
 import { LOCALES } from "./_lib/i18n";
 import { GUIDE_UPDATED, guideLanguages, SITE_URL } from "./_lib/site";
 
@@ -24,6 +24,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: SITE_URL, lastModified: GUIDE_UPDATED, changeFrequency: "weekly", priority: 1 },
     ...guideEntries("", 0.9),
     ...guideEntries("/stations", 0.8),
+    ...ALL_LINES.flatMap((line) => guideEntries(`/lines/${lineSlug(line)}`, 0.8)),
     ...GUIDE_STATIONS.flatMap((station) => guideEntries(`/stations/${station.slug}`, 0.7)),
   ];
 }

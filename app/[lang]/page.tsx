@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { GUIDE_STATIONS, POPULAR_GUIDES } from "../_lib/guide";
+import { ALL_LINES, GUIDE_STATIONS, POPULAR_GUIDES } from "../_lib/guide";
 import { BRAND, COPY, tc } from "../_lib/guideCopy";
-import { isLocale, t } from "../_lib/i18n";
-import { guideAlternates, OG_LOCALES, SITE_URL } from "../_lib/site";
+import { isLocale, LANGUAGES, t } from "../_lib/i18n";
+import { APP_RELEASED, guideAlternates, OG_LOCALES, PLAY_STORE_URL, SITE_URL } from "../_lib/site";
 import GuideSearch from "./_guide/GuideSearch";
-import { AppPromo, JsonLd, searchItems, StationLink } from "./_guide/parts";
+import { AppPromo, JsonLd, LineLink, searchItems, StationLink } from "./_guide/parts";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
   const { lang } = await params;
@@ -35,13 +35,27 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
   return (
     <>
       <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          name: t(BRAND, lang),
-          url: `${SITE_URL}/${lang}`,
-          inLanguage: lang,
-        }}
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: t(BRAND, lang),
+            alternateName: ["K-Sub", "K-SUB", "지하철꿀정보"],
+            url: `${SITE_URL}/${lang}`,
+            inLanguage: LANGUAGES[lang].htmlLang,
+            publisher: { "@id": `${SITE_URL}/#organization` },
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": `${SITE_URL}/#organization`,
+            name: "K-Sub",
+            alternateName: "지하철꿀정보",
+            url: SITE_URL,
+            logo: `${SITE_URL}/icon.png`,
+            ...(APP_RELEASED ? { sameAs: [PLAY_STORE_URL] } : {}),
+          },
+        ]}
       />
       <section className="pt-2">
         <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink">{tc("homeHeading", lang)}</h1>
@@ -74,6 +88,17 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
         >
           {tc("allStations", lang)} →
         </Link>
+      </section>
+
+      <section className="mt-8" aria-labelledby="lines">
+        <h2 id="lines" className="text-[17px] font-extrabold text-ink">
+          {tc("browseLines", lang)}
+        </h2>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {ALL_LINES.map((line) => (
+            <LineLink key={line} line={line} locale={lang} />
+          ))}
+        </div>
       </section>
 
       <section className="mt-8" aria-labelledby="features">

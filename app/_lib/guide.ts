@@ -124,8 +124,13 @@ export function guideByKo(ko: string, near?: { lat: number; lng: number }) {
   );
 }
 
+/** Data tables don't always spell a line exactly as the station index does, so match on prefixes. */
+export function sameGuideLine(a: string, b: string) {
+  return a === b || a.startsWith(b) || b.startsWith(a);
+}
+
 function servesLine(station: GuideStation, line: string) {
-  return station.lines.some((own) => own === line || own.startsWith(line) || line.startsWith(own));
+  return station.lines.some((own) => sameGuideLine(own, line));
 }
 
 function networkIndex(station: GuideStation) {
@@ -214,6 +219,70 @@ export function compareLines(a: string, b: string) {
 export const ALL_LINES: readonly string[] = [...new Set(GUIDE_STATIONS.flatMap((station) => station.lines))].sort(
   compareLines,
 );
+
+/** "2호선" → "line-2", "신분당선" → "shinbundang-line": the line's URL segment. */
+export function lineSlug(line: string) {
+  return slugify(t(lineName(line), "en"));
+}
+
+const LINE_BY_SLUG = new Map(ALL_LINES.map((line) => [lineSlug(line), line]));
+
+export function guideLine(slug: string) {
+  return LINE_BY_SLUG.get(slug) ?? null;
+}
+
+/**
+ * The line's stations in running order: a depth-first walk from one end of the line, taking the
+ * shorter branch first at each fork. Stations the network doesn't place are appended at the end.
+ */
+export function lineStations(line: string): GuideStation[] {
+  const links = new Map<number, Set<number>>();
+  const link = (a: number, b: number) => links.set(a, (links.get(a) ?? new Set()).add(b));
+  for (const [service, from, to] of NETWORK_EDGES) {
+    const info = NETWORK_SERVICES[service];
+    if (!info || info.express || info.line !== line) continue;
+    link(from, to);
+    link(to, from);
+  }
+  const reach = (start: number, seen: Set<number>) => {
+    const found = new Set([start]);
+    const queue = [start];
+    for (let node = queue.shift(); node !== undefined; node = queue.shift()) {
+      for (const next of links.get(node) ?? []) {
+        if (seen.has(next) || found.has(next)) continue;
+        found.add(next);
+        queue.push(next);
+      }
+    }
+    return [...found];
+  };
+
+  const order: number[] = [];
+  const seen = new Set<number>();
+  const visit = (node: number) => {
+    seen.add(node);
+    order.push(node);
+    const forks = [...(links.get(node) ?? [])]
+      .filter((next) => !seen.has(next))
+      .map((next) => ({ next, size: reach(next, seen).length }))
+      .sort((a, b) => a.size - b.size);
+    for (const { next } of forks) if (!seen.has(next)) visit(next);
+  };
+  for (const node of links.keys()) {
+    if (seen.has(node)) continue;
+    const end = reach(reach(node, seen).at(-1)!, seen).at(-1)!;
+    visit(end);
+  }
+
+  const stations = new Map<string, GuideStation>();
+  for (const index of order) {
+    const entry = NETWORK_STATIONS[index];
+    const station = entry ? guideByKo(entry[0], { lat: entry[1], lng: entry[2] }) : null;
+    if (station?.lines.includes(line)) stations.set(station.slug, station);
+  }
+  const unplaced = GUIDE_STATIONS.filter((station) => station.lines.includes(line) && !stations.has(station.slug));
+  return [...stations.values(), ...unplaced.sort((a, b) => a.name.en.localeCompare(b.name.en))];
+}
 
 /** Popular with visitors, in the order shown on the guide home. */
 const POPULAR_KO = [

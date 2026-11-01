@@ -17,17 +17,23 @@ const notoSansKr = Noto_Sans_KR({
 
 const DESCRIPTION = "역 주변과 동선 상의 시설을 가장 빠르게 찾아보세요.";
 
+const TITLE = "지하철꿀정보 · K-Sub Seoul Subway Guide";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "지하철꿀정보",
+  title: TITLE,
   description: DESCRIPTION,
   applicationName: "지하철꿀정보",
   openGraph: {
     type: "website",
     siteName: "지하철꿀정보",
-    title: "지하철꿀정보",
+    title: TITLE,
     description: DESCRIPTION,
     locale: "ko_KR",
+  },
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+    other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined,
   },
 };
 

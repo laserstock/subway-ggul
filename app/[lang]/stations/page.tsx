@@ -5,7 +5,7 @@ import { BRAND, COPY, tc } from "../../_lib/guideCopy";
 import { isLocale, t } from "../../_lib/i18n";
 import { guideAlternates, OG_LOCALES } from "../../_lib/site";
 import GuideSearch from "../_guide/GuideSearch";
-import { AppPromo, LineChip, searchItems, StationLink } from "../_guide/parts";
+import { AppPromo, LineLink, searchItems, StationLink } from "../_guide/parts";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/stations">): Promise<Metadata> {
   const { lang } = await params;
@@ -45,7 +45,7 @@ export default async function StationDirectory({ params }: PageProps<"/[lang]/st
         return (
           <section key={line} className="mt-7" aria-label={localLine(line, lang)}>
             <h2 className="flex flex-wrap items-center gap-2">
-              <LineChip line={line} locale={lang} />
+              <LineLink line={line} locale={lang} />
               <span className="text-[12px] font-semibold text-ink-muted">
                 {tc("stationsCount", lang, { n: stations.length })}
               </span>

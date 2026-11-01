@@ -253,6 +253,38 @@ export const COPY = {
     ja: "この出口なら地上からホームまでエレベーターだけで移動できます。大きな荷物やベビーカーでも安心。",
   },
   advertisement: { ko: "광고", en: "Advertisement", zh: "广告", ja: "広告" },
+  faq: { ko: "자주 묻는 질문", en: "FAQ", zh: "常见问题", ja: "よくある質問" },
+  browseLines: { ko: "노선별로 보기", en: "Browse by line", zh: "按线路浏览", ja: "路線から探す" },
+  lineHeading: {
+    ko: "{line} 전체 역 안내",
+    en: "Seoul Subway {line}: All Stations",
+    zh: "首尔地铁{line}全部车站",
+    ja: "ソウル地下鉄{line} 全駅ガイド",
+  },
+  lineMetaTitle: {
+    ko: "{line} 역 목록: 출구·화장실·물품보관함 | 지하철꿀정보",
+    en: "Seoul Subway {line} Stations: Exits, Lockers & Restrooms | K-SUB",
+    zh: "首尔地铁{line}车站一览：出口、储物柜、洗手间 | K-Sub",
+    ja: "ソウル地下鉄{line} 駅一覧：出口・ロッカー・トイレ | K-Sub",
+  },
+  lineDescription: {
+    ko: "{line} {n}개 역을 순서대로, 출구 지도·화장실·물품보관함·엘리베이터·환승 정보와 함께 확인하세요.",
+    en: "All {n} stations on Seoul Subway {line} in order, with exit maps, restrooms, coin lockers, elevators and transfer tips for travelers.",
+    zh: "按顺序查看首尔地铁{line}全部{n}个车站，附出口地图、洗手间、投币储物柜、电梯及换乘信息。",
+    ja: "ソウル地下鉄{line}の全{n}駅を順番に。出口マップ、トイレ、コインロッカー、エレベーター、乗り換え情報付き。",
+  },
+  lineFactLockers: { ko: "보관함 있는 역 {n}", en: "{n} with lockers", zh: "{n}站有储物柜", ja: "ロッカーあり {n}駅" },
+  lineFactStepFree: { ko: "엘리베이터 출구 {n}", en: "{n} step-free", zh: "{n}站有电梯出口", ja: "エレベーター出口 {n}駅" },
+  lineFactTransfers: { ko: "환승역 {n}", en: "{n} transfer stations", zh: "换乘站{n}个", ja: "乗り換え駅 {n}" },
+  lineStations: { ko: "역 순서", en: "Stations in order", zh: "车站顺序", ja: "駅の順番" },
+  lineStationsHint: {
+    ko: "역 이름을 누르면 출구·화장실·물품보관함 정보를 볼 수 있어요. 🧳 물품보관함 · 🛗 엘리베이터 출구",
+    en: "Tap a station for its exits, restrooms and lockers. 🧳 coin lockers · 🛗 elevator exit",
+    zh: "点击站名查看出口、洗手间和储物柜信息。🧳 投币储物柜 · 🛗 电梯出口",
+    ja: "駅名をタップすると出口・トイレ・ロッカー情報を見られます。🧳 コインロッカー · 🛗 エレベーター出口",
+  },
+  lineGuide: { ko: "{line} 전체 역 →", en: "All {line} stations →", zh: "{line}全部车站 →", ja: "{line}の全駅 →" },
+  otherLines: { ko: "다른 노선", en: "Other lines", zh: "其他线路", ja: "ほかの路線" },
   dataNote: {
     ko: "자료: 서울교통공사(화장실·물품보관함·환승), 출구 위치 © OpenStreetMap 기여자(ODbL). 현장 사정과 다를 수 있어요.",
     en: "Sources: Seoul Metro (restrooms, lockers, transfers); exit locations © OpenStreetMap contributors (ODbL). Conditions on site may differ.",
@@ -307,16 +339,21 @@ function minutes(seconds: number) {
   return Math.max(1, Math.round(seconds / 60));
 }
 
-/** A few data-driven sentences, so every station page says something specific about that station. */
-export function stationSummary(station: GuideStation, detail: GuideDetail, locale: Locale): string[] {
-  const title = stationTitle(station, locale);
-  const lines = listJoin(
-    station.lines.map((line) => {
+/** "Line 2 and the Shinbundang Line" */
+function linesPhrase(lines: readonly string[], locale: Locale) {
+  return listJoin(
+    lines.map((line) => {
       const name = localLine(line, locale);
       return locale === "en" && / Line$/.test(name) && !/^Line /.test(name) ? `the ${name}` : name;
     }),
     locale,
   );
+}
+
+/** A few data-driven sentences, so every station page says something specific about that station. */
+export function stationSummary(station: GuideStation, detail: GuideDetail, locale: Locale): string[] {
+  const title = stationTitle(station, locale);
+  const lines = linesPhrase(station.lines, locale);
   const exits = detail.exits.length;
   const toilets = detail.toilets.length;
   const insideToilets = detail.toilets.filter((row) => row.gate === "inside").length;
@@ -374,6 +411,234 @@ export function stationSummary(station: GuideStation, detail: GuideDetail, local
   return out;
 }
 
+/** 로 after a vowel or ㄹ, 으로 after any other final consonant. */
+function toParticle(word: string) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (code < 0 || code > 11171) return "로";
+  const final = code % 28;
+  return final === 0 || final === 8 ? "로" : "으로";
+}
+
+export type FaqItem = { question: string; answer: string };
+
+/** Question-style answers built from the station's data; questions without data are left out. */
+export function stationFaq(station: GuideStation, detail: GuideDetail, locale: Locale): FaqItem[] {
+  const title = stationTitle(station, locale);
+  const lines = linesPhrase(station.lines, locale);
+  const nextStops = [
+    ...new Map(detail.neighbors.flatMap((group) => group.stations).map((next) => [next.slug, next])).values(),
+  ].map((next) => stationTitle(next, locale));
+  const exits = detail.exits.length;
+  const inside = detail.toilets.filter((row) => row.gate === "inside").length;
+  const outside = detail.toilets.length - inside;
+  const toiletExits = [...new Set(detail.toilets.map((row) => row.exit).filter((exit): exit is string => !!exit))].map(
+    (exit) => tc("exitLabel", locale, { n: exit }),
+  );
+  const lockerSlots = detail.lockers.reduce((sum, row) => sum + (row.slots ?? 0), 0);
+  const lockersInside = detail.lockers.filter((row) => row.insideGate).length;
+  const lockerGate =
+    lockersInside === detail.lockers.length ? "inside" : lockersInside === 0 ? "outside" : "both";
+  const desk = detail.luggageDesk ? t(detail.luggageDesk, locale) : null;
+  const elevatorExits = detail.elevators.map((row) =>
+    detail.elevators.length > 1 ? `${t(row.exit, locale)} (${localLine(row.line, locale)})` : t(row.exit, locale),
+  );
+  const walks = detail.transfers.filter((row) => row.seconds !== null);
+  const quickest = walks.length ? walks.reduce((best, row) => (row.seconds! < best.seconds! ? row : best)) : null;
+  const fastestMinutes = quickest ? minutes(quickest.seconds!) : null;
+  const slowestMinutes = walks.length ? minutes(Math.max(...walks.map((row) => row.seconds!))) : null;
+  const walkRange =
+    fastestMinutes === null ? "" : fastestMinutes === slowestMinutes ? `${fastestMinutes}` : `${fastestMinutes}–${slowestMinutes}`;
+  const [car, door = ""] = quickest?.alight.split("-") ?? [];
+  const toiletGate = inside && outside ? "both" : inside ? "inside" : "outside";
+  const quickFrom = quickest ? linesPhrase([quickest.fromLine], locale) : "";
+  const quickTo = quickest ? linesPhrase([quickest.toLine], locale) : "";
+  const quickToward = quickest ? (quickest.fromToward ? t(quickest.fromToward.name, locale) : quickest.fromTowardKo) : "";
+  const address = detail.address;
+  const out: FaqItem[] = [];
+
+  if (locale === "en") {
+    out.push({
+      question: `Which subway lines stop at ${title}?`,
+      answer: `${title} is on ${lines}.` + (nextStops.length ? ` The next stops are ${listJoin(nextStops, locale)}.` : ""),
+    });
+    if (exits)
+      out.push({
+        question: `How many exits does ${title} have?`,
+        answer: `${title} has ${exits} numbered exit${exits === 1 ? "" : "s"}. Each exit card on this page opens the exit in Google Maps and shows what's around it.`,
+      });
+    if (detail.toilets.length)
+      out.push({
+        question: `Where are the restrooms at ${title}?`,
+        answer:
+          (detail.toilets.length === 1
+            ? `There is 1 restroom, ${toiletGate} the fare gates.`
+            : toiletGate === "both"
+              ? `There are ${detail.toilets.length} restrooms: ${inside} inside and ${outside} outside the fare gates.`
+              : `There are ${detail.toilets.length} restrooms, all ${toiletGate} the fare gates.`) +
+          (toiletExits.length ? ` They're near ${listJoin(toiletExits, locale)}.` : ""),
+      });
+    if (detail.lockers.length || desk)
+      out.push({
+        question: `Are there luggage lockers at ${title}?`,
+        answer:
+          (detail.lockers.length
+            ? `Yes. There ${detail.lockers.length === 1 ? "is 1 coin locker bank" : `are ${detail.lockers.length} coin locker banks`}` +
+              (lockerSlots ? ` with about ${lockerSlots} lockers in total` : "") +
+              `, ${lockerGate === "both" ? "both inside and outside" : lockerGate} the fare gates.`
+            : "There are no coin lockers listed here.") + (desk ? ` A staffed T-Luggage desk is available: ${desk}.` : ""),
+      });
+    if (elevatorExits.length)
+      out.push({
+        question: `Does ${title} have an elevator from the street to the platform?`,
+        answer: `Yes. Use ${listJoin(elevatorExits, locale)} to go between the street and the platform by elevator, the easiest route with big luggage or a stroller.`,
+      });
+    if (quickest)
+      out.push({
+        question: `How long does it take to transfer at ${title}?`,
+        answer: `About ${walkRange} minutes on foot. For the quickest change from ${quickFrom} (toward ${quickToward}) to ${quickTo}, ride in car ${car}, door ${door}.`,
+      });
+    out.push({
+      question: `How do I tell a taxi driver to go to ${title}?`,
+      answer:
+        `Show the driver the Korean name ${station.ko}` +
+        (address ? ` or the address ${address}` : "") +
+        `. The "Show to Korean / Taxi Driver" button on this page puts it on screen in large text.`,
+    });
+  } else if (locale === "zh") {
+    out.push({
+      question: `${title}有哪些线路经过？`,
+      answer: `${title}是${lines}的车站。` + (nextStops.length ? `相邻车站为${listJoin(nextStops, locale)}。` : ""),
+    });
+    if (exits)
+      out.push({
+        question: `${title}有几个出口？`,
+        answer: `${title}共有${exits}个编号出口。点击本页的出口卡片，可在 Google 地图中查看出口位置及周边。`,
+      });
+    if (detail.toilets.length)
+      out.push({
+        question: `${title}的洗手间在哪里？`,
+        answer:
+          `共有${detail.toilets.length}处洗手间，${
+            toiletGate === "both" ? `检票口内${inside}处、检票口外${outside}处` : `位于检票口${toiletGate === "inside" ? "内" : "外"}`
+          }。` +
+          (toiletExits.length ? `位于${listJoin(toiletExits, locale)}附近。` : ""),
+      });
+    if (detail.lockers.length || desk)
+      out.push({
+        question: `${title}有行李寄存柜吗？`,
+        answer:
+          (detail.lockers.length
+            ? `有。设有${detail.lockers.length}处投币储物柜${lockerSlots ? `（共约${lockerSlots}格）` : ""}，位于检票口${
+                { inside: "内", outside: "外", both: "内外" }[lockerGate]
+              }。`
+            : "本站没有投币储物柜。") + (desk ? `另有人工 T-Luggage 柜台：${desk}。` : ""),
+      });
+    if (elevatorExits.length)
+      out.push({
+        question: `${title}有从地面直达站台的电梯吗？`,
+        answer: `有。从${listJoin(elevatorExits, locale)}可全程乘电梯往返地面与站台，携带大件行李或婴儿车最方便。`,
+      });
+    if (quickest)
+      out.push({
+        question: `在${title}换乘需要多久？`,
+        answer: `步行约${walkRange}分钟。从${quickFrom}（开往${quickToward}方向）换乘${quickTo}时，在${car}号车厢${door}号门下车最快。`,
+      });
+    out.push({
+      question: `怎么告诉出租车司机去${title}？`,
+      answer:
+        `向司机出示韩文站名“${station.ko}”` +
+        (address ? `或地址“${address}”` : "") +
+        `即可。点击本页的“出示给韩国人 / 出租车司机”按钮，会以大字显示。`,
+    });
+  } else if (locale === "ja") {
+    out.push({
+      question: `${title}には何線が通っていますか？`,
+      answer: `${title}は${lines}の駅です。` + (nextStops.length ? `隣の駅は${listJoin(nextStops, locale)}です。` : ""),
+    });
+    if (exits)
+      out.push({
+        question: `${title}の出口はいくつありますか？`,
+        answer: `${title}には番号付きの出口が${exits}か所あります。このページの出口カードから Google マップで位置と周辺を確認できます。`,
+      });
+    if (detail.toilets.length)
+      out.push({
+        question: `${title}のトイレはどこですか？`,
+        answer:
+          `トイレは${detail.toilets.length}か所（${
+            toiletGate === "both" ? `改札内${inside}・改札外${outside}` : `改札${toiletGate === "inside" ? "内" : "外"}`
+          }）です。` +
+          (toiletExits.length ? `${listJoin(toiletExits, locale)}の近くにあります。` : ""),
+      });
+    if (detail.lockers.length || desk)
+      out.push({
+        question: `${title}にコインロッカーはありますか？`,
+        answer:
+          (detail.lockers.length
+            ? `あります。コインロッカーが${detail.lockers.length}か所${lockerSlots ? `（計約${lockerSlots}個）` : ""}、改札${
+                { inside: "内", outside: "外", both: "内と改札外" }[lockerGate]
+              }にあります。`
+            : "コインロッカーはありません。") + (desk ? `有人の T-Luggage カウンターもあります：${desk}。` : ""),
+      });
+    if (elevatorExits.length)
+      out.push({
+        question: `${title}に地上からホームまでのエレベーターはありますか？`,
+        answer: `あります。${listJoin(elevatorExits, locale)}を使えば地上とホームの間をエレベーターだけで移動でき、大きな荷物やベビーカーでも安心です。`,
+      });
+    if (quickest)
+      out.push({
+        question: `${title}での乗り換えにかかる時間は？`,
+        answer: `徒歩約${walkRange}分です。${quickFrom}（${quickToward}方面）から${quickTo}へは${car}号車${door}番ドアで降りると最速です。`,
+      });
+    out.push({
+      question: `タクシーで${title}へ行くには？`,
+      answer:
+        `運転手に韓国語の駅名「${station.ko}」` +
+        (address ? `か住所「${address}」` : "") +
+        `を見せてください。このページの「韓国人・タクシー運転手に見せる」ボタンで大きく表示できます。`,
+    });
+  } else {
+    out.push({
+      question: `${title}에는 어떤 노선이 다니나요?`,
+      answer: `${title}은 ${lines} 역이에요.` + (nextStops.length ? ` 인접 역은 ${listJoin(nextStops, locale)}이에요.` : ""),
+    });
+    if (exits)
+      out.push({
+        question: `${title} 출구는 몇 개인가요?`,
+        answer: `${title} 출구는 ${exits}개예요. 출구 카드를 누르면 Google 지도에서 위치와 주변 장소를 볼 수 있어요.`,
+      });
+    if (detail.toilets.length)
+      out.push({
+        question: `${title} 화장실은 어디에 있나요?`,
+        answer:
+          `화장실은 ${detail.toilets.length}곳(${
+            toiletGate === "both" ? `개찰구 안 ${inside}곳, 밖 ${outside}곳` : `개찰구 ${toiletGate === "inside" ? "안" : "밖"}`
+          })이에요.` +
+          (toiletExits.length ? ` ${listJoin(toiletExits, locale)} 근처에 있어요.` : ""),
+      });
+    if (detail.lockers.length || desk)
+      out.push({
+        question: `${title}에 물품보관함이 있나요?`,
+        answer:
+          (detail.lockers.length
+            ? `네. 물품보관함이 개찰구 ${{ inside: "안", outside: "밖", both: "안팎" }[lockerGate]}에 ${detail.lockers.length}곳${
+                lockerSlots ? `(약 ${lockerSlots}칸)` : ""
+              } 있어요.`
+            : "물품보관함은 없어요.") + (desk ? ` 유인 T-Luggage 데스크도 있어요: ${desk}.` : ""),
+      });
+    if (elevatorExits.length)
+      out.push({
+        question: `${title}에 지상에서 승강장까지 가는 엘리베이터가 있나요?`,
+        answer: `네. ${listJoin(elevatorExits, locale)}를 이용하면 지상과 승강장 사이를 엘리베이터로만 이동할 수 있어요.`,
+      });
+    if (quickest)
+      out.push({
+        question: `${title}에서 환승하는 데 얼마나 걸리나요?`,
+        answer: `도보로 약 ${walkRange}분 걸려요. ${quickFrom}(${quickToward} 방면)에서 ${quickTo}${toParticle(quickTo)} 갈아탈 때는 ${car}-${door} 칸에서 내리면 가장 빨라요.`,
+      });
+  }
+  return out;
+}
+
 export function stationMetaTitle(station: GuideStation, locale: Locale) {
   const title = stationTitle(station, locale);
   return {
@@ -390,7 +655,9 @@ export function stationMetaDescription(station: GuideStation, detail: GuideDetai
   const exits = detail.exits.length;
   return {
     ko: `${title}(${lines}) ${exits ? `출구 ${exits}곳 위치, ` : ""}화장실, 물품보관함, 빠른환승 칸과 실시간 도착 정보를 한눈에 확인하세요.`,
-    en: `Find exits, restrooms, luggage lockers, and nearby landmarks for ${title.replace(/ Station$/i, "")} station in Seoul.`,
+    en:
+      `Find exits, restrooms, luggage lockers, and nearby landmarks for ${title.replace(/ Station$/i, "")} station in Seoul.` +
+      ` ${lines}${exits ? ` · ${exits} exit${exits === 1 ? "" : "s"}` : ""}.`,
     zh: `首尔${title}（${lines}）：${exits ? `${exits}个出口地图、` : ""}洗手间、投币储物柜、最快换乘车门及实时列车到站信息。`,
     ja: `ソウル${title}（${lines}）の${exits ? `出口${exits}か所の地図、` : ""}トイレ、コインロッカー、最速乗り換えドア、リアルタイム列車到着情報。`,
   }[locale];

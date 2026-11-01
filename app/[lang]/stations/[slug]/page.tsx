@@ -19,6 +19,7 @@ import {
 import {
   BRAND,
   floorLabel,
+  stationFaq,
   stationMetaDescription,
   stationMetaTitle,
   stationSummary,
@@ -28,7 +29,7 @@ import {
 } from "../../../_lib/guideCopy";
 import { isLocale, t, type Locale } from "../../../_lib/i18n";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
-import { AppPromo, JsonLd, LineChip, StationLink } from "../../_guide/parts";
+import { AppPromo, JsonLd, LineChip, LineLink, StationLink } from "../../_guide/parts";
 import ShowKorean from "../../_guide/ShowKorean";
 
 export function generateStaticParams() {
@@ -260,6 +261,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
   const detail = guideDetail(station);
   const title = stationTitle(station, lang);
   const url = `${SITE_URL}/${lang}/stations/${station.slug}`;
+  const faq = stationFaq(station, detail, lang);
 
   return (
     <>
@@ -292,6 +294,19 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
               { "@type": "ListItem", position: 3, name: title, item: url },
             ],
           },
+          ...(faq.length
+            ? [
+                {
+                  "@context": "https://schema.org",
+                  "@type": "FAQPage",
+                  mainEntity: faq.map((item) => ({
+                    "@type": "Question",
+                    name: item.question,
+                    acceptedAnswer: { "@type": "Answer", text: item.answer },
+                  })),
+                },
+              ]
+            : []),
         ]}
       />
 
@@ -335,7 +350,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         ) : null}
         <div className="mt-4 flex flex-wrap gap-1.5">
           {station.lines.map((line) => (
-            <LineChip key={line} line={line} locale={lang} />
+            <LineLink key={line} line={line} locale={lang} />
           ))}
         </div>
         <div className="mt-4 space-y-1.5 text-[15px] leading-relaxed text-ink">
@@ -486,6 +501,19 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
                 {stations.map((next) => (
                   <StationLink key={next.slug} station={next} locale={lang} />
                 ))}
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {faq.length ? (
+        <Section id="faq" title={tc("faq", lang)}>
+          <div className="flex flex-col gap-2">
+            {faq.map((item) => (
+              <div key={item.question} className="rounded-2xl border border-line bg-surface px-4 py-3">
+                <h3 className="text-[14px] font-bold text-ink">{item.question}</h3>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">{item.answer}</p>
               </div>
             ))}
           </div>

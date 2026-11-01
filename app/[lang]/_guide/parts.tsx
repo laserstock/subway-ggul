@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TrainMark } from "../../_components/icons";
-import { GUIDE_STATIONS, localLine, stationLineColor, type GuideStation } from "../../_lib/guide";
+import { GUIDE_STATIONS, lineSlug, localLine, stationLineColor, type GuideStation } from "../../_lib/guide";
 import { BRAND_SHORT, TAGLINE, tc } from "../../_lib/guideCopy";
 import { t, type Locale } from "../../_lib/i18n";
 import { APP_RELEASED, PLAY_STORE_URL } from "../../_lib/site";
@@ -109,6 +109,20 @@ export function LineChip({ line, locale }: { line: string; locale: Locale }) {
     >
       {localLine(line, locale)}
     </span>
+  );
+}
+
+/** A line chip that opens the line's station list. */
+export function LineLink({ line, locale }: { line: string; locale: Locale }) {
+  return (
+    <Link
+      href={`/${locale}/lines/${lineSlug(line)}`}
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold text-white transition active:scale-95"
+      style={{ backgroundColor: stationLineColor(line) }}
+    >
+      {localLine(line, locale)}
+      <span aria-hidden>›</span>
+    </Link>
   );
 }
 

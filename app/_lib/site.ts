@@ -8,7 +8,7 @@ export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com
 export const APP_RELEASED = false;
 
 /** Bump when the guide pages' data or copy change, for the sitemap's lastmod. */
-export const GUIDE_UPDATED = "2026-10-28";
+export const GUIDE_UPDATED = "2026-11-01";
 
 /** Server-rendered, crawlable station guides live under /ko, /en, /zh and /ja. */
 export function guideLocale(pathname: string | null): Locale | null {
