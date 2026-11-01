@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
+import AdSense from "../../../_components/AdSense";
 import {
   appStationHref,
   GUIDE_STATIONS,
@@ -9,6 +10,9 @@ import {
   guideStation,
   googleMapsHref,
   localLine,
+  nearbyMapsHref,
+  type GuideDetail,
+  type GuideExit,
   type GuideStation,
   type GuideTransfer,
 } from "../../../_lib/guide";
@@ -25,6 +29,7 @@ import {
 import { isLocale, t, type Locale } from "../../../_lib/i18n";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
 import { AppPromo, JsonLd, LineChip, StationLink } from "../../_guide/parts";
+import ShowKorean from "../../_guide/ShowKorean";
 
 export function generateStaticParams() {
   return GUIDE_STATIONS.map((station) => ({ slug: station.slug }));
@@ -43,12 +48,156 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/stations/[
   const { lang, station } = found;
   const title = stationMetaTitle(station, lang);
   const description = stationMetaDescription(station, guideDetail(station), lang);
+  const image = { url: `/api/og/station/${station.slug}`, width: 1200, height: 630, alt: stationTitle(station, lang) };
   return {
     title,
     description,
     alternates: guideAlternates(`/stations/${station.slug}`, lang),
-    openGraph: { type: "website", siteName: t(BRAND, lang), title, description, locale: OG_LOCALES[lang] },
+    openGraph: {
+      type: "website",
+      siteName: t(BRAND, lang),
+      title,
+      description,
+      locale: OG_LOCALES[lang],
+      url: `${SITE_URL}/${lang}/stations/${station.slug}`,
+      images: [image],
+    },
+    twitter: { card: "summary_large_image", title, description, images: [image.url] },
   };
+}
+
+const AD_SLOTS = {
+  top: process.env.NEXT_PUBLIC_ADSENSE_SLOT_STATION_TOP,
+  mid: process.env.NEXT_PUBLIC_ADSENSE_SLOT_STATION_MID,
+  bottom: process.env.NEXT_PUBLIC_ADSENSE_SLOT_STATION_BOTTOM,
+};
+
+/** Cards before the mid-list ad in the exit list. */
+const AD_AFTER_EXIT = 3;
+
+function koExitLabel(label: string) {
+  return `${label}번 출구`;
+}
+
+function UtilityChip({ href, emoji, label, value, external }: {
+  href: string | null;
+  emoji: string;
+  label: string;
+  value: string;
+  external?: boolean;
+}) {
+  const body = (
+    <>
+      <span aria-hidden className="text-[20px] leading-none">
+        {emoji}
+      </span>
+      <span className="min-w-0">
+        <span className="block break-words text-[13px] font-bold leading-snug text-ink">{label}</span>
+        <span className="mt-0.5 block break-words text-[12px] font-semibold text-honey-strong">{value}</span>
+      </span>
+    </>
+  );
+  const className =
+    "flex h-full items-start gap-2.5 rounded-2xl border border-line bg-surface px-3 py-2.5 shadow-[0_2px_8px_rgba(15,23,42,0.04)]";
+  if (!href) return <div className={className}>{body}</div>;
+  return (
+    <a
+      href={href}
+      {...(external ? { target: "_blank", rel: "noopener" } : {})}
+      className={`${className} transition active:scale-[0.98]`}
+    >
+      {body}
+    </a>
+  );
+}
+
+function UtilityChips({ station, detail, locale }: { station: GuideStation; detail: GuideDetail; locale: Locale }) {
+  const inside = detail.toilets.filter((row) => row.gate === "inside").length;
+  const outside = detail.toilets.length - inside;
+  const lockerValue = [
+    detail.lockers.length ? tc("utilLockersCount", locale, { n: detail.lockers.length }) : null,
+    detail.luggageDesk ? tc("utilLuggageDesk", locale) : null,
+  ].filter(Boolean);
+  const elevatorExits = [...new Set(detail.elevators.map((row) => t(row.exit, locale)))];
+  const wowpassQuery = encodeURIComponent(`WOWPASS ${station.name.en} Station Seoul`);
+  return (
+    <section aria-label={tc("essentials", locale)} className="mt-4 grid grid-cols-2 gap-2">
+      <UtilityChip
+        href={detail.lockers.length || detail.luggageDesk ? "#lockers" : null}
+        emoji="🧳"
+        label={tc("utilLockers", locale)}
+        value={lockerValue.length ? lockerValue.join(" · ") : tc("utilNoData", locale)}
+      />
+      <UtilityChip
+        href={detail.toilets.length ? "#restrooms" : null}
+        emoji="🚻"
+        label={tc("utilRestroom", locale)}
+        value={detail.toilets.length ? tc("utilRestroomCount", locale, { inside, outside }) : tc("utilNoData", locale)}
+      />
+      <UtilityChip
+        href={elevatorExits.length ? "#step-free" : null}
+        emoji="🛗"
+        label={tc("utilElevator", locale)}
+        value={
+          elevatorExits.length
+            ? tc("utilElevatorVia", locale, { exit: elevatorExits.slice(0, 2).join(", ") })
+            : tc("utilNoData", locale)
+        }
+      />
+      <UtilityChip
+        href={`https://www.google.com/maps/search/?api=1&query=${wowpassQuery}`}
+        external
+        emoji="💳"
+        label={tc("utilWowpass", locale)}
+        value={tc("utilFindNearby", locale)}
+      />
+    </section>
+  );
+}
+
+function ExitCard({ exit, detail, locale }: { exit: GuideExit; detail: GuideDetail; locale: Locale }) {
+  const restroom = detail.toilets.some((row) => row.exit === exit.label);
+  const elevator = detail.elevators.some((row) => row.exit.ko === koExitLabel(exit.label));
+  return (
+    <li className="flex flex-col rounded-2xl border border-line bg-surface p-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-[#f5b800] px-2 text-[17px] font-black text-neutral-900">
+          {exit.label}
+        </span>
+        <span className="text-[14px] font-bold text-ink">{tc("exitLabel", locale, { n: exit.label })}</span>
+      </div>
+      {restroom || elevator ? (
+        <p className="mt-2 flex flex-wrap gap-1 text-[11px] font-bold">
+          {restroom ? (
+            <span className="rounded-full bg-[#e7f8ee] px-2 py-0.5 text-[#15803d]">🚻 {tc("exitRestroom", locale)}</span>
+          ) : null}
+          {elevator ? (
+            <span className="rounded-full bg-[#eef4ff] px-2 py-0.5 text-[#2563eb]">🛗 {tc("exitElevator", locale)}</span>
+          ) : null}
+        </p>
+      ) : null}
+      <div className="mt-auto flex gap-1.5 pt-2.5 text-[12px] font-bold">
+        <a
+          href={googleMapsHref(exit.lat, exit.lng)}
+          target="_blank"
+          rel="noopener"
+          aria-label={`${tc("exitLabel", locale, { n: exit.label })} · ${tc("exitMap", locale)}`}
+          className="flex-1 rounded-lg bg-surface-muted px-2 py-1.5 text-center text-ink active:scale-95"
+        >
+          📍 {tc("exitMap", locale)}
+        </a>
+        <a
+          href={nearbyMapsHref(exit.lat, exit.lng)}
+          target="_blank"
+          rel="noopener"
+          aria-label={`${tc("exitLabel", locale, { n: exit.label })} · ${tc("exitNearby", locale)}`}
+          className="flex-1 rounded-lg bg-honey-soft px-2 py-1.5 text-center text-honey-strong active:scale-95"
+        >
+          {tc("exitNearby", locale)}
+        </a>
+      </div>
+    </li>
+  );
 }
 
 function Section({ id, title, hint, children }: { id: string; title: string; hint?: string; children: ReactNode }) {
@@ -169,7 +318,22 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
             {tc("koreanName", lang)}: <span lang="ko" className="font-bold text-ink">{station.name.ko}</span>
           </p>
         ) : null}
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <UtilityChips station={station} detail={detail} locale={lang} />
+        {lang !== "ko" ? (
+          <div className="mt-3">
+            <ShowKorean
+              name={station.ko}
+              exits={detail.exits.map((exit) => exit.label)}
+              copy={{
+                button: tc("showKorean", lang),
+                hint: tc("showKoreanHint", lang),
+                pickExit: tc("pickExit", lang),
+                close: tc("close", lang),
+              }}
+            />
+          </div>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-1.5">
           {station.lines.map((line) => (
             <LineChip key={line} line={line} locale={lang} />
           ))}
@@ -203,21 +367,20 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         ) : null}
       </header>
 
+      <AdSense slot={AD_SLOTS.top} layout="in-article" label={tc("advertisement", lang)} className="mt-6" />
+
       <Section id="exits" title={tc("exits", lang)} hint={detail.exits.length ? tc("exitsHint", lang) : undefined}>
         {detail.exits.length ? (
-          <ul className="flex flex-wrap gap-2">
-            {detail.exits.map((exit) => (
-              <li key={exit.label}>
-                <a
-                  href={googleMapsHref(exit.lat, exit.lng)}
-                  target="_blank"
-                  rel="noopener"
-                  aria-label={tc("exitLabel", lang, { n: exit.label })}
-                  className="flex h-11 min-w-11 items-center justify-center rounded-xl bg-[#f5b800] px-2.5 text-[16px] font-black text-neutral-900 shadow-[0_2px_6px_rgba(245,184,0,0.35)] active:scale-95"
-                >
-                  {exit.label}
-                </a>
-              </li>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {detail.exits.map((exit, index) => (
+              <Fragment key={exit.label}>
+                <ExitCard exit={exit} detail={detail} locale={lang} />
+                {index === AD_AFTER_EXIT - 1 && detail.exits.length > AD_AFTER_EXIT ? (
+                  <li className="col-span-full">
+                    <AdSense slot={AD_SLOTS.mid} layout="in-article" label={tc("advertisement", lang)} />
+                  </li>
+                ) : null}
+              </Fragment>
             ))}
           </ul>
         ) : (
@@ -275,7 +438,34 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         ) : (
           <Empty>{tc("noLockers", lang)}</Empty>
         )}
+        {detail.luggageDesk ? (
+          <p className="mt-2 rounded-2xl bg-honey-soft px-4 py-3 text-[13px] font-semibold text-ink">
+            🧳 {tc("utilLuggageDesk", lang)}: <span className="font-bold">{t(detail.luggageDesk, lang)}</span>
+          </p>
+        ) : null}
       </Section>
+
+      {detail.elevators.length ? (
+        <Section id="step-free" title={tc("stepFree", lang)} hint={tc("stepFreeHint", lang)}>
+          <ul className="flex flex-col gap-2">
+            {detail.elevators.map((row) => (
+              <li key={row.line} className="rounded-2xl border border-line bg-surface px-4 py-3">
+                <p className="flex flex-wrap items-center gap-1.5 text-[14px] font-bold text-ink">
+                  <LineChip line={row.line} locale={lang} />
+                  <span>🛗 {t(row.exit, lang)}</span>
+                </p>
+                {row.notes.length ? (
+                  <ul className="mt-1.5 space-y-0.5 text-[13px] leading-relaxed text-ink-muted">
+                    {row.notes.slice(0, 3).map((note, index) => (
+                      <li key={index}>· {t(note, lang)}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
 
       {detail.transfers.length ? (
         <Section id="transfers" title={tc("transfers", lang)} hint={tc("transfersHint", lang)}>
@@ -302,7 +492,9 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         </Section>
       ) : null}
 
-      <div className="mt-9">
+      <AdSense slot={AD_SLOTS.bottom} label={tc("advertisement", lang)} className="mt-9" />
+
+      <div className="mt-6">
         <AppPromo locale={lang} />
       </div>
 

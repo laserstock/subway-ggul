@@ -145,10 +145,10 @@ export const COPY = {
   address: { ko: "주소", en: "Address (show to a taxi driver)", zh: "地址（可出示给出租车司机）", ja: "住所（タクシーで見せる用）" },
   exits: { ko: "출구", en: "Exits", zh: "出口", ja: "出口" },
   exitsHint: {
-    ko: "출구 번호를 누르면 지도에서 위치를 볼 수 있어요.",
-    en: "Tap an exit number to open it in Google Maps.",
-    zh: "点击出口编号，在 Google 地图中查看位置。",
-    ja: "出口番号をタップすると Google マップで開きます。",
+    ko: "'지도'로 출구 위치를, '주변 장소'로 출구 앞 가게·명소를 Google 지도에서 볼 수 있어요.",
+    en: "Tap Map to open an exit in Google Maps, or What's nearby to see the shops and landmarks around it.",
+    zh: "点“地图”在 Google 地图中查看出口位置，点“周边地点”查看出口附近的商店和景点。",
+    ja: "「地図」で出口の位置、「周辺スポット」で出口周辺のお店や名所を Google マップで確認できます。",
   },
   exitLabel: { ko: "{n}번 출구", en: "Exit {n}", zh: "{n}号出口", ja: "{n}番出口" },
   noExits: {
@@ -186,6 +186,73 @@ export const COPY = {
   carDoor: { ko: "{car}-{door} 칸", en: "Car {car}, door {door}", zh: "{car}号车厢{door}号门", ja: "{car}号車{door}番ドア" },
   walk: { ko: "도보 약 {n}분", en: "About {n} min walk", zh: "步行约{n}分钟", ja: "徒歩約{n}分" },
   next: { ko: "인접 역", en: "Next stations", zh: "相邻车站", ja: "隣の駅" },
+  essentials: { ko: "여행자 필수 정보", en: "Traveler essentials", zh: "旅客必备信息", ja: "旅行者の必須情報" },
+  utilLockers: {
+    ko: "물품보관함 (T-Locker / T-Luggage)",
+    en: "Storage Locker (T-Locker / T-Luggage)",
+    zh: "行李寄存（T-Locker / T-Luggage）",
+    ja: "荷物預け（T-Locker / T-Luggage）",
+  },
+  utilLockersCount: { ko: "보관함 {n}곳", en: "Lockers ×{n}", zh: "{n}处储物柜", ja: "ロッカー{n}か所" },
+  utilLuggageDesk: { ko: "T-Luggage 데스크", en: "T-Luggage desk", zh: "T-Luggage 柜台", ja: "T-Luggage カウンター" },
+  utilRestroom: {
+    ko: "화장실 (개찰구 안/밖)",
+    en: "Restroom (Inside/Outside Gate)",
+    zh: "洗手间（检票口内/外）",
+    ja: "トイレ（改札内/改札外）",
+  },
+  utilRestroomCount: {
+    ko: "안 {inside} · 밖 {outside}",
+    en: "{inside} inside · {outside} outside",
+    zh: "内{inside} · 外{outside}",
+    ja: "改札内{inside} · 改札外{outside}",
+  },
+  utilElevator: {
+    ko: "계단 없이 / 엘리베이터",
+    en: "No-Stairs / Elevator Access",
+    zh: "无台阶 / 电梯",
+    ja: "階段なし / エレベーター",
+  },
+  utilElevatorVia: { ko: "{exit} 이용", en: "Via {exit}", zh: "经{exit}", ja: "{exit}から" },
+  utilWowpass: {
+    ko: "WOWPASS / 환전기",
+    en: "WOWPASS / Currency Exchange Machine",
+    zh: "WOWPASS / 自助换钱机",
+    ja: "WOWPASS / 両替機",
+  },
+  utilFindNearby: { ko: "주변 찾기 ↗", en: "Find nearby ↗", zh: "查找附近 ↗", ja: "近くを探す ↗" },
+  utilNoData: { ko: "데이터 준비 중", en: "No data yet", zh: "暂无数据", ja: "データ準備中" },
+  showKorean: {
+    ko: "한국인·택시 기사에게 보여주기",
+    en: "Show to Korean / Taxi Driver",
+    zh: "出示给韩国人 / 出租车司机",
+    ja: "韓国人・タクシー運転手に見せる",
+  },
+  showKoreanHint: {
+    ko: "이 화면을 그대로 보여 주세요.",
+    en: "Show this screen to a local or a taxi driver.",
+    zh: "请把这个画面出示给当地人或出租车司机。",
+    ja: "この画面を地元の人やタクシー運転手に見せてください。",
+  },
+  pickExit: { ko: "출구 선택", en: "Pick an exit", zh: "选择出口", ja: "出口を選ぶ" },
+  close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
+  exitMap: { ko: "지도", en: "Map", zh: "地图", ja: "地図" },
+  exitNearby: { ko: "주변 장소", en: "What's nearby", zh: "周边地点", ja: "周辺スポット" },
+  exitRestroom: { ko: "근처 화장실", en: "Restroom nearby", zh: "附近有洗手间", ja: "近くにトイレ" },
+  exitElevator: { ko: "엘리베이터 출구", en: "Elevator exit", zh: "电梯出口", ja: "エレベーター出口" },
+  stepFree: {
+    ko: "계단 없는 이동 (엘리베이터)",
+    en: "Step-free access (elevators)",
+    zh: "无障碍通行（电梯）",
+    ja: "段差なしルート（エレベーター）",
+  },
+  stepFreeHint: {
+    ko: "지상에서 승강장까지 엘리베이터로 이동하는 출구예요. 큰 짐이나 유모차가 있을 때 편해요.",
+    en: "Take this exit to ride elevators all the way between the street and the platform: easier with big luggage or a stroller.",
+    zh: "从这个出口可全程乘电梯往返地面与站台，携带大件行李或婴儿车更方便。",
+    ja: "この出口なら地上からホームまでエレベーターだけで移動できます。大きな荷物やベビーカーでも安心。",
+  },
+  advertisement: { ko: "광고", en: "Advertisement", zh: "广告", ja: "広告" },
   dataNote: {
     ko: "자료: 서울교통공사(화장실·물품보관함·환승), 출구 위치 © OpenStreetMap 기여자(ODbL). 현장 사정과 다를 수 있어요.",
     en: "Sources: Seoul Metro (restrooms, lockers, transfers); exit locations © OpenStreetMap contributors (ODbL). Conditions on site may differ.",
@@ -311,7 +378,7 @@ export function stationMetaTitle(station: GuideStation, locale: Locale) {
   const title = stationTitle(station, locale);
   return {
     ko: `${title} 출구·화장실·물품보관함·빠른환승 정보 | 지하철꿀정보`,
-    en: `${title} Guide: Exits, Restrooms, Lockers & Transfers | K-Sub`,
+    en: `${title} Exit Guide & Lockers | K-SUB`,
     zh: `${title}指南：出口、洗手间、储物柜、换乘 | K-Sub`,
     ja: `${title}ガイド：出口・トイレ・ロッカー・乗り換え | K-Sub`,
   }[locale];
@@ -323,7 +390,7 @@ export function stationMetaDescription(station: GuideStation, detail: GuideDetai
   const exits = detail.exits.length;
   return {
     ko: `${title}(${lines}) ${exits ? `출구 ${exits}곳 위치, ` : ""}화장실, 물품보관함, 빠른환승 칸과 실시간 도착 정보를 한눈에 확인하세요.`,
-    en: `${title} (${lines}), Seoul: ${exits ? `${exits} exits on the map, ` : ""}restrooms, coin lockers, fastest transfer doors and live train arrivals, in English.`,
+    en: `Find exits, restrooms, luggage lockers, and nearby landmarks for ${title.replace(/ Station$/i, "")} station in Seoul.`,
     zh: `首尔${title}（${lines}）：${exits ? `${exits}个出口地图、` : ""}洗手间、投币储物柜、最快换乘车门及实时列车到站信息。`,
     ja: `ソウル${title}（${lines}）の${exits ? `出口${exits}か所の地図、` : ""}トイレ、コインロッカー、最速乗り換えドア、リアルタイム列車到着情報。`,
   }[locale];

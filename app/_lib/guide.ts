@@ -1,7 +1,9 @@
 import { lineColor } from "../kakao-places";
 import { t, type Locale, type Localized } from "./i18n";
 import { lineName } from "./lineNames";
+import { LUGGAGE_DESKS } from "./luggage";
 import { STATION_EXITS } from "./stationExits";
+import { stepFreeMapsFor } from "./stepFree";
 import { STATION_INDEX, type IndexedStation } from "./stationIndex";
 import { STATION_LOCKERS, type StationLocker } from "./stationLockers";
 import { STATION_ADDRESSES, STATION_TOILETS, type StationToilet } from "./stationToilets";
@@ -34,6 +36,9 @@ export type GuideTransfer = {
 
 export type GuideNeighbors = { line: string; stations: GuideStation[] }[];
 
+/** Street-to-platform elevator route on one line, from Seoul Metro station maps. */
+export type GuideElevator = { line: string; exit: Localized; notes: Localized[] };
+
 export type GuideDetail = {
   exits: GuideExit[];
   toilets: StationToilet[];
@@ -41,6 +46,9 @@ export type GuideDetail = {
   transfers: GuideTransfer[];
   neighbors: GuideNeighbors;
   address: string | null;
+  elevators: GuideElevator[];
+  /** Where the staffed T-Luggage desk is, when this station has one. */
+  luggageDesk: Localized | null;
 };
 
 /** Exits further than this from the station point belong to a same-named station elsewhere. */
@@ -174,6 +182,9 @@ export function guideDetail(station: GuideStation): GuideDetail {
       toTowardKo: toToward,
       seconds,
     }));
+  const elevators = stepFreeMapsFor(station.ko)
+    .filter((map) => servesLine(station, map.line))
+    .map((map) => ({ line: map.line, exit: map.exit, notes: map.notes.map((note) => note.text) }));
   return {
     exits,
     toilets,
@@ -181,6 +192,8 @@ export function guideDetail(station: GuideStation): GuideDetail {
     transfers,
     neighbors: neighbors(station),
     address: STATION_ADDRESSES[station.ko]?.road[0] ?? null,
+    elevators,
+    luggageDesk: LUGGAGE_DESKS.find((desk) => desk.station === station.ko && servesLine(station, desk.line))?.where ?? null,
   };
 }
 
@@ -236,4 +249,9 @@ export function appStationHref(station: GuideStation, locale: Locale) {
 
 export function googleMapsHref(lat: number, lng: number) {
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+}
+
+/** Google Maps zoomed in on a spot, showing the shops and landmarks around it. */
+export function nearbyMapsHref(lat: number, lng: number) {
+  return `https://www.google.com/maps/@?api=1&map_action=map&center=${lat},${lng}&zoom=18`;
 }

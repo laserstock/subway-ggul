@@ -18,7 +18,11 @@ const BY_LINE = [LINE1_MAPS, LINE2_MAPS, LINE3_MAPS, LINE4_MAPS, LINE5_MAPS, LIN
 
 /** Every line with a step-free guide at this station, in line order. */
 export function stepFreeMaps(station: StationOption): StepFreeMap[] {
-  const key = stationKey(station);
+  return stepFreeMapsFor(stationKey(station));
+}
+
+/** Same, by the Korean station name with 역 (e.g. "강남역"). */
+export function stepFreeMapsFor(key: string): StepFreeMap[] {
   return BY_LINE.flatMap((maps) => maps[key] ?? []);
 }
 
