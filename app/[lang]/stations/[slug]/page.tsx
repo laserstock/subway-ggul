@@ -23,6 +23,7 @@ import {
   stationFaq,
   stationMetaDescription,
   stationMetaTitle,
+  stationOgTitle,
   stationSummary,
   stationTitle,
   tc,
@@ -52,8 +53,10 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/stations/[
   const found = await resolve(params);
   if (!found) return {};
   const { lang, station } = found;
-  const title = stationMetaTitle(station, lang);
-  const description = stationMetaDescription(station, guideDetail(station), lang);
+  const detail = guideDetail(station);
+  const title = stationMetaTitle(station, detail, lang);
+  const description = stationMetaDescription(station, detail, lang);
+  const ogTitle = stationOgTitle(station, lang);
   const image = {
     url: ogImagePath(station, lang),
     width: 1200,
@@ -67,13 +70,13 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/stations/[
     openGraph: {
       type: "website",
       siteName: t(BRAND, lang),
-      title,
+      title: ogTitle,
       description,
       locale: OG_LOCALES[lang],
       url: `${SITE_URL}/${lang}/stations/${station.slug}`,
       images: [image],
     },
-    twitter: { card: "summary_large_image", title, description, images: [image.url] },
+    twitter: { card: "summary_large_image", title: ogTitle, description, images: [image] },
   };
 }
 
@@ -294,7 +297,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
-              { "@type": "ListItem", position: 1, name: t(BRAND, lang), item: `${SITE_URL}/${lang}` },
+              { "@type": "ListItem", position: 1, name: tc("breadcrumbHome", lang), item: `${SITE_URL}/${lang}` },
               {
                 "@type": "ListItem",
                 position: 2,
