@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { TrainMark } from "../../_components/icons";
+import LanguageSelector from "../../_components/LanguageSelector";
 import { GUIDE_STATIONS, lineSlug, localLine, stationLineColor, type GuideStation } from "../../_lib/guide";
 import { BRAND_SHORT, TAGLINE, tc } from "../../_lib/guideCopy";
 import { t, type Locale } from "../../_lib/i18n";
 import { APP_RELEASED, PLAY_STORE_URL } from "../../_lib/site";
 import type { GuideSearchItem } from "./GuideSearch";
-import LanguageSwitcher from "./LanguageSwitcher";
 import { normalizeQuery } from "./searchKeys";
 
 export function GuideHeader({ locale }: { locale: Locale }) {
@@ -23,7 +23,7 @@ export function GuideHeader({ locale }: { locale: Locale }) {
             <span className="block break-words text-[11px] font-semibold text-ink-muted">{t(TAGLINE, locale)}</span>
           </span>
         </Link>
-        <LanguageSwitcher current={locale} label={tc("language", locale)} />
+        <LanguageSelector current={locale} label={tc("language", locale)} />
       </div>
     </header>
   );

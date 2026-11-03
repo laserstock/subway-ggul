@@ -22,7 +22,13 @@ function guideEntries(path: string, priority: number): MetadataRoute.Sitemap {
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
-    { url: SITE_URL, lastModified: GUIDE_UPDATED, changeFrequency: "weekly", priority: 1 },
+    {
+      url: SITE_URL,
+      lastModified: GUIDE_UPDATED,
+      changeFrequency: "weekly",
+      priority: 1,
+      alternates: { languages: absolute(guideLanguages("")) },
+    },
     ...guideEntries("", 0.9),
     ...guideEntries("/stations", 0.8),
     ...ALL_LINES.flatMap((line) => guideEntries(`/lines/${lineSlug(line)}`, 0.8)),

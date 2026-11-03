@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { LOCALE_STORAGE_KEY as STORAGE_KEY } from "./bootScript";
-import { DEFAULT_LOCALE, LANGUAGES, LOCALES, isLocale, type Locale } from "./i18n";
+import { DEFAULT_LOCALE, LANGUAGES, LOCALE_COOKIE, LOCALES, isLocale, type Locale } from "./i18n";
 import { getMessages, type Messages } from "./messages";
 import { guideLocale } from "./site";
 
@@ -18,6 +18,11 @@ function browserLocale(): Locale {
   return "en";
 }
 
+function remember(locale: Locale) {
+  window.localStorage.setItem(STORAGE_KEY, locale);
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
+}
+
 /**
  * ?lang= (links from the /en, /zh, /ja guides) is remembered; otherwise first-time visitors get their
  * browser's language. Crawlers keep Korean so the server-rendered home page stays the Korean one.
@@ -26,7 +31,7 @@ function initialLocale(): Locale {
   try {
     const fromUrl = new URLSearchParams(window.location.search).get("lang");
     if (isLocale(fromUrl)) {
-      window.localStorage.setItem(STORAGE_KEY, fromUrl);
+      remember(fromUrl);
       return fromUrl;
     }
     if (BOT_AGENT.test(navigator.userAgent)) return DEFAULT_LOCALE;
@@ -63,7 +68,7 @@ function subscribe(listener: () => void) {
 export function setLocale(next: Locale) {
   fallback = next;
   try {
-    window.localStorage.setItem(STORAGE_KEY, next);
+    remember(next);
   } catch {}
   document.documentElement.lang = LANGUAGES[next].htmlLang;
   listeners.forEach((listener) => listener());

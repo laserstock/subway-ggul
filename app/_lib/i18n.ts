@@ -1,6 +1,8 @@
 export const LOCALES = ["ko", "en", "zh", "ja"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "ko";
+/** Set once a visitor has a language (detected or chosen), so `/` stops redirecting by browser language. */
+export const LOCALE_COOKIE = "ksub-locale";
 
 /**
  * ko/en are required; other locales are optional and fall back to en, so a new

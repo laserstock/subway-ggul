@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { JsonLd } from "./[lang]/_guide/parts";
 import HomeScreen from "./_components/HomeScreen";
-import { SITE_URL } from "./_lib/site";
+import { guideLanguages, SITE_URL } from "./_lib/site";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/", languages: guideLanguages("") },
+};
 
 /** Google takes a domain's site name from the WebSite data on its home page. */
 const SITE_NAME = {

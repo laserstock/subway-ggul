@@ -16,10 +16,15 @@ export function guideLocale(pathname: string | null): Locale | null {
   return (LOCALES as readonly string[]).includes(first ?? "") ? (first as Locale) : null;
 }
 
+/** Same page in another language; the Korean home is the site root rather than the /ko guide. */
+export function localePath(code: Locale, path: string) {
+  return code === "ko" && !path ? "/" : `/${code}${path}`;
+}
+
 /** hreflang links between the same guide page in every language; English is the fallback. */
 export function guideLanguages(path: string) {
   return {
-    ...Object.fromEntries(LOCALES.map((code) => [LANGUAGES[code].htmlLang, `/${code}${path}`])),
+    ...Object.fromEntries(LOCALES.map((code) => [LANGUAGES[code].htmlLang, localePath(code, path)])),
     "x-default": `/en${path}`,
   };
 }
