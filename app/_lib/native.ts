@@ -57,6 +57,11 @@ export type NativeAlarmConfig = {
   target: { lat: number; lng: number };
   /** The stops right before the destination; reaching one fires its approach alert. */
   approach: { lat: number; lng: number; title: string; body: string }[];
+  /**
+   * Stops on the way in riding order, each with the seconds until the stop before the destination.
+   * Seeing one starts a countdown that fires the approach alert even if GPS loses the train.
+   */
+  route: { lat: number; lng: number; seconds: number }[];
   texts: {
     trackingTitle: string;
     trackingBody: string;

@@ -13,7 +13,7 @@ import { clearSelectedStation, setDestinationStation } from "../_lib/selectedSta
 import { HomeIcon, TrainLogo } from "./icons";
 import ThemePicker from "./ThemePicker";
 
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.0.1";
 
 type DrawerView = "menu" | "notices" | "myReports" | "feedback";
 type ShareStatus = "copied" | "failed" | null;

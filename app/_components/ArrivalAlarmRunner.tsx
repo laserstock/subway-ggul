@@ -5,6 +5,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
   cancelArrivalAlarm,
   sendArrivalAlert,
+  showPausedNotice,
   updateArrivalAlarm,
   useArrivalAlarm,
   type ArrivalAlarm,
@@ -59,6 +60,18 @@ const COPY = {
     ja: "まもなく{station} · 降りる準備を",
   },
   arrived: { ko: "{station} 도착 · 알림 끝", en: "Arrived at {station}", zh: "已到达{station}", ja: "{station}に到着" },
+  pausedTitle: {
+    ko: "하차 알림이 멈췄어요",
+    en: "Arrival alert paused",
+    zh: "下车提醒已暂停",
+    ja: "降車通知が止まっています",
+  },
+  pausedBody: {
+    ko: "브라우저는 화면을 벗어나면 위치를 볼 수 없어요. 이 화면으로 돌아오면 {station} 알림을 이어서 해요",
+    en: "Browsers can't track location in the background. Come back to this page to keep the {station} alert going",
+    zh: "浏览器在后台无法定位。返回本页即可继续{station}的下车提醒",
+    ja: "ブラウザはバックグラウンドで位置を取得できません。このページに戻ると{station}の通知を再開します",
+  },
   cancel: { ko: "취소", en: "Cancel", zh: "取消", ja: "取消" },
   close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
   ok: { ko: "확인", en: "OK", zh: "确定", ja: "OK" },
@@ -106,6 +119,7 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
   const [message, setMessage] = useState<AlarmMessage | null>(null);
   const [neighbors, setNeighbors] = useState<KakaoStation[] | null>(null);
   const [nativeDenied, setNativeDenied] = useState(false);
+  const [route, setRoute] = useState<NativeAlarmConfig["route"]>([]);
   const alarmRef = useRef(alarm);
   const neighborsRef = useRef<Set<string>>(new Set());
 
@@ -149,6 +163,7 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
       armedAt,
       target: station.center,
       approach: neighbors.map((neighbor) => ({ ...neighbor.center, ...approachMessage(station, neighbor.name, locale) })),
+      route,
       texts: {
         trackingTitle,
         trackingBody,
@@ -173,7 +188,7 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     return () => {
       alive = false;
     };
-  }, [nativeAlarm, neighbors, arrived, armedAt, station, locale, trackingTitle, trackingBody]);
+  }, [nativeAlarm, neighbors, route, arrived, armedAt, station, locale, trackingTitle, trackingBody]);
 
   // Catches up with what the native service did while the app was in the background or closed.
   useEffect(() => {
@@ -229,6 +244,36 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
   useEffect(() => {
     if (alarm.stage === "arrived") stopTracking();
   }, [alarm.stage]);
+
+  // The route from where the rider is now lets the native alarm time the approach alert underground.
+  const originKey = tracker.nearest?.key ?? null;
+  const routeSeqRef = useRef(0);
+  const planRoute = useEffectEvent(() => {
+    const origin = tracker.nearest;
+    if (!nativeAlarm || !origin || origin.key === station.key) return;
+    const seq = ++routeSeqRef.current;
+    void import("../_lib/alarmRoute").then(({ alarmRoute }) => {
+      if (seq === routeSeqRef.current) setRoute(alarmRoute(origin, station));
+    });
+  });
+  useEffect(() => {
+    planRoute();
+  }, [originKey]);
+
+  // A browser stops tracking once the page is hidden, so the rider is told right away.
+  const stage = alarm.stage;
+  useEffect(() => {
+    if (native || stage === "arrived") return;
+    const paused = { title: t(COPY.pausedTitle, locale), body: t(COPY.pausedBody, locale).replace("{station}", name) };
+    function onVisibility() {
+      void showPausedNotice(document.visibilityState === "hidden" ? paused : null);
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      void showPausedNotice(null);
+    };
+  }, [native, stage, locale, name]);
 
   function dismiss() {
     setMessage(null);

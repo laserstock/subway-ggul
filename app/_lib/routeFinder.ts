@@ -7,6 +7,8 @@ export type RouteLeg = {
   express: boolean;
   /** Korean station names from boarding to alighting, both included. */
   stations: string[];
+  /** Network ids of `stations`, in the same order. */
+  stationIds: number[];
   seconds: number;
 };
 
@@ -201,6 +203,11 @@ export function networkStationName(id: number) {
   return stationName(id);
 }
 
+export function networkStationPoint(id: number) {
+  const station = NETWORK_STATIONS[id];
+  return station ? { lat: station[1], lng: station[2] } : null;
+}
+
 type Label = {
   state: string;
   service: number;
@@ -385,12 +392,13 @@ function buildRoute(end: Label): Route {
         });
       }
       const { line, express } = NETWORK_SERVICES[label.service];
-      leg = { line, express, stations: [stationName(label.station)], seconds: 0 };
+      leg = { line, express, stations: [stationName(label.station)], stationIds: [label.station], seconds: 0 };
       legStart = label.time;
       continue;
     }
     if (leg) {
       leg.stations.push(stationName(label.station));
+      leg.stationIds.push(label.station);
       leg.seconds = label.time - legStart;
     }
   }

@@ -5,6 +5,7 @@ import { ElevatorIcon, RestroomIcon } from "../_components/icons";
 import { armArrivalAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { elevatorTip, floorLabel, restroomTip, type ElevatorTip } from "../_lib/arrivalTips";
 import { isNativeApp } from "../_lib/native";
+import { APP_RELEASED, PLAY_STORE_URL } from "../_lib/site";
 import type { StationToilet } from "../_lib/stationToilets";
 import { restoreStation, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 
@@ -22,11 +23,18 @@ const COPY = {
     ja: "1駅前に振動と通知でお知らせします",
   },
   on: {
-    ko: "알림 대기 중 · 앱 화면을 켜 두세요",
+    ko: "알림 대기 중 · 이 화면을 켜 두세요",
     en: "Alert on · keep this screen open",
-    zh: "提醒已开启 · 请保持屏幕开启",
-    ja: "通知待機中 · 画面をつけたままにしてください",
+    zh: "提醒已开启 · 请保持本页面开启",
+    ja: "通知待機中 · この画面を開いたままに",
   },
+  webLimit: {
+    ko: "웹에서는 다른 앱으로 가거나 화면을 끄면 알림이 멈춰요. 지하철꿀정보 앱은 화면을 꺼도 알려드려요",
+    en: "In a browser the alert stops if you switch apps or lock the screen. The K-Sub app alerts you even then",
+    zh: "在浏览器中切换应用或锁屏后提醒会停止。K-Sub 应用锁屏也能提醒",
+    ja: "ブラウザでは他のアプリに切り替えたり画面を消すと通知が止まります。K-Subアプリなら画面を消しても通知します",
+  },
+  getApp: { ko: "앱 받기", en: "Get the app", zh: "下载应用", ja: "アプリを入手" },
   onNative: {
     ko: "알림 대기 중 · 앱을 닫아도 알려드려요",
     en: "Alert on · works even with the app closed",
@@ -111,6 +119,19 @@ export default function AlarmBanner({ station, locale }: { station: StationOptio
         </button>
       </div>
 
+      {on && !isNativeApp() ? (
+        <p className="mt-1.5 text-[11.5px] font-semibold leading-snug text-[#b45309]">
+          📱 {t(COPY.webLimit, locale)}
+          {APP_RELEASED ? (
+            <>
+              {" "}
+              <a href={PLAY_STORE_URL} target="_blank" rel="noopener" className="font-extrabold underline">
+                {t(COPY.getApp, locale)}
+              </a>
+            </>
+          ) : null}
+        </p>
+      ) : null}
       {on && !alarm.systemAlerts ? (
         <p className="mt-1.5 text-[11.5px] font-semibold text-[#b45309]">⚠️ {t(COPY.noSystem, locale)}</p>
       ) : null}

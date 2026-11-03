@@ -16,6 +16,8 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 
@@ -60,6 +62,13 @@ public class ArrivalAlarmService extends Service {
     private static final double APPROACH_METERS = 1200;
     private static final long[] VIBRATION = {0, 400, 200, 400, 200, 800};
 
+    /** A fix this close to a stop on the route counts as being at that stop. */
+    private static final double ROUTE_MATCH_METERS = 400;
+    private static final float ROUTE_ACCURACY_METERS = 800;
+    /** An accurate fix this far from every stop means the rider left the train, so the countdown stops. */
+    private static final double OFF_ROUTE_METERS = 3000;
+    private static final long STALE_FIX_NANOS = 30_000_000_000L;
+
     private static final class ApproachPoint {
         double lat;
         double lng;
@@ -68,8 +77,17 @@ public class ArrivalAlarmService extends Service {
         String body;
     }
 
+    private static final class RoutePoint {
+        double lat;
+        double lng;
+        long seconds;
+    }
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable expire = this::finish;
+    /** Tunnels often block every fix near the stop before, so riding time from the last stop seen stands in. */
+    private final Runnable timeUp = this::onCountdownEnd;
+    private PowerManager.WakeLock wakeLock;
     private FusedLocationProviderClient client;
     private LocationCallback callback;
 
@@ -80,6 +98,9 @@ public class ArrivalAlarmService extends Service {
     /** Past this distance to the destination the rider has passed the previous stop even if no fix landed there. */
     private double passedMeters = APPROACH_METERS;
     private final List<ApproachPoint> approach = new ArrayList<>();
+    private final List<RoutePoint> route = new ArrayList<>();
+    /** Furthest stop on the route seen so far; the rider only moves forward. */
+    private int routeIndex = -1;
     private String trackingTitle;
     private String trackingBody;
     private String cancelLabel;
@@ -126,6 +147,7 @@ public class ArrivalAlarmService extends Service {
         saveState(true);
         handler.removeCallbacks(expire);
         handler.postDelayed(expire, remaining);
+        resumeCountdown();
         requestUpdates();
         return START_REDELIVER_INTENT;
     }
@@ -134,7 +156,9 @@ public class ArrivalAlarmService extends Service {
         long nextArmedAt = config.getLong("armedAt");
         SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         // A redelivered start after the system restarted the service keeps the stage already reached.
-        stage = prefs.getLong("armedAt", 0) == nextArmedAt ? prefs.getString("stage", "armed") : "armed";
+        boolean sameAlarm = prefs.getLong("armedAt", 0) == nextArmedAt;
+        stage = sameAlarm ? prefs.getString("stage", "armed") : "armed";
+        if (!sameAlarm) prefs.edit().remove("deadline").apply();
         armedAt = nextArmedAt;
 
         JSONObject target = config.getJSONObject("target");
@@ -157,6 +181,18 @@ public class ArrivalAlarmService extends Service {
             nearestGap = Math.min(nearestGap, gap);
         }
         if (!approach.isEmpty()) passedMeters = Math.min(APPROACH_METERS, nearestGap * 0.7);
+
+        route.clear();
+        routeIndex = -1;
+        JSONArray stops = config.optJSONArray("route");
+        for (int i = 0; stops != null && i < stops.length(); i++) {
+            JSONObject item = stops.getJSONObject(i);
+            RoutePoint point = new RoutePoint();
+            point.lat = item.getDouble("lat");
+            point.lng = item.getDouble("lng");
+            point.seconds = Math.max(0, item.getLong("seconds"));
+            route.add(point);
+        }
 
         JSONObject texts = config.getJSONObject("texts");
         trackingTitle = texts.getString("trackingTitle");
@@ -215,11 +251,82 @@ public class ArrivalAlarmService extends Service {
                 return;
             }
         }
-        if (toTarget <= passedMeters) markApproaching(approachTitle, approachBody);
+        if (toTarget <= passedMeters) {
+            markApproaching(approachTitle, approachBody);
+            return;
+        }
+        followRoute(location, toTarget);
+    }
+
+    private void followRoute(Location location, double toTarget) {
+        if (route.isEmpty()) return;
+        if (location.hasAccuracy() && location.getAccuracy() > ROUTE_ACCURACY_METERS) return;
+        if (SystemClock.elapsedRealtimeNanos() - location.getElapsedRealtimeNanos() > STALE_FIX_NANOS) return;
+        double lat = location.getLatitude();
+        double lng = location.getLongitude();
+        int match = -1;
+        double best = ROUTE_MATCH_METERS;
+        double nearest = toTarget;
+        for (int i = 0; i < route.size(); i++) {
+            RoutePoint point = route.get(i);
+            double gap = distance(lat, lng, point.lat, point.lng);
+            nearest = Math.min(nearest, gap);
+            if (i >= Math.max(0, routeIndex) && gap <= best) {
+                best = gap;
+                match = i;
+            }
+        }
+        if (match >= 0) {
+            // Every fix at a stop restarts its countdown, so the last one, near departure, sets the time.
+            routeIndex = match;
+            startCountdown(System.currentTimeMillis() + route.get(match).seconds * 1000L);
+        } else if (location.hasAccuracy() && location.getAccuracy() <= ARRIVED_METERS && nearest > OFF_ROUTE_METERS) {
+            routeIndex = -1;
+            stopCountdown();
+        }
+    }
+
+    private void startCountdown(long deadline) {
+        long delay = Math.max(0, deadline - System.currentTimeMillis());
+        handler.removeCallbacks(timeUp);
+        handler.postDelayed(timeUp, delay);
+        // The handler clock stops while the CPU sleeps, so it stays awake until the countdown ends.
+        if (wakeLock == null) {
+            PowerManager power = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (power != null) {
+                wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "subwayggul:arrival-countdown");
+                wakeLock.setReferenceCounted(false);
+            }
+        }
+        if (wakeLock != null) wakeLock.acquire(delay + 60_000L);
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong("deadline", deadline).apply();
+    }
+
+    private void onCountdownEnd() {
+        releaseWakeLock();
+        if ("armed".equals(stage)) markApproaching(approachTitle, approachBody);
+    }
+
+    /** A service restarted by the system picks the countdown back up. */
+    private void resumeCountdown() {
+        long deadline = getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("deadline", 0);
+        if (deadline > 0 && "armed".equals(stage)) startCountdown(deadline);
+        else stopCountdown();
+    }
+
+    private void stopCountdown() {
+        handler.removeCallbacks(timeUp);
+        releaseWakeLock();
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove("deadline").apply();
+    }
+
+    private void releaseWakeLock() {
+        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
     }
 
     private void markApproaching(String title, String body) {
         stage = "approaching";
+        stopCountdown();
         saveState(true);
         alert(title, body);
     }
@@ -310,6 +417,7 @@ public class ArrivalAlarmService extends Service {
 
     private void finish() {
         handler.removeCallbacks(expire);
+        stopCountdown();
         if (client != null && callback != null) client.removeLocationUpdates(callback);
         callback = null;
         if (armedAt != 0) saveState(false);
@@ -320,6 +428,8 @@ public class ArrivalAlarmService extends Service {
     @Override
     public void onDestroy() {
         handler.removeCallbacks(expire);
+        handler.removeCallbacks(timeUp);
+        releaseWakeLock();
         if (client != null && callback != null) client.removeLocationUpdates(callback);
         callback = null;
         if (armedAt != 0) saveState(false);

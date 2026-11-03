@@ -144,6 +144,19 @@ export async function armArrivalAlarm(station: StationOption) {
   if (state?.armedAt === armedAt) updateArrivalAlarm({ systemAlerts: permission === "granted" });
 }
 
+const PAUSED_TAG = "arrival-alarm-paused";
+
+/** Browser only: a quiet notice while the page is hidden and can't track, cleared with `null`. */
+export async function showPausedNotice(notice: { title: string; body: string } | null) {
+  if (!notificationsGranted()) return;
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration();
+    if (!registration) return;
+    if (notice) await registration.showNotification(notice.title, { body: notice.body, tag: PAUSED_TAG, silent: true });
+    else for (const shown of await registration.getNotifications({ tag: PAUSED_TAG })) shown.close();
+  } catch {}
+}
+
 /** `system: false` when the native alarm service posts the notification itself. */
 export async function sendArrivalAlert(title: string, body: string, system = true) {
   navigator.vibrate?.(VIBRATION);
