@@ -27,7 +27,7 @@ import {
   tc,
   walkMinutesLabel,
 } from "../../../_lib/guideCopy";
-import { isLocale, t, type Locale } from "../../../_lib/i18n";
+import { isLocale, LANGUAGES, t, type Locale } from "../../../_lib/i18n";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
 import { AppPromo, JsonLd, LineChip, LineLink, StationLink } from "../../_guide/parts";
 import ShowKorean from "../../_guide/ShowKorean";
@@ -344,6 +344,11 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
                 hint: tc("showKoreanHint", lang),
                 pickExit: tc("pickExit", lang),
                 close: tc("close", lang),
+              }}
+              meaning={{
+                lang: LANGUAGES[lang].htmlLang,
+                station: tc("showKoreanMeaning", lang).replace("{station}", title),
+                exit: tc("showKoreanMeaningExit", lang).replace("{station}", title),
               }}
             />
           </div>

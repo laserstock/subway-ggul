@@ -234,6 +234,18 @@ export const COPY = {
     zh: "请把这个画面出示给当地人或出租车司机。",
     ja: "この画面を地元の人やタクシー運転手に見せてください。",
   },
+  showKoreanMeaning: {
+    ko: "뜻: “{station}으로 가 주세요”",
+    en: "Meaning: “Please take me to {station}.”",
+    zh: "意思：“请带我去{station}。”",
+    ja: "意味：「{station}まで行ってください」",
+  },
+  showKoreanMeaningExit: {
+    ko: "뜻: “{station} {exit}번 출구로 가 주세요”",
+    en: "Meaning: “Please take me to Exit {exit} of {station}.”",
+    zh: "意思：“请带我去{station}{exit}号出口。”",
+    ja: "意味：「{station}の{exit}番出口まで行ってください」",
+  },
   pickExit: { ko: "출구 선택", en: "Pick an exit", zh: "选择出口", ja: "出口を選ぶ" },
   close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
   exitMap: { ko: "지도", en: "Map", zh: "地图", ja: "地図" },

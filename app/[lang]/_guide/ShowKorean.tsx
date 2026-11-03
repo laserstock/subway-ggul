@@ -7,14 +7,17 @@ type Props = {
   name: string;
   exits: string[];
   copy: { button: string; hint: string; pickExit: string; close: string };
+  /** What the Korean sentence means in the reader's language; `exit` has an {exit} placeholder. */
+  meaning: { lang: string; station: string; exit: string };
 };
 
 /** Full-screen Korean card (station, exit, "please take me here") for travelers to show a local or a taxi driver. */
-export default function ShowKorean({ name, exits, copy }: Props) {
+export default function ShowKorean({ name, exits, copy, meaning }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [exit, setExit] = useState<string | null>(null);
   // Every name ends in 역 (final consonant), so it takes 으로; 출구 takes 로.
   const phrase = exit ? `${name} ${exit}번 출구로 가 주세요` : `${name}으로 가 주세요`;
+  const translation = exit ? meaning.exit.replace("{exit}", exit) : meaning.station;
   const close = () => dialog.current?.close();
 
   return (
@@ -55,6 +58,9 @@ export default function ShowKorean({ name, exits, copy }: Props) {
               </p>
             ) : null}
             <p className="mt-7 break-keep text-[clamp(24px,6.5vw,36px)] font-bold leading-snug text-neutral-800">{phrase}</p>
+            <p lang={meaning.lang} className="mt-3 max-w-[520px] text-[15px] font-semibold leading-snug text-neutral-500">
+              {translation}
+            </p>
           </div>
 
           {exits.length ? (
