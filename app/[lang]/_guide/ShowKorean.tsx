@@ -25,10 +25,15 @@ export default function ShowKorean({ name, exits, copy, meaning }: Props) {
       <button
         type="button"
         onClick={() => dialog.current?.showModal()}
-        className="inline-flex items-center gap-2 rounded-xl bg-[#111827] px-4 py-3 text-[15px] font-bold text-white transition active:scale-[0.98]"
+        className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#111827] px-4 py-4 text-[16px] font-extrabold text-white shadow-[0_8px_20px_rgba(17,24,39,0.22)] ring-2 ring-[#f5b800] transition active:scale-[0.98]"
       >
-        <span aria-hidden>🗣️</span>
-        {copy.button}
+        <span aria-hidden className="text-[20px] leading-none">
+          🚕
+        </span>
+        <span className="min-w-0 break-words">{copy.button}</span>
+        <span lang="ko" className="shrink-0 rounded-lg bg-[#f5b800] px-2 py-0.5 text-[14px] font-black text-neutral-900">
+          {name}
+        </span>
       </button>
       <dialog
         ref={dialog}

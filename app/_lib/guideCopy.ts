@@ -248,6 +248,35 @@ export const COPY = {
   },
   pickExit: { ko: "출구 선택", en: "Pick an exit", zh: "选择出口", ja: "出口を選ぶ" },
   close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
+  ogGuide: {
+    ko: "출구 & 물품보관함 가이드",
+    en: "Exit & Locker Guide",
+    zh: "出口 & 储物柜指南",
+    ja: "出口 & ロッカーガイド",
+  },
+  shareTitle: {
+    ko: "이 역 정보 친구에게 공유하기",
+    en: "Share this station guide",
+    zh: "分享本站指南",
+    ja: "この駅ガイドをシェア",
+  },
+  shareText: {
+    ko: "{station} 출구·화장실·물품보관함 정보 | 지하철꿀정보",
+    en: "{station} exits, lockers & restrooms | K-SUB Seoul Subway Guide",
+    zh: "{station}出口·储物柜·洗手间信息 | K-SUB 首尔地铁指南",
+    ja: "{station}の出口・ロッカー・トイレ情報 | K-SUB ソウル地下鉄ガイド",
+  },
+  shareKakao: { ko: "카카오톡 공유", en: "KakaoTalk" },
+  shareKakaoButton: { ko: "역 정보 보기", en: "View station guide" },
+  shareCopy: { ko: "링크 복사", en: "Copy link", zh: "复制链接", ja: "リンクをコピー" },
+  shareCopied: { ko: "링크를 복사했어요", en: "Link copied!", zh: "链接已复制", ja: "リンクをコピーしました" },
+  shareBookmark: { ko: "즐겨찾기", en: "Save bookmark", zh: "收藏书签", ja: "ブックマーク" },
+  shareBookmarkHint: {
+    ko: "Ctrl+D(Mac은 ⌘+D)로 즐겨찾기에 추가하세요. 휴대폰은 브라우저 메뉴의 ☆ 또는 '북마크 추가'를 누르세요.",
+    en: "Press Ctrl+D (⌘+D on Mac) to bookmark this page. On a phone, open the browser menu and tap ☆ or “Add bookmark”.",
+    zh: "按 Ctrl+D（Mac 为 ⌘+D）收藏本页。手机请打开浏览器菜单，点击 ☆ 或“添加书签”。",
+    ja: "Ctrl+D（Macは⌘+D）でこのページをブックマーク。スマホはブラウザのメニューから ☆ または「ブックマークに追加」をタップ。",
+  },
   exitMap: { ko: "지도", en: "Map", zh: "地图", ja: "地図" },
   exitNearby: { ko: "주변 장소", en: "What's nearby", zh: "周边地点", ja: "周辺スポット" },
   exitRestroom: { ko: "근처 화장실", en: "Restroom nearby", zh: "附近有洗手间", ja: "近くにトイレ" },
@@ -467,26 +496,6 @@ export function stationFaq(station: GuideStation, detail: GuideDetail, locale: L
   const out: FaqItem[] = [];
 
   if (locale === "en") {
-    out.push({
-      question: `Which subway lines stop at ${title}?`,
-      answer: `${title} is on ${lines}.` + (nextStops.length ? ` The next stops are ${listJoin(nextStops, locale)}.` : ""),
-    });
-    if (exits)
-      out.push({
-        question: `How many exits does ${title} have?`,
-        answer: `${title} has ${exits} numbered exit${exits === 1 ? "" : "s"}. Each exit card on this page opens the exit in Google Maps and shows what's around it.`,
-      });
-    if (detail.toilets.length)
-      out.push({
-        question: `Where are the restrooms at ${title}?`,
-        answer:
-          (detail.toilets.length === 1
-            ? `There is 1 restroom, ${toiletGate} the fare gates.`
-            : toiletGate === "both"
-              ? `There are ${detail.toilets.length} restrooms: ${inside} inside and ${outside} outside the fare gates.`
-              : `There are ${detail.toilets.length} restrooms, all ${toiletGate} the fare gates.`) +
-          (toiletExits.length ? ` They're near ${listJoin(toiletExits, locale)}.` : ""),
-      });
     if (detail.lockers.length || desk)
       out.push({
         question: `Are there luggage lockers at ${title}?`,
@@ -499,8 +508,28 @@ export function stationFaq(station: GuideStation, detail: GuideDetail, locale: L
       });
     if (elevatorExits.length)
       out.push({
-        question: `Does ${title} have an elevator from the street to the platform?`,
-        answer: `Yes. Use ${listJoin(elevatorExits, locale)} to go between the street and the platform by elevator, the easiest route with big luggage or a stroller.`,
+        question: `Which exit of ${title} has elevators?`,
+        answer: `Use ${listJoin(elevatorExits, locale)} to go between the street and the platform by elevator, the easiest route with big luggage or a stroller.`,
+      });
+    if (detail.toilets.length)
+      out.push({
+        question: `Where is the restroom located in ${title}?`,
+        answer:
+          (detail.toilets.length === 1
+            ? `There is 1 restroom, ${toiletGate} the fare gates.`
+            : toiletGate === "both"
+              ? `There are ${detail.toilets.length} restrooms: ${inside} inside and ${outside} outside the fare gates.`
+              : `There are ${detail.toilets.length} restrooms, all ${toiletGate} the fare gates.`) +
+          (toiletExits.length ? ` They're near ${listJoin(toiletExits, locale)}.` : ""),
+      });
+    out.push({
+      question: `Which subway lines stop at ${title}?`,
+      answer: `${title} is on ${lines}.` + (nextStops.length ? ` The next stops are ${listJoin(nextStops, locale)}.` : ""),
+    });
+    if (exits)
+      out.push({
+        question: `How many exits does ${title} have?`,
+        answer: `${title} has ${exits} numbered exit${exits === 1 ? "" : "s"}. Each exit card on this page opens the exit in Google Maps and shows what's around it.`,
       });
     if (quickest)
       out.push({

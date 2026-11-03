@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
 import AdSense from "../../../_components/AdSense";
+import ShareButtons from "../../../_components/ShareButtons";
 import {
   appStationHref,
   GUIDE_STATIONS,
@@ -36,6 +37,10 @@ export function generateStaticParams() {
   return GUIDE_STATIONS.map((station) => ({ slug: station.slug }));
 }
 
+function ogImagePath(station: GuideStation, lang: Locale) {
+  return `/api/og/station/${station.slug}${lang === "en" ? "" : `?lang=${lang}`}`;
+}
+
 async function resolve(params: PageProps<"/[lang]/stations/[slug]">["params"]) {
   const { lang, slug } = await params;
   const station = guideStation(slug);
@@ -49,7 +54,12 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/stations/[
   const { lang, station } = found;
   const title = stationMetaTitle(station, lang);
   const description = stationMetaDescription(station, guideDetail(station), lang);
-  const image = { url: `/api/og/station/${station.slug}`, width: 1200, height: 630, alt: stationTitle(station, lang) };
+  const image = {
+    url: ogImagePath(station, lang),
+    width: 1200,
+    height: 630,
+    alt: `${stationTitle(station, lang)} ${tc("ogGuide", lang)} | K-SUB`,
+  };
   return {
     title,
     description,
@@ -333,7 +343,6 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
             {tc("koreanName", lang)}: <span lang="ko" className="font-bold text-ink">{station.name.ko}</span>
           </p>
         ) : null}
-        <UtilityChips station={station} detail={detail} locale={lang} />
         {lang !== "ko" ? (
           <div className="mt-3">
             <ShowKorean
@@ -353,6 +362,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
             />
           </div>
         ) : null}
+        <UtilityChips station={station} detail={detail} locale={lang} />
         <div className="mt-4 flex flex-wrap gap-1.5">
           {station.lines.map((line) => (
             <LineLink key={line} line={line} locale={lang} />
@@ -524,6 +534,30 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
           </div>
         </Section>
       ) : null}
+
+      <div className="mt-8">
+        <ShareButtons
+          url={url}
+          text={tc("shareText", lang, { station: title })}
+          labels={{
+            title: tc("shareTitle", lang),
+            copy: tc("shareCopy", lang),
+            copied: tc("shareCopied", lang),
+            bookmark: tc("shareBookmark", lang),
+            bookmarkHint: tc("shareBookmarkHint", lang),
+          }}
+          kakao={
+            lang === "ko"
+              ? {
+                  label: tc("shareKakao", lang),
+                  button: tc("shareKakaoButton", lang),
+                  description: stationSummary(station, detail, lang).slice(1, 3).join(" "),
+                  imageUrl: `${SITE_URL}${ogImagePath(station, lang)}`,
+                }
+              : undefined
+          }
+        />
+      </div>
 
       <AdSense slot={AD_SLOTS.bottom} label={tc("advertisement", lang)} className="mt-9" />
 
