@@ -29,22 +29,6 @@ export function GuideHeader({ locale }: { locale: Locale }) {
   );
 }
 
-export function GuideFooter({ locale }: { locale: Locale }) {
-  return (
-    <footer className="border-t border-line bg-surface-muted pb-[max(20px,env(safe-area-inset-bottom))]">
-      <div className="mx-auto flex w-full max-w-[760px] flex-col gap-3 px-4 py-6 text-[12px] text-ink-muted">
-        <nav className="flex flex-wrap gap-x-4 gap-y-2 font-semibold">
-          <Link href={`/${locale}/stations`}>{tc("allStations", locale)}</Link>
-          <a href={`/?lang=${locale}`}>{tc("openWebApp", locale)}</a>
-          <a href={`/privacy?lang=${locale}`}>{tc("privacy", locale)}</a>
-          <a href={`/terms?lang=${locale}`}>{tc("terms", locale)}</a>
-        </nav>
-        <p>© 2026 {t(BRAND_SHORT, locale)}</p>
-      </div>
-    </footer>
-  );
-}
-
 function PlayLogo() {
   return (
     <svg width="22" height="24" viewBox="0 0 22 24" aria-hidden>

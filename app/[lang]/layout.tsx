@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
+import Footer from "../_components/Footer";
 import { isLocale, LANGUAGES, LOCALES } from "../_lib/i18n";
-import { GuideFooter, GuideHeader } from "./_guide/parts";
+import { GuideHeader } from "./_guide/parts";
 
 export function generateStaticParams() {
   return LOCALES.map((lang) => ({ lang }));
@@ -15,7 +16,7 @@ export default async function GuideLayout({ children, params }: LayoutProps<"/[l
       <script dangerouslySetInnerHTML={{ __html: `document.documentElement.lang=${JSON.stringify(htmlLang)}` }} />
       <GuideHeader locale={lang} />
       <main className="mx-auto w-full max-w-[760px] flex-1 px-4 pb-12 pt-5">{children}</main>
-      <GuideFooter locale={lang} />
+      <Footer locale={lang} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { ALL_LINES, GUIDE_STATIONS, lineSlug } from "./_lib/guide";
 import { LOCALES } from "./_lib/i18n";
+import { LEGAL_UPDATED } from "./_lib/legal";
 import { GUIDE_UPDATED, guideLanguages, SITE_URL } from "./_lib/site";
 
 function absolute(languages: Record<string, string>) {
@@ -26,5 +27,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...guideEntries("/stations", 0.8),
     ...ALL_LINES.flatMap((line) => guideEntries(`/lines/${lineSlug(line)}`, 0.8)),
     ...GUIDE_STATIONS.flatMap((station) => guideEntries(`/stations/${station.slug}`, 0.7)),
+    ...["/privacy", "/terms", "/contact"].map((path) => ({
+      url: `${SITE_URL}${path}`,
+      lastModified: LEGAL_UPDATED,
+      changeFrequency: "yearly" as const,
+      priority: 0.2,
+    })),
   ];
 }

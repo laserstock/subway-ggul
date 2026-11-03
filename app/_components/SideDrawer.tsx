@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { saveFeedback } from "../_lib/feedback";
 import { requestHomeReset } from "../_lib/homeReset";
 import { t, type Localized } from "../_lib/i18n";
-import { PRIVACY_TITLE } from "../_lib/legal";
+import { CONTACT_TITLE, PRIVACY_TITLE } from "../_lib/legal";
 import { useLocale, useMessages } from "../_lib/locale";
 import { deleteReport, formatRelativeTime, useMyReports, useNow } from "../_lib/reports";
 import { clearSelectedStation, setDestinationStation } from "../_lib/selectedStation";
@@ -318,6 +318,10 @@ export default function SideDrawer({
               <span aria-hidden>·</span>
               <Link href="/terms" onClick={onClose} className="px-1 py-1.5 underline-offset-2 active:underline">
                 {t(TERMS_LINK, locale)}
+              </Link>
+              <span aria-hidden>·</span>
+              <Link href="/contact" onClick={onClose} className="px-1 py-1.5 underline-offset-2 active:underline">
+                {t(CONTACT_TITLE, locale)}
               </Link>
             </p>
           </nav>

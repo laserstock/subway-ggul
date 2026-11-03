@@ -292,8 +292,6 @@ export const COPY = {
     ja: "出典：ソウル交通公社（トイレ・ロッカー・乗り換え）、出口位置 © OpenStreetMap contributors（ODbL）。現地の状況と異なる場合があります。",
   },
   language: { ko: "언어", en: "Language", zh: "语言", ja: "言語" },
-  privacy: { ko: "개인정보처리방침", en: "Privacy", zh: "隐私政策", ja: "プライバシー" },
-  terms: { ko: "이용약관", en: "Terms", zh: "使用条款", ja: "利用規約" },
 } satisfies Record<string, Localized>;
 
 export function fill(template: string, values: Record<string, string | number>) {

@@ -15,7 +15,7 @@ import { Toast, useToast } from "../_components/Toast";
 import { deleteMyAccount } from "../_lib/account";
 import { LANGUAGES, LOCALES, t, type Locale, type Localized } from "../_lib/i18n";
 import { useLastStation } from "../_lib/lastStation";
-import { PRIVACY_TITLE } from "../_lib/legal";
+import { CONTACT_TITLE, PRIVACY_TITLE } from "../_lib/legal";
 import { setLocale, useLocale } from "../_lib/locale";
 import {
   authorLabel,
@@ -747,6 +747,7 @@ export default function MeScreen() {
                 [
                   ["/privacy", PRIVACY_TITLE],
                   ["/terms", COPY.terms],
+                  ["/contact", CONTACT_TITLE],
                 ] as const
               ).map(([href, label]) => (
                 <Link
