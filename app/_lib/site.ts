@@ -3,7 +3,7 @@ import { LANGUAGES, LOCALES, type Locale } from "./i18n";
 
 export const SITE_URL = "https://www.k-sub.com";
 
-export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.subwayggul";
+export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.subwayggul.app";
 /** Flip to true once the Play Store listing is live; until then download buttons say "coming soon". */
 export const APP_RELEASED = false;
 
