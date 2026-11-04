@@ -1,11 +1,8 @@
 "use client";
 
 import { Capacitor } from "@capacitor/core";
-import Script from "next/script";
 import { useEffect, useRef, useSyncExternalStore } from "react";
-
-/** Publisher id from AdSense, e.g. "ca-pub-1234567890123456". Unset = no ads anywhere. */
-export const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+import { ADSENSE_CLIENT_ID } from "../_lib/site";
 
 declare global {
   interface Window {
@@ -28,7 +25,7 @@ type Props = {
 };
 
 export default function AdSense({ slot, layout = "display", label, className = "" }: Props) {
-  const enabled = useSyncExternalStore(noop, canShowAds, () => false) && Boolean(ADSENSE_CLIENT_ID && slot);
+  const enabled = useSyncExternalStore(noop, canShowAds, () => false) && Boolean(slot);
   const unit = useRef<HTMLModElement>(null);
 
   useEffect(() => {
@@ -44,12 +41,6 @@ export default function AdSense({ slot, layout = "display", label, className = "
   if (!enabled) return null;
   return (
     <aside className={className} aria-label={label}>
-      <Script
-        id="adsbygoogle"
-        src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`}
-        strategy="afterInteractive"
-        crossOrigin="anonymous"
-      />
       {label ? (
         <p className="mb-1 text-center text-[10px] font-semibold uppercase tracking-wider text-ink-muted">{label}</p>
       ) : null}

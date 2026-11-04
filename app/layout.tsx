@@ -5,8 +5,8 @@ import BadgeCelebration from "./_components/BadgeCelebration";
 import PreloadResources from "./_components/PreloadResources";
 import ServerErrorToast from "./_components/ServerErrorToast";
 import SplashScreen from "./_components/SplashScreen";
-import { BOOT_SCRIPT, THEME_COLORS } from "./_lib/bootScript";
-import { SITE_URL } from "./_lib/site";
+import { ADSENSE_LOADER, BOOT_SCRIPT, THEME_COLORS } from "./_lib/bootScript";
+import { ADSENSE_CLIENT_ID, SITE_URL } from "./_lib/site";
 import "./globals.css";
 
 const notoSansKr = Noto_Sans_KR({
@@ -35,6 +35,7 @@ export const metadata: Metadata = {
     google: process.env.GOOGLE_SITE_VERIFICATION,
     other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined,
   },
+  other: { "google-adsense-account": ADSENSE_CLIENT_ID },
 };
 
 export const viewport: Viewport = {
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: ADSENSE_LOADER }} />
       </head>
       <body className={`${notoSansKr.className} min-h-full flex flex-col`}>
         <PreloadResources />
