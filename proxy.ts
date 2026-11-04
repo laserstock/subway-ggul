@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { contentLocale, type GuideLocale } from "./app/_lib/guideLocale";
-import { LOCALE_COOKIE } from "./app/_lib/i18n";
+import { isLocale, LOCALE_COOKIE } from "./app/_lib/i18n";
 import { localePath } from "./app/_lib/site";
 
 const BOT_AGENT = /bot|crawl|spider|slurp|lighthouse|headless/i;
@@ -8,6 +8,10 @@ const BOT_AGENT = /bot|crawl|spider|slurp|lighthouse|headless/i;
 const WEBVIEW_AGENT = /; wv\)/;
 /** Taiwan, Hong Kong, Macau or an explicit Traditional script. */
 const TRADITIONAL_CHINESE = /^zh-(tw|hk|mo|hant)\b/;
+/** Only the public domain sends visitors to the guide; the app's own host always serves the app home. */
+const GUIDE_HOST = /(^|\.)k-sub\.com$/;
+/** Set for the browser session once a visitor opens the web app (`/?lang=…`), so `/` stays the app for them. */
+const WEB_APP_COOKIE = "ksub-webapp";
 
 /** The visitor's top Accept-Language entry; anything other than Korean, Japanese or Chinese gets English. */
 function preferredLocale(acceptLanguage: string): GuideLocale {
@@ -25,37 +29,55 @@ function preferredLocale(acceptLanguage: string): GuideLocale {
   return base === "ko" || base === "ja" ? base : "en";
 }
 
+function sameSite(request: NextRequest) {
+  const referer = request.headers.get("referer");
+  if (!referer) return false;
+  try {
+    return new URL(referer).host === request.headers.get("host");
+  } catch {
+    return false;
+  }
+}
+
 /**
- * First visit to `/`: send the visitor to the home page in their browser's language. Only full page
- * loads are redirected (client navigations and old browsers without Sec-Fetch-Mode are left alone),
- * once; afterwards the cookie (or ?lang=) keeps `/` as the app home.
+ * Arriving at www.k-sub.com from outside (search result, typed address, bookmark): visitors whose browser
+ * isn't Korean go to the guide home in their saved language, else their browser's. Korean browsers, anyone
+ * who chose Korean, the app's own host, crawlers, client navigations, links from inside the site and anyone
+ * who has opened the web app this session keep `/` as the app home.
  */
 export function proxy(request: NextRequest) {
   const agent = request.headers.get("user-agent") ?? "";
-  const acceptLanguage = request.headers.get("accept-language");
+  const { searchParams } = request.nextUrl;
+
+  if (searchParams.has("lang")) {
+    const response = NextResponse.next();
+    response.cookies.set(WEB_APP_COOKIE, "1", { path: "/", sameSite: "lax" });
+    return response;
+  }
   if (
     request.method !== "GET" ||
-    request.cookies.has(LOCALE_COOKIE) ||
-    request.nextUrl.searchParams.has("lang") ||
+    !GUIDE_HOST.test((request.headers.get("host") ?? "").split(":")[0]) ||
     request.headers.get("sec-fetch-mode") !== "navigate" ||
-    !acceptLanguage ||
+    request.cookies.has(WEB_APP_COOKIE) ||
+    sameSite(request) ||
     BOT_AGENT.test(agent) ||
     WEBVIEW_AGENT.test(agent)
   ) {
     return NextResponse.next();
   }
 
-  const locale = preferredLocale(acceptLanguage);
-  const target = localePath(locale, "");
-  let response: NextResponse;
-  if (target === "/") {
-    response = NextResponse.next();
-  } else {
-    const url = request.nextUrl.clone();
-    url.pathname = target;
-    response = NextResponse.redirect(url);
-  }
-  response.cookies.set(LOCALE_COOKIE, contentLocale(locale), { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  const acceptLanguage = request.headers.get("accept-language");
+  if (!acceptLanguage) return NextResponse.next();
+  const detected = preferredLocale(acceptLanguage);
+  const saved = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (detected === "ko" || saved === "ko") return NextResponse.next();
+  const locale: GuideLocale = isLocale(saved) ? (saved === "zh" && detected === "zh-tw" ? "zh-tw" : saved) : detected;
+
+  const url = request.nextUrl.clone();
+  url.pathname = localePath(locale, "");
+  const response = NextResponse.redirect(url);
+  response.headers.set("Vary", "Accept-Language, Cookie");
+  if (!saved) response.cookies.set(LOCALE_COOKIE, contentLocale(locale), { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
   return response;
 }
 
