@@ -14,6 +14,7 @@ import {
 import { BRAND, gt, lineLabel, stationTitle, tc } from "../../../_lib/guideCopy";
 import { isGuideLocale } from "../../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
+import { Icon } from "../../_guide/icons";
 import { AppPromo, JsonLd, LineLink } from "../../_guide/parts";
 
 export function generateStaticParams() {
@@ -143,6 +144,16 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
           {tc("lineStations", lang)}
         </h2>
         <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">{tc("lineStationsHint", lang)}</p>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-semibold text-ink-muted">
+          <span className="inline-flex items-center gap-1">
+            <Icon name="luggage" size={15} className="text-honey-strong" />
+            {tc("lockers", lang)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Icon name="elevator" size={15} className="text-[#2563eb]" />
+            {tc("exitElevator", lang)}
+          </span>
+        </p>
         <ol className="mt-3 border-l-4 pl-0" style={{ borderColor: color }}>
           {rows.map((row) => (
             <li key={row.station.slug} className="relative -ml-[10px] flex items-start gap-3 py-1.5">
@@ -164,8 +175,16 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
                       {row.station.ko}
                     </span>
                   ) : null}
-                  {row.lockers ? <span aria-label={tc("lockers", lang)}>🧳</span> : null}
-                  {row.stepFree ? <span aria-label={tc("exitElevator", lang)}>🛗</span> : null}
+                  {row.lockers ? (
+                    <span role="img" aria-label={tc("lockers", lang)} className="self-center text-honey-strong">
+                      <Icon name="luggage" size={15} />
+                    </span>
+                  ) : null}
+                  {row.stepFree ? (
+                    <span role="img" aria-label={tc("exitElevator", lang)} className="self-center text-[#2563eb]">
+                      <Icon name="elevator" size={15} />
+                    </span>
+                  ) : null}
                 </p>
                 {row.others.length ? (
                   <p className="mt-1 flex flex-wrap gap-1">

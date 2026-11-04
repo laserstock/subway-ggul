@@ -32,6 +32,7 @@ import {
 } from "../../../_lib/guideCopy";
 import { GUIDE_LANGUAGES, isGuideLocale, contentLocale, type GuideLocale } from "../../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
+import { Icon, IconTile, type IconName } from "../../_guide/icons";
 import { AppPromo, JsonLd, LineChip, LineLink, StationLink } from "../../_guide/parts";
 import ShowKorean from "../../_guide/ShowKorean";
 
@@ -94,18 +95,16 @@ function koExitLabel(label: string) {
   return `${label}번 출구`;
 }
 
-function UtilityChip({ href, emoji, label, value, external }: {
+function UtilityChip({ href, icon, label, value, external }: {
   href: string | null;
-  emoji: string;
+  icon: IconName;
   label: string;
   value: string;
   external?: boolean;
 }) {
   const body = (
     <>
-      <span aria-hidden className="text-[20px] leading-none">
-        {emoji}
-      </span>
+      <IconTile name={icon} size="sm" />
       <span className="min-w-0">
         <span className="block break-words text-[13px] font-bold leading-snug text-ink">{label}</span>
         <span className="mt-0.5 block break-words text-[12px] font-semibold text-honey-strong">{value}</span>
@@ -139,19 +138,19 @@ function UtilityChips({ station, detail, locale }: { station: GuideStation; deta
     <section aria-label={tc("essentials", locale)} className="mt-4 grid grid-cols-2 gap-2">
       <UtilityChip
         href={detail.lockers.length || detail.luggageDesk ? "#lockers" : null}
-        emoji="🧳"
+        icon="luggage"
         label={tc("utilLockers", locale)}
         value={lockerValue.length ? lockerValue.join(" · ") : tc("utilNoData", locale)}
       />
       <UtilityChip
         href={detail.toilets.length ? "#restrooms" : null}
-        emoji="🚻"
+        icon="restroom"
         label={tc("utilRestroom", locale)}
         value={detail.toilets.length ? tc("utilRestroomCount", locale, { inside, outside }) : tc("utilNoData", locale)}
       />
       <UtilityChip
         href={elevatorExits.length ? "#step-free" : null}
-        emoji="🛗"
+        icon="elevator"
         label={tc("utilElevator", locale)}
         value={
           elevatorExits.length
@@ -162,7 +161,7 @@ function UtilityChips({ station, detail, locale }: { station: GuideStation; deta
       <UtilityChip
         href={`https://www.google.com/maps/search/?api=1&query=${wowpassQuery}`}
         external
-        emoji="💳"
+        icon="card"
         label={tc("utilWowpass", locale)}
         value={tc("utilFindNearby", locale)}
       />
@@ -184,10 +183,16 @@ function ExitCard({ exit, detail, locale }: { exit: GuideExit; detail: GuideDeta
       {restroom || elevator ? (
         <p className="mt-2 flex flex-wrap gap-1 text-[11px] font-bold">
           {restroom ? (
-            <span className="rounded-full bg-[#e7f8ee] px-2 py-0.5 text-[#15803d]">🚻 {tc("exitRestroom", locale)}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#e7f8ee] px-2 py-0.5 text-[#15803d]">
+              <Icon name="restroom" size={13} />
+              {tc("exitRestroom", locale)}
+            </span>
           ) : null}
           {elevator ? (
-            <span className="rounded-full bg-[#eef4ff] px-2 py-0.5 text-[#2563eb]">🛗 {tc("exitElevator", locale)}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#eef4ff] px-2 py-0.5 text-[#2563eb]">
+              <Icon name="elevator" size={13} />
+              {tc("exitElevator", locale)}
+            </span>
           ) : null}
         </p>
       ) : null}
@@ -197,9 +202,10 @@ function ExitCard({ exit, detail, locale }: { exit: GuideExit; detail: GuideDeta
           target="_blank"
           rel="noopener"
           aria-label={`${tc("exitLabel", locale, { n: exit.label })} · ${tc("exitMap", locale)}`}
-          className="flex-1 rounded-lg bg-surface-muted px-2 py-1.5 text-center text-ink active:scale-95"
+          className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-surface-muted px-2 py-1.5 text-center text-ink active:scale-95"
         >
-          📍 {tc("exitMap", locale)}
+          <Icon name="pin" size={14} />
+          {tc("exitMap", locale)}
         </a>
         <a
           href={nearbyMapsHref(exit.lat, exit.lng)}
@@ -473,8 +479,11 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
           <Empty>{tc("noLockers", lang)}</Empty>
         )}
         {detail.luggageDesk ? (
-          <p className="mt-2 rounded-2xl bg-honey-soft px-4 py-3 text-[13px] font-semibold text-ink">
-            🧳 {tc("utilLuggageDesk", lang)}: <span className="font-bold">{gt(detail.luggageDesk, lang)}</span>
+          <p className="mt-2 flex items-start gap-2 rounded-2xl bg-honey-soft px-4 py-3 text-[13px] font-semibold text-ink">
+            <Icon name="luggage" size={17} className="text-honey-strong" />
+            <span>
+              {tc("utilLuggageDesk", lang)}: <span className="font-bold">{gt(detail.luggageDesk, lang)}</span>
+            </span>
           </p>
         ) : null}
       </Section>
@@ -486,7 +495,10 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
               <li key={row.line} className="rounded-2xl border border-line bg-surface px-4 py-3">
                 <p className="flex flex-wrap items-center gap-1.5 text-[14px] font-bold text-ink">
                   <LineChip line={row.line} locale={lang} />
-                  <span>🛗 {gt(row.exit, lang)}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Icon name="elevator" size={16} className="text-[#2563eb]" />
+                    {gt(row.exit, lang)}
+                  </span>
                 </p>
                 {row.notes.length ? (
                   <ul className="mt-1.5 space-y-0.5 text-[13px] leading-relaxed text-ink-muted">

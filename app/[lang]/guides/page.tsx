@@ -5,6 +5,7 @@ import { GUIDE_ARTICLES } from "../../_lib/guideArticles";
 import { BRAND, COPY, gt, tc } from "../../_lib/guideCopy";
 import { isGuideLocale } from "../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../_lib/site";
+import { Icon, IconTile } from "../_guide/icons";
 import { AppPromo, JsonLd } from "../_guide/parts";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/guides">): Promise<Metadata> {
@@ -45,11 +46,9 @@ export default async function GuidesIndex({ params }: PageProps<"/[lang]/guides"
           <li key={article.slug}>
             <Link
               href={`/${lang}/guides/${article.slug}`}
-              className="flex items-start gap-3 rounded-2xl border border-line bg-surface p-4 transition active:scale-[0.99]"
+              className="flex items-start gap-3.5 rounded-2xl border border-line bg-surface p-4 transition hover:border-honey/40 hover:shadow-[0_6px_18px_rgba(15,23,42,0.07)] active:scale-[0.99]"
             >
-              <span className="text-[28px] leading-none" aria-hidden>
-                {article.emoji}
-              </span>
+              <IconTile name={article.icon} size="lg" />
               <span className="min-w-0">
                 <span className="block break-words text-[16px] font-extrabold leading-snug text-ink">
                   {gt(article.title, lang)}
@@ -62,8 +61,9 @@ export default async function GuidesIndex({ params }: PageProps<"/[lang]/guides"
         ))}
       </ul>
       <p className="mt-6 text-[14px] font-bold">
-        <Link href={`/${lang}/map`} className="text-honey-strong">
-          🗺️ {tc("navMap", lang)} →
+        <Link href={`/${lang}/map`} className="inline-flex items-center gap-1.5 text-honey-strong">
+          <Icon name="map" size={18} />
+          {tc("navMap", lang)} →
         </Link>
       </p>
       <div className="mt-8">

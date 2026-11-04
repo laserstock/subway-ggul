@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Icon } from "./icons";
 
 type Props = {
   /** Korean station name with 역, e.g. "강남역". */
@@ -27,9 +28,7 @@ export default function ShowKorean({ name, exits, copy, meaning }: Props) {
         onClick={() => dialog.current?.showModal()}
         className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#111827] px-4 py-4 text-[16px] font-extrabold text-white shadow-[0_8px_20px_rgba(17,24,39,0.22)] ring-2 ring-[#f5b800] transition active:scale-[0.98]"
       >
-        <span aria-hidden className="text-[20px] leading-none">
-          🚕
-        </span>
+        <Icon name="car" size={22} className="text-[#f5b800]" />
         <span className="min-w-0 break-words">{copy.button}</span>
         <span lang="ko" className="shrink-0 rounded-lg bg-[#f5b800] px-2 py-0.5 text-[14px] font-black text-neutral-900">
           {name}

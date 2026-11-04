@@ -7,6 +7,7 @@ import { BRAND, COPY, gt, HOME_FAQ_EN, HOME_KEYWORDS, homeMetaTitle, tc } from "
 import { GUIDE_LANGUAGES, isGuideLocale } from "../_lib/guideLocale";
 import { APP_RELEASED, guideAlternates, OG_LOCALES, PLAY_STORE_URL, SITE_URL } from "../_lib/site";
 import GuideSearch from "./_guide/GuideSearch";
+import { Icon, IconTile } from "./_guide/icons";
 import { AppPromo, JsonLd, LineLink, searchItems, StationLink } from "./_guide/parts";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
@@ -24,11 +25,11 @@ export async function generateMetadata({ params }: PageProps<"/[lang]">): Promis
 }
 
 const FEATURES = [
-  ["🚪", "featureExits"],
-  ["🚻", "featureToilets"],
-  ["🧳", "featureLockers"],
-  ["🔁", "featureTransfers"],
-  ["⏱️", "featureLive"],
+  ["exit", "featureExits"],
+  ["restroom", "featureToilets"],
+  ["luggage", "featureLockers"],
+  ["transfer", "featureTransfers"],
+  ["clock", "featureLive"],
 ] as const;
 
 export default async function GuideHome({ params }: PageProps<"/[lang]">) {
@@ -74,20 +75,25 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
       <nav aria-label={`${tc("navMap", lang)} · ${tc("navGuides", lang)}`} className="mt-5 grid grid-cols-2 gap-2">
         {(
           [
-            ["map", "🗺️", "navMap", "mapHeading"],
-            ["guides", "🧭", "navGuides", "guidesLead"],
+            ["map", "map", "navMap", "mapHeading"],
+            ["guides", "book", "navGuides", "guidesLead"],
           ] as const
-        ).map(([path, emoji, label, hint]) => (
+        ).map(([path, icon, label, hint]) => (
           <Link
             key={path}
             href={`/${lang}/${path}`}
-            className="flex items-start gap-2.5 rounded-2xl border border-line bg-surface px-3.5 py-3 shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition active:scale-[0.98]"
+            className="group flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition hover:border-honey/40 hover:shadow-[0_6px_18px_rgba(15,23,42,0.07)] active:scale-[0.98] sm:flex-row sm:items-start"
           >
-            <span aria-hidden className="text-[22px] leading-none">
-              {emoji}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[14px] font-extrabold text-ink">{tc(label, lang)} →</span>
+            <IconTile name={icon} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-extrabold leading-snug text-ink">
+                {tc(label, lang)}
+                <Icon
+                  name="arrow"
+                  size={14}
+                  className="ml-1 inline align-[-2px] text-ink-muted transition group-hover:translate-x-0.5 group-hover:text-honey-strong"
+                />
+              </span>
               <span className="mt-0.5 block break-words text-[12px] leading-snug text-ink-muted">{tc(hint, lang)}</span>
             </span>
           </Link>
@@ -127,11 +133,9 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
           {tc("features", lang)}
         </h2>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-          {FEATURES.map(([emoji, key]) => (
-            <li key={key} className="flex items-center gap-3 rounded-2xl bg-surface-muted px-4 py-3">
-              <span className="text-[20px]" aria-hidden>
-                {emoji}
-              </span>
+          {FEATURES.map(([icon, key]) => (
+            <li key={key} className="flex items-center gap-3 rounded-2xl bg-surface-muted px-3 py-2.5">
+              <IconTile name={icon} size="sm" onSurface />
               <span className="min-w-0 break-words text-[14px] font-semibold text-ink">{tc(key, lang)}</span>
             </li>
           ))}

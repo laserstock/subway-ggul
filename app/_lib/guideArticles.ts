@@ -5,7 +5,7 @@ export const ARTICLES_CHECKED = "2026-11-04";
 
 export type GuideArticle = {
   slug: string;
-  emoji: string;
+  icon: "plane" | "card" | "train" | "luggage";
   title: Localized;
   description: Localized;
   sections: { heading: Localized; paragraphs: Localized[] }[];
@@ -19,7 +19,7 @@ export type GuideArticle = {
 export const GUIDE_ARTICLES: GuideArticle[] = [
   {
     slug: "incheon-airport-to-seoul",
-    emoji: "✈️",
+    icon: "plane",
     title: {
       ko: "인천공항에서 서울 시내 가는 법: 공항철도 일반열차 vs 직통열차",
       en: "Incheon Airport to Seoul by Subway: AREX All-Stop vs Express Train",
@@ -130,7 +130,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
   },
   {
     slug: "t-money-card",
-    emoji: "💳",
+    icon: "card",
     title: {
       ko: "티머니 교통카드 사는 법·충전·환불, 기후동행카드 단기권까지",
       en: "T-money Card Guide: Where to Buy, How to Top Up, Fares & Climate Card",
@@ -232,7 +232,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
   },
   {
     slug: "how-to-ride-seoul-subway",
-    emoji: "🚇",
+    icon: "train",
     title: {
       ko: "서울 지하철 타는 법: 방향 찾기·환승·출구·운행 시간",
       en: "How to Ride the Seoul Subway: Directions, Transfers, Exits & Hours",
@@ -340,7 +340,7 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
   },
   {
     slug: "luggage-lockers-elevators",
-    emoji: "🧳",
+    icon: "luggage",
     title: {
       ko: "캐리어 들고 서울 지하철 타기: 물품보관함·T-Luggage·엘리베이터",
       en: "Seoul Subway with Luggage: Coin Lockers, T-Luggage Desks & Elevators",

@@ -15,6 +15,7 @@ import {
   type LockerSize,
 } from "../../../_lib/luggage";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
+import { IconTile } from "../../_guide/icons";
 import { AppPromo, JsonLd, StationLink } from "../../_guide/parts";
 
 export function generateStaticParams() {
@@ -163,12 +164,8 @@ export default async function GuideArticlePage({ params }: PageProps<"/[lang]/gu
       </nav>
 
       <article className="mt-3">
-        <h1 className="break-words text-[26px] font-extrabold leading-tight tracking-tight text-ink">
-          <span aria-hidden className="mr-2">
-            {article.emoji}
-          </span>
-          {title}
-        </h1>
+        <IconTile name={article.icon} size="lg" />
+        <h1 className="mt-3 break-words text-[26px] font-extrabold leading-tight tracking-tight text-ink">{title}</h1>
         <p className="mt-3 text-[15px] leading-relaxed text-ink-muted">{gt(article.description, lang)}</p>
 
         {article.sections.map((section) => (
@@ -223,9 +220,9 @@ export default async function GuideArticlePage({ params }: PageProps<"/[lang]/gu
             <li key={other.slug}>
               <Link
                 href={`/${lang}/guides/${other.slug}`}
-                className="flex items-center gap-2 rounded-2xl border border-line bg-surface px-4 py-3 text-[14px] font-bold text-ink"
+                className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 text-[14px] font-bold text-ink"
               >
-                <span aria-hidden>{other.emoji}</span>
+                <IconTile name={other.icon} size="sm" />
                 <span className="min-w-0 break-words">{gt(other.title, lang)}</span>
               </Link>
             </li>
@@ -233,9 +230,9 @@ export default async function GuideArticlePage({ params }: PageProps<"/[lang]/gu
           <li>
             <Link
               href={`/${lang}/map`}
-              className="flex items-center gap-2 rounded-2xl border border-line bg-surface px-4 py-3 text-[14px] font-bold text-ink"
+              className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 text-[14px] font-bold text-ink"
             >
-              <span aria-hidden>🗺️</span>
+              <IconTile name="map" size="sm" />
               <span>{tc("navMap", lang)}</span>
             </Link>
           </li>
