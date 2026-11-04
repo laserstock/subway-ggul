@@ -1,17 +1,33 @@
 import Link from "next/link";
-import { t, type Locale, type Localized } from "../_lib/i18n";
+import { contentLocale, type GuideLocale } from "../_lib/guideLocale";
+import { t, type Localized } from "../_lib/i18n";
 import { CONTACT_TITLE, PRIVACY_TITLE } from "../_lib/legal";
 
 const TERMS: Localized = { ko: "이용약관", en: "Terms of Service", zh: "服务条款", ja: "利用規約" };
 const STATIONS: Localized = { ko: "전체 역 목록", en: "Station Directory", zh: "车站目录", ja: "駅一覧" };
+const MAP: Localized = { ko: "지하철 노선도", en: "Subway Map", zh: "地铁线路图", ja: "地下鉄路線図" };
+const GUIDES: Localized = { ko: "이용 가이드", en: "Travel Guides", zh: "乘车指南", ja: "乗り方ガイド" };
+
+/** Traditional Chinese labels, written out because this footer also renders in client screens. */
+const HANT = {
+  privacy: "隱私權政策",
+  terms: "服務條款",
+  contact: "聯絡我們",
+  stations: "車站目錄",
+  map: "地鐵路線圖",
+  guides: "乘車指南",
+};
 
 /** Site-wide footer for the guide and legal pages, with the links AdSense and app stores look for. */
-export default function Footer({ locale, className = "" }: { locale: Locale; className?: string }) {
-  const links: [string, Localized][] = [
-    [`/privacy?lang=${locale}`, PRIVACY_TITLE],
-    [`/terms?lang=${locale}`, TERMS],
-    [`/contact?lang=${locale}`, CONTACT_TITLE],
-    [`/${locale}/stations`, STATIONS],
+export default function Footer({ locale, className = "" }: { locale: GuideLocale; className?: string }) {
+  const app = contentLocale(locale);
+  const links: [string, Localized, string][] = [
+    [`/privacy?lang=${app}`, PRIVACY_TITLE, HANT.privacy],
+    [`/terms?lang=${app}`, TERMS, HANT.terms],
+    [`/contact?lang=${app}`, CONTACT_TITLE, HANT.contact],
+    [`/${locale}/stations`, STATIONS, HANT.stations],
+    [`/${locale}/map`, MAP, HANT.map],
+    [`/${locale}/guides`, GUIDES, HANT.guides],
   ];
   return (
     <footer
@@ -20,7 +36,7 @@ export default function Footer({ locale, className = "" }: { locale: Locale; cla
       <div className="mx-auto flex w-full max-w-[760px] flex-col gap-3 px-4 py-6 text-[12px] text-ink-muted">
         <nav aria-label="Footer">
           <ul className="flex flex-wrap items-center gap-y-2 font-semibold text-ink">
-            {links.map(([href, label], index) => (
+            {links.map(([href, label, hant], index) => (
               <li key={href} className="flex items-center">
                 {index > 0 ? (
                   <span className="mx-2.5 text-ink-muted/50" aria-hidden>
@@ -28,7 +44,7 @@ export default function Footer({ locale, className = "" }: { locale: Locale; cla
                   </span>
                 ) : null}
                 <Link href={href} className="underline-offset-2 hover:underline">
-                  {t(label, locale)}
+                  {locale === "zh-tw" ? hant : t(label, app)}
                 </Link>
               </li>
             ))}

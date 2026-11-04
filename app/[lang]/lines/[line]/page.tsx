@@ -8,12 +8,11 @@ import {
   guideLine,
   lineSlug,
   lineStations,
-  localLine,
   sameGuideLine,
   stationLineColor,
 } from "../../../_lib/guide";
-import { BRAND, stationTitle, tc } from "../../../_lib/guideCopy";
-import { isLocale, t } from "../../../_lib/i18n";
+import { BRAND, gt, lineLabel, stationTitle, tc } from "../../../_lib/guideCopy";
+import { isGuideLocale } from "../../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
 import { AppPromo, JsonLd, LineLink } from "../../_guide/parts";
 
@@ -24,7 +23,7 @@ export function generateStaticParams() {
 async function resolve(params: PageProps<"/[lang]/lines/[line]">["params"]) {
   const { lang, line: slug } = await params;
   const line = guideLine(slug);
-  if (!isLocale(lang) || !line) return null;
+  if (!isGuideLocale(lang) || !line) return null;
   return { lang, line, slug };
 }
 
@@ -32,7 +31,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/lines/[lin
   const found = await resolve(params);
   if (!found) return {};
   const { lang, line, slug } = found;
-  const name = localLine(line, lang);
+  const name = lineLabel(line, lang);
   const title = tc("lineMetaTitle", lang, { line: name });
   const description = tc("lineDescription", lang, { line: name, n: lineStations(line).length });
   return {
@@ -41,7 +40,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/lines/[lin
     alternates: guideAlternates(`/lines/${slug}`, lang),
     openGraph: {
       type: "website",
-      siteName: t(BRAND, lang),
+      siteName: gt(BRAND, lang),
       title,
       description,
       locale: OG_LOCALES[lang],
@@ -54,7 +53,7 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
   const found = await resolve(params);
   if (!found) notFound();
   const { lang, line, slug } = found;
-  const name = localLine(line, lang);
+  const name = lineLabel(line, lang);
   const color = stationLineColor(line);
   const url = `${SITE_URL}/${lang}/lines/${slug}`;
   const rows = lineStations(line).map((station) => {
@@ -81,7 +80,7 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
-              { "@type": "ListItem", position: 1, name: t(BRAND, lang), item: `${SITE_URL}/${lang}` },
+              { "@type": "ListItem", position: 1, name: gt(BRAND, lang), item: `${SITE_URL}/${lang}` },
               {
                 "@type": "ListItem",
                 position: 2,
@@ -110,7 +109,7 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
       <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted">
         <ol className="flex flex-wrap items-center gap-1">
           <li>
-            <Link href={`/${lang}`}>{t(BRAND, lang)}</Link>
+            <Link href={`/${lang}`}>{gt(BRAND, lang)}</Link>
           </li>
           <li aria-hidden>›</li>
           <li>

@@ -10,7 +10,6 @@ import {
   guideDetail,
   guideStation,
   googleMapsHref,
-  localLine,
   nearbyMapsHref,
   type GuideDetail,
   type GuideExit,
@@ -20,6 +19,8 @@ import {
 import {
   BRAND,
   floorLabel,
+  gt,
+  lineLabel,
   stationFaq,
   stationMetaDescription,
   stationMetaTitle,
@@ -29,7 +30,7 @@ import {
   tc,
   walkMinutesLabel,
 } from "../../../_lib/guideCopy";
-import { isLocale, LANGUAGES, t, type Locale } from "../../../_lib/i18n";
+import { GUIDE_LANGUAGES, isGuideLocale, contentLocale, type GuideLocale } from "../../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
 import { AppPromo, JsonLd, LineChip, LineLink, StationLink } from "../../_guide/parts";
 import ShowKorean from "../../_guide/ShowKorean";
@@ -38,14 +39,14 @@ export function generateStaticParams() {
   return GUIDE_STATIONS.map((station) => ({ slug: station.slug }));
 }
 
-function ogImagePath(station: GuideStation, lang: Locale) {
+function ogImagePath(station: GuideStation, lang: GuideLocale) {
   return `/api/og/station/${station.slug}${lang === "en" ? "" : `?lang=${lang}`}`;
 }
 
 async function resolve(params: PageProps<"/[lang]/stations/[slug]">["params"]) {
   const { lang, slug } = await params;
   const station = guideStation(slug);
-  if (!isLocale(lang) || !station) return null;
+  if (!isGuideLocale(lang) || !station) return null;
   return { lang, station };
 }
 
@@ -69,7 +70,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/stations/[
     alternates: guideAlternates(`/stations/${station.slug}`, lang),
     openGraph: {
       type: "website",
-      siteName: t(BRAND, lang),
+      siteName: gt(BRAND, lang),
       title: ogTitle,
       description,
       locale: OG_LOCALES[lang],
@@ -125,14 +126,14 @@ function UtilityChip({ href, emoji, label, value, external }: {
   );
 }
 
-function UtilityChips({ station, detail, locale }: { station: GuideStation; detail: GuideDetail; locale: Locale }) {
+function UtilityChips({ station, detail, locale }: { station: GuideStation; detail: GuideDetail; locale: GuideLocale }) {
   const inside = detail.toilets.filter((row) => row.gate === "inside").length;
   const outside = detail.toilets.length - inside;
   const lockerValue = [
     detail.lockers.length ? tc("utilLockersCount", locale, { n: detail.lockers.length }) : null,
     detail.luggageDesk ? tc("utilLuggageDesk", locale) : null,
   ].filter(Boolean);
-  const elevatorExits = [...new Set(detail.elevators.map((row) => t(row.exit, locale)))];
+  const elevatorExits = [...new Set(detail.elevators.map((row) => gt(row.exit, locale)))];
   const wowpassQuery = encodeURIComponent(`WOWPASS ${station.name.en} Station Seoul`);
   return (
     <section aria-label={tc("essentials", locale)} className="mt-4 grid grid-cols-2 gap-2">
@@ -169,7 +170,7 @@ function UtilityChips({ station, detail, locale }: { station: GuideStation; deta
   );
 }
 
-function ExitCard({ exit, detail, locale }: { exit: GuideExit; detail: GuideDetail; locale: Locale }) {
+function ExitCard({ exit, detail, locale }: { exit: GuideExit; detail: GuideDetail; locale: GuideLocale }) {
   const restroom = detail.toilets.some((row) => row.exit === exit.label);
   const elevator = detail.elevators.some((row) => row.exit.ko === koExitLabel(exit.label));
   return (
@@ -230,18 +231,18 @@ function Empty({ children }: { children: ReactNode }) {
   return <p className="rounded-2xl bg-surface-muted px-4 py-3 text-[13px] text-ink-muted">{children}</p>;
 }
 
-function towardName(station: GuideStation | null, fallback: string, locale: Locale) {
-  return station ? t(station.name, locale) : fallback;
+function towardName(station: GuideStation | null, fallback: string, locale: GuideLocale) {
+  return station ? gt(station.name, locale) : fallback;
 }
 
-function TransferRow({ row, locale }: { row: GuideTransfer; locale: Locale }) {
+function TransferRow({ row, locale }: { row: GuideTransfer; locale: GuideLocale }) {
   const [car, door = ""] = row.alight.split("-");
   return (
     <li className="rounded-2xl border border-line bg-surface px-4 py-3">
       <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] font-semibold text-ink">
         <span className="break-words">
           {tc("transferFrom", locale, {
-            line: localLine(row.fromLine, locale),
+            line: lineLabel(row.fromLine, locale),
             toward: towardName(row.fromToward, row.fromTowardKo, locale),
           })}
         </span>
@@ -250,7 +251,7 @@ function TransferRow({ row, locale }: { row: GuideTransfer; locale: Locale }) {
         </span>
         <span className="break-words">
           {tc("transferFrom", locale, {
-            line: localLine(row.toLine, locale),
+            line: lineLabel(row.toLine, locale),
             toward: towardName(row.toToward, row.toTowardKo, locale),
           })}
         </span>
@@ -326,7 +327,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
       <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted">
         <ol className="flex flex-wrap items-center gap-1">
           <li>
-            <Link href={`/${lang}`}>{t(BRAND, lang)}</Link>
+            <Link href={`/${lang}`}>{gt(BRAND, lang)}</Link>
           </li>
           <li aria-hidden>›</li>
           <li>
@@ -358,7 +359,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
                 close: tc("close", lang),
               }}
               meaning={{
-                lang: LANGUAGES[lang].htmlLang,
+                lang: GUIDE_LANGUAGES[lang].htmlLang,
                 station: tc("showKoreanMeaning", lang).replace("{station}", title),
                 exit: tc("showKoreanMeaningExit", lang).replace("{station}", title),
               }}
@@ -378,7 +379,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <a
-            href={appStationHref(station, lang)}
+            href={appStationHref(station, contentLocale(lang))}
             className="inline-flex items-center gap-1.5 rounded-xl bg-honey px-4 py-3 text-[15px] font-bold text-white shadow-[0_6px_16px_rgba(245,167,0,0.25)] transition active:scale-[0.98]"
           >
             {tc("openInApp", lang)} →
@@ -473,7 +474,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         )}
         {detail.luggageDesk ? (
           <p className="mt-2 rounded-2xl bg-honey-soft px-4 py-3 text-[13px] font-semibold text-ink">
-            🧳 {tc("utilLuggageDesk", lang)}: <span className="font-bold">{t(detail.luggageDesk, lang)}</span>
+            🧳 {tc("utilLuggageDesk", lang)}: <span className="font-bold">{gt(detail.luggageDesk, lang)}</span>
           </p>
         ) : null}
       </Section>
@@ -485,12 +486,12 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
               <li key={row.line} className="rounded-2xl border border-line bg-surface px-4 py-3">
                 <p className="flex flex-wrap items-center gap-1.5 text-[14px] font-bold text-ink">
                   <LineChip line={row.line} locale={lang} />
-                  <span>🛗 {t(row.exit, lang)}</span>
+                  <span>🛗 {gt(row.exit, lang)}</span>
                 </p>
                 {row.notes.length ? (
                   <ul className="mt-1.5 space-y-0.5 text-[13px] leading-relaxed text-ink-muted">
                     {row.notes.slice(0, 3).map((note, index) => (
-                      <li key={index}>· {t(note, lang)}</li>
+                      <li key={index}>· {gt(note, lang)}</li>
                     ))}
                   </ul>
                 ) : null}

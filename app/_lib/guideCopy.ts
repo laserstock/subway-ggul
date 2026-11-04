@@ -1,6 +1,16 @@
 import type { GuideDetail, GuideStation } from "./guide";
 import { localLine } from "./guide";
+import { contentLocale, type GuideLocale } from "./guideLocale";
+import { gt, inScript } from "./hant";
+import { lineName } from "./lineNames";
 import { t, type Locale, type Localized } from "./i18n";
+
+export { gt } from "./hant";
+
+/** A line's name in the guide language. */
+export function lineLabel(line: string, locale: GuideLocale) {
+  return gt(lineName(line), locale);
+}
 
 export const BRAND: Localized = {
   ko: "지하철꿀정보",
@@ -19,8 +29,8 @@ export const TAGLINE: Localized = {
 };
 
 /** The English title ends in the short "K-SUB" mark searchers see in results; other languages keep BRAND. */
-export function homeMetaTitle(locale: Locale) {
-  return `${t(COPY.homeTitle, locale)} | ${locale === "en" ? "K-SUB" : t(BRAND, locale)}`;
+export function homeMetaTitle(locale: GuideLocale) {
+  return `${gt(COPY.homeTitle, locale)} | ${locale === "en" ? "K-SUB" : gt(BRAND, locale)}`;
 }
 
 export const HOME_KEYWORDS = [
@@ -360,25 +370,154 @@ export const COPY = {
     ja: "出典：ソウル交通公社（トイレ・ロッカー・乗り換え）、出口位置 © OpenStreetMap contributors（ODbL）。現地の状況と異なる場合があります。",
   },
   language: { ko: "언어", en: "Language", zh: "语言", ja: "言語" },
+  navMap: { ko: "노선도", en: "Subway map", zh: "线路图", ja: "路線図" },
+  navGuides: { ko: "이용 가이드", en: "Travel guides", zh: "乘车指南", ja: "乗り方ガイド" },
+  mapTitle: {
+    ko: "서울 지하철 노선도: 전체 노선·역 인터랙티브 지도",
+    en: "Seoul Subway Map: Interactive Map of All Lines & Stations",
+    zh: "首尔地铁线路图：全部线路与车站互动地图",
+    ja: "ソウル地下鉄路線図：全路線・全駅のインタラクティブマップ",
+  },
+  mapHeading: {
+    ko: "서울 지하철 노선도",
+    en: "Seoul Subway Map",
+    zh: "首尔地铁线路图",
+    ja: "ソウル地下鉄 路線図",
+  },
+  mapLead: {
+    ko: "수도권 {lines}개 노선, {n}개 역을 실제 위치대로 그린 노선도예요. 확대해서 역을 누르면 출구·화장실·물품보관함 정보로 이동해요.",
+    en: "All {lines} lines and {n} stations of the Seoul metropolitan subway, drawn where they really are. Zoom in and tap a station for its exits, restrooms and lockers.",
+    zh: "按真实位置绘制的首尔首都圈地铁线路图，共{lines}条线路、{n}个车站。放大后点击车站，即可查看出口、洗手间和储物柜信息。",
+    ja: "首都圏の{lines}路線・{n}駅を実際の位置どおりに描いた路線図です。拡大して駅をタップすると、出口・トイレ・ロッカー情報へ移動します。",
+  },
+  mapDescription: {
+    ko: "서울 지하철 노선도를 확대·이동하며 보세요. 1~9호선, 신분당선, 공항철도 등 수도권 전 노선과 역별 출구·화장실·물품보관함 정보로 바로 연결돼요.",
+    en: "Interactive Seoul subway map with every line, from Lines 1–9 to AREX and the Shinbundang Line. Zoom, pan and tap any station for exits, restrooms and lockers.",
+    zh: "可缩放的首尔地铁线路图，涵盖1～9号线、机场铁路、新盆唐线等全部线路，点击任意车站即可查看出口、洗手间和储物柜。",
+    ja: "拡大・移動できるソウル地下鉄路線図。1～9号線、空港鉄道、新盆唐線など全路線を掲載し、各駅の出口・トイレ・ロッカー情報にすぐアクセス。",
+  },
+  mapHint: {
+    ko: "드래그로 이동, 휠이나 두 손가락으로 확대해요. 확대하면 역 이름이 보여요.",
+    en: "Drag to move; scroll or pinch to zoom. Station names appear as you zoom in.",
+    zh: "拖动可移动地图，滚轮或双指可缩放。放大后会显示站名。",
+    ja: "ドラッグで移動、ホイールやピンチで拡大。拡大すると駅名が表示されます。",
+  },
+  mapLabel: {
+    ko: "서울 지하철 노선도. 역을 누르면 역 안내로 이동합니다.",
+    en: "Seoul subway map. Select a station to open its guide.",
+    zh: "首尔地铁线路图。点击车站可打开车站指南。",
+    ja: "ソウル地下鉄路線図。駅を選ぶと駅ガイドが開きます。",
+  },
+  mapZoomIn: { ko: "확대", en: "Zoom in", zh: "放大", ja: "拡大" },
+  mapZoomOut: { ko: "축소", en: "Zoom out", zh: "缩小", ja: "縮小" },
+  mapReset: { ko: "서울 중심으로", en: "Back to central Seoul", zh: "回到首尔市中心", ja: "ソウル中心部に戻る" },
+  mapLegend: { ko: "노선별 역 목록", en: "Stations by line", zh: "各线路车站", ja: "路線別の駅一覧" },
+  mapHowTitle: { ko: "노선도 보는 법", en: "How to read this map", zh: "如何看这张线路图", ja: "路線図の見方" },
+  mapHow1: {
+    ko: "선 색은 노선 색이에요. 서울 지하철 역과 열차에도 같은 색이 쓰여요.",
+    en: "Each colour is a line, the same colour used on signs and trains in Seoul stations.",
+    zh: "每种颜色代表一条线路，与首尔车站标识和列车上的颜色相同。",
+    ja: "線の色は路線の色で、ソウルの駅や車両の案内にも同じ色が使われています。",
+  },
+  mapHow2: {
+    ko: "큰 동그라미는 환승역이에요. 갈아탈 때 가장 빠른 칸은 각 역 페이지에 있어요.",
+    en: "Larger circles are transfer stations. Each station page lists the fastest car and door for changing lines.",
+    zh: "较大的圆圈是换乘站。各车站页面列出了换乘最快的车厢和车门。",
+    ja: "大きな丸は乗り換え駅です。最速の乗り換え号車・ドアは各駅のページに載っています。",
+  },
+  mapHow3: {
+    ko: "공식 노선도와 달리 실제 지리 위치대로 그려서, 역 사이 실제 거리와 방향을 알 수 있어요.",
+    en: "Unlike the official diagram, stations sit at their real locations, so distances and directions are true to life.",
+    zh: "与官方示意图不同，车站按真实地理位置绘制，距离和方向都与实际一致。",
+    ja: "公式の路線図と違い、駅を実際の位置に描いているので、駅間の距離や方角が実際と同じです。",
+  },
+  mapNote: {
+    ko: "역 순서 © OpenStreetMap 기여자(ODbL). 급행 노선은 표시하지 않았어요.",
+    en: "Station order © OpenStreetMap contributors (ODbL). Express services are not drawn separately.",
+    zh: "车站顺序 © OpenStreetMap 贡献者（ODbL）。快车线路未单独绘制。",
+    ja: "駅の順番 © OpenStreetMap contributors（ODbL）。急行は別に描いていません。",
+  },
+  guidesTitle: {
+    ko: "서울 지하철 이용 가이드: 공항·교통카드·요금·짐",
+    en: "Seoul Subway Travel Guides: Airport, T-money, Fares & Luggage",
+    zh: "首尔地铁乘车指南：机场、T-money、票价与行李",
+    ja: "ソウル地下鉄 乗り方ガイド：空港・T-money・運賃・荷物",
+  },
+  guidesHeading: {
+    ko: "서울 지하철 이용 가이드",
+    en: "Seoul subway travel guides",
+    zh: "首尔地铁乘车指南",
+    ja: "ソウル地下鉄 乗り方ガイド",
+  },
+  guidesLead: {
+    ko: "처음 서울 지하철을 타는 여행자를 위한 핵심 정리예요.",
+    en: "Everything first-time visitors ask about riding the Seoul subway, in one place.",
+    zh: "第一次乘坐首尔地铁的旅客最常问的问题，一次讲清楚。",
+    ja: "初めてソウルの地下鉄に乗る旅行者がよく迷うポイントをまとめました。",
+  },
+  guidesDescription: {
+    ko: "인천공항에서 시내 가는 법, 티머니·기후동행카드, 지하철 요금과 막차, 캐리어 들고 타는 법까지 서울 지하철 이용 가이드.",
+    en: "How to get from Incheon Airport to Seoul, buy and top up T-money, pay fares, catch the last train and ride with luggage on the Seoul subway.",
+    zh: "从仁川机场到首尔市区、T-money 交通卡购买与充值、票价与末班车、携带行李乘车，首尔地铁实用指南。",
+    ja: "仁川空港からソウル市内への行き方、T-moneyの買い方・チャージ、運賃と終電、荷物を持っての乗り方まで、ソウル地下鉄ガイド。",
+  },
+  guidesMore: { ko: "다른 가이드", en: "More guides", zh: "更多指南", ja: "ほかのガイド" },
+  guideRead: { ko: "읽기", en: "Read", zh: "阅读", ja: "読む" },
+  guideStations: { ko: "관련 역", en: "Stations in this guide", zh: "相关车站", ja: "関連する駅" },
+  guideChecked: {
+    ko: "{date} 기준 정보예요. 요금과 운행 시간은 바뀔 수 있으니 공식 안내도 확인하세요.",
+    en: "Checked {date}. Fares and timetables change, so confirm with the official sources linked below.",
+    zh: "信息更新于{date}。票价和时刻可能调整，请以下方官方信息为准。",
+    ja: "{date}時点の情報です。運賃や時刻は変わることがあるため、下の公式情報もご確認ください。",
+  },
+  guideSources: { ko: "공식 안내", en: "Official sources", zh: "官方信息", ja: "公式情報" },
+  lockerPrices: {
+    ko: "T-Locker 크기와 기본요금 (4시간)",
+    en: "T-Locker sizes and base prices (4 hours)",
+    zh: "T-Locker 尺寸与基本费用（4小时）",
+    ja: "T-Lockerのサイズと基本料金（4時間）",
+  },
+  lockerSize: { ko: "크기", en: "Size", zh: "尺寸", ja: "サイズ" },
+  weekday: { ko: "평일", en: "Weekdays", zh: "工作日", ja: "平日" },
+  weekend: { ko: "주말·공휴일", en: "Weekends & holidays", zh: "周末及节假日", ja: "土日祝" },
+  lockerExtra: {
+    ko: "4시간 이후 1시간마다 추가 요금, 운영 {open}:00~{close}:00, 최대 {days}일.",
+    en: "Extra charge per hour after 4 hours. Open {open}:00–{close}:00, up to {days} days.",
+    zh: "超过4小时后每小时加收费用。使用时间 {open}:00～{close}:00，最长{days}天。",
+    ja: "4時間以降は1時間ごとに追加料金。利用時間 {open}:00～{close}:00、最大{days}日。",
+  },
+  deskList: {
+    ko: "T-Luggage 데스크 위치 ({open}:00~{close}:00)",
+    en: "T-Luggage desk locations ({open}:00–{close}:00)",
+    zh: "T-Luggage 柜台位置（{open}:00～{close}:00）",
+    ja: "T-Luggageカウンターの場所（{open}:00～{close}:00）",
+  },
+  pricesMayChange: {
+    ko: "요금은 운영사 사정에 따라 바뀔 수 있어요.",
+    en: "Prices are set by the operator and may change.",
+    zh: "价格由运营方制定，可能会调整。",
+    ja: "料金は運営会社の都合で変わることがあります。",
+  },
 } satisfies Record<string, Localized>;
 
 export function fill(template: string, values: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
 }
 
-export function tc(key: keyof typeof COPY, locale: Locale, values?: Record<string, string | number>) {
-  const text = t(COPY[key], locale);
+/** `values` are inserted after conversion, so pass them already in the guide language. */
+export function tc(key: keyof typeof COPY, locale: GuideLocale, values?: Record<string, string | number>) {
+  const text = gt(COPY[key], locale);
   return values ? fill(text, values) : text;
 }
 
 /** "Gangnam" → "Gangnam Station"; the other languages already end in 역/站/駅. */
-export function stationTitle(station: GuideStation, locale: Locale) {
-  const name = t(station.name, locale);
+export function stationTitle(station: GuideStation, locale: GuideLocale) {
+  const name = gt(station.name, locale);
   if (locale !== "en") return name;
   return /station$/i.test(name) ? name : `${name} Station`;
 }
 
-export function floorLabel(floor: string, locale: Locale) {
+function floorText(floor: string, locale: Locale) {
   const below = /^B(\d+)$/.exec(floor);
   if (below) {
     const n = below[1];
@@ -391,6 +530,10 @@ export function floorLabel(floor: string, locale: Locale) {
   }
   if (floor === "중층") return { ko: "중층", en: "Mezzanine", zh: "夹层", ja: "中層" }[locale];
   return floor;
+}
+
+export function floorLabel(floor: string, locale: GuideLocale) {
+  return inScript(locale, floorText(floor, contentLocale(locale)));
 }
 
 function listJoin(items: string[], locale: Locale) {
@@ -417,7 +560,11 @@ function linesPhrase(lines: readonly string[], locale: Locale) {
 }
 
 /** A few data-driven sentences, so every station page says something specific about that station. */
-export function stationSummary(station: GuideStation, detail: GuideDetail, locale: Locale): string[] {
+export function stationSummary(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
+  return summaryText(station, detail, contentLocale(locale)).map((sentence) => inScript(locale, sentence));
+}
+
+function summaryText(station: GuideStation, detail: GuideDetail, locale: Locale): string[] {
   const title = stationTitle(station, locale);
   const lines = linesPhrase(station.lines, locale);
   const exits = detail.exits.length;
@@ -488,7 +635,14 @@ function toParticle(word: string) {
 export type FaqItem = { question: string; answer: string };
 
 /** Question-style answers built from the station's data; questions without data are left out. */
-export function stationFaq(station: GuideStation, detail: GuideDetail, locale: Locale): FaqItem[] {
+export function stationFaq(station: GuideStation, detail: GuideDetail, locale: GuideLocale): FaqItem[] {
+  return faqText(station, detail, contentLocale(locale)).map((item) => ({
+    question: inScript(locale, item.question),
+    answer: inScript(locale, item.answer),
+  }));
+}
+
+function faqText(station: GuideStation, detail: GuideDetail, locale: Locale): FaqItem[] {
   const title = stationTitle(station, locale);
   const lines = linesPhrase(station.lines, locale);
   const nextStops = [
@@ -727,31 +881,43 @@ function stationName(station: GuideStation, locale: Locale) {
 }
 
 /** Search-phrase titles; claims a station can't back (gated restrooms, transfers) are dropped for that station. */
-export function stationMetaTitle(station: GuideStation, detail: GuideDetail, locale: Locale) {
-  const name = stationName(station, locale);
+export function stationMetaTitle(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
+  const base = contentLocale(locale);
+  const name = stationName(station, base);
   const insideRestroom = detail.toilets.some((row) => row.gate === "inside");
   const transfers = detail.transfers.length > 0;
-  return {
-    en: `${name} Exit Map, Lockers & Restrooms Guide | K-SUB`,
-    ja: `${name} コインロッカー・出口マップ・トイレ位置ガイド | K-SUB`,
-    zh: `${name}出口地图、储物柜及洗手间位置指南 | K-SUB`,
-    ko: `${name} ${insideRestroom ? "개찰구 안 " : ""}화장실 위치, 물품보관함 & ${transfers ? "빠른환승 " : ""}출구 꿀팁 | 지하철꿀정보`,
-  }[locale];
+  return inScript(
+    locale,
+    {
+      en: `${name} Exit Map, Lockers & Restrooms Guide | K-SUB`,
+      ja: `${name} コインロッカー・出口マップ・トイレ位置ガイド | K-SUB`,
+      zh: `${name}出口地图、储物柜及洗手间位置指南 | K-SUB`,
+      ko: `${name} ${insideRestroom ? "개찰구 안 " : ""}화장실 위치, 물품보관함 & ${transfers ? "빠른환승 " : ""}출구 꿀팁 | 지하철꿀정보`,
+    }[base],
+  );
 }
 
 /** Shorter title for link previews (KakaoTalk, WhatsApp, Reddit). */
-export function stationOgTitle(station: GuideStation, locale: Locale) {
-  const name = stationName(station, locale);
-  return {
-    en: `${name} Guide & Exit Map - K-SUB`,
-    ja: `${name}ガイド & 出口マップ - K-SUB`,
-    zh: `${name}指南 & 出口地图 - K-SUB`,
-    ko: `${name} 정보 & 출구 지도 - 지하철꿀정보`,
-  }[locale];
+export function stationOgTitle(station: GuideStation, locale: GuideLocale) {
+  const base = contentLocale(locale);
+  const name = stationName(station, base);
+  return inScript(
+    locale,
+    {
+      en: `${name} Guide & Exit Map - K-SUB`,
+      ja: `${name}ガイド & 出口マップ - K-SUB`,
+      zh: `${name}指南 & 出口地图 - K-SUB`,
+      ko: `${name} 정보 & 출구 지도 - 지하철꿀정보`,
+    }[base],
+  );
 }
 
 /** English and Japanese follow travelers' search phrases; Korean and Chinese lead with the station's own numbers. */
-export function stationMetaDescription(station: GuideStation, detail: GuideDetail, locale: Locale) {
+export function stationMetaDescription(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
+  return inScript(locale, metaDescriptionText(station, detail, contentLocale(locale)));
+}
+
+function metaDescriptionText(station: GuideStation, detail: GuideDetail, locale: Locale) {
   if (locale === "en" || locale === "ja") {
     const name = stationName(station, locale);
     const insideRestroom = detail.toilets.some((row) => row.gate === "inside");
@@ -798,6 +964,6 @@ function stationFactsDescription(station: GuideStation, detail: GuideDetail, loc
   return `${title}(${lines}) ${facts.length ? listJoin(facts, locale) : "출구, 화장실, 물품보관함, 빠른환승 정보"}까지 한눈에 확인하세요.`;
 }
 
-export function walkMinutesLabel(seconds: number, locale: Locale) {
+export function walkMinutesLabel(seconds: number, locale: GuideLocale) {
   return tc("walk", locale, { n: minutes(seconds) });
 }

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { ALL_LINES, GUIDE_STATIONS, lineSlug } from "./_lib/guide";
-import { LOCALES } from "./_lib/i18n";
+import { GUIDE_ARTICLES } from "./_lib/guideArticles";
+import { GUIDE_LOCALES } from "./_lib/guideLocale";
 import { LEGAL_UPDATED } from "./_lib/legal";
 import { GUIDE_UPDATED, guideLanguages, SITE_URL } from "./_lib/site";
 
@@ -11,7 +12,7 @@ function absolute(languages: Record<string, string>) {
 /** Every guide page in every language, each listing its translations (hreflang). */
 function guideEntries(path: string, priority: number): MetadataRoute.Sitemap {
   const languages = absolute(guideLanguages(path));
-  return LOCALES.map((locale) => ({
+  return GUIDE_LOCALES.map((locale) => ({
     url: `${SITE_URL}/${locale}${path}`,
     lastModified: GUIDE_UPDATED,
     changeFrequency: "monthly",
@@ -30,6 +31,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       alternates: { languages: absolute(guideLanguages("")) },
     },
     ...guideEntries("", 0.9),
+    ...guideEntries("/map", 0.9),
+    ...guideEntries("/guides", 0.8),
+    ...GUIDE_ARTICLES.flatMap((article) => guideEntries(`/guides/${article.slug}`, 0.8)),
     ...guideEntries("/stations", 0.8),
     ...ALL_LINES.flatMap((line) => guideEntries(`/lines/${lineSlug(line)}`, 0.8)),
     ...GUIDE_STATIONS.flatMap((station) => guideEntries(`/stations/${station.slug}`, 0.7)),

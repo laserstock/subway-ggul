@@ -1,12 +1,15 @@
 import { ImageResponse } from "next/og";
-import { guideDetail, guideStation, localLine, stationLineColor } from "../../../../_lib/guide";
-import { stationTitle, tc } from "../../../../_lib/guideCopy";
-import { isLocale, type Locale } from "../../../../_lib/i18n";
+import { guideDetail, guideStation, stationLineColor } from "../../../../_lib/guide";
+import { lineLabel, stationTitle, tc } from "../../../../_lib/guideCopy";
+import { contentLocale, isGuideLocale, type GuideLocale } from "../../../../_lib/guideLocale";
+import { inScript } from "../../../../_lib/hant";
+import type { Locale } from "../../../../_lib/i18n";
 
 /** The default OG font has no Hangul or CJK glyphs, so those cards load a Noto subset with just their text. */
-const FONT_FAMILY: Record<Exclude<Locale, "en">, string> = {
+const FONT_FAMILY: Record<Exclude<GuideLocale, "en">, string> = {
   ko: "Noto Sans KR",
   zh: "Noto Sans SC",
+  "zh-tw": "Noto Sans TC",
   ja: "Noto Sans JP",
 };
 
@@ -71,19 +74,19 @@ export async function GET(request: Request, ctx: RouteContext<"/api/og/station/[
   const requested = new URL(request.url).searchParams.get("lang");
   const detail = guideDetail(station);
 
-  const card = (locale: Locale) => {
+  const card = (locale: GuideLocale) => {
     const title = stationTitle(station, locale);
-    const lines = station.lines.slice(0, 5).map((line) => ({ line, name: localLine(line, locale) }));
-    const facts = FACTS[locale](
+    const lines = station.lines.slice(0, 5).map((line) => ({ line, name: lineLabel(line, locale) }));
+    const facts = FACTS[contentLocale(locale)](
       detail.exits.length,
       detail.toilets.length,
       detail.lockers.length,
       detail.elevators.length > 0,
-    );
+    ).map((fact) => inScript(locale, fact));
     return { title, lines, facts, guide: `${tc("ogGuide", locale)} | K-SUB` };
   };
 
-  let locale: Locale = isLocale(requested) ? requested : "en";
+  let locale: GuideLocale = isGuideLocale(requested) ? requested : "en";
   let content = card(locale);
   let fonts: { name: string; data: ArrayBuffer; weight: 700 | 900; style: "normal" }[] | undefined;
   if (locale !== "en") {

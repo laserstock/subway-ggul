@@ -1,17 +1,17 @@
 import { notFound } from "next/navigation";
 import Footer from "../_components/Footer";
-import { isLocale, LANGUAGES, LOCALES } from "../_lib/i18n";
+import { GUIDE_LANGUAGES, GUIDE_LOCALES, isGuideLocale } from "../_lib/guideLocale";
 import LocaleSync from "./_guide/LocaleSync";
 import { GuideHeader } from "./_guide/parts";
 
 export function generateStaticParams() {
-  return LOCALES.map((lang) => ({ lang }));
+  return GUIDE_LOCALES.map((lang) => ({ lang }));
 }
 
 export default async function GuideLayout({ children, params }: LayoutProps<"/[lang]">) {
   const { lang } = await params;
-  if (!isLocale(lang)) notFound();
-  const htmlLang = LANGUAGES[lang].htmlLang;
+  if (!isGuideLocale(lang)) notFound();
+  const htmlLang = GUIDE_LANGUAGES[lang].htmlLang;
   return (
     <div lang={htmlLang} className="flex min-h-dvh flex-1 flex-col bg-app text-ink">
       <script dangerouslySetInnerHTML={{ __html: `document.documentElement.lang=${JSON.stringify(htmlLang)}` }} />

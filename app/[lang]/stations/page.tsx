@@ -1,28 +1,28 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ALL_LINES, GUIDE_STATIONS, localLine } from "../../_lib/guide";
-import { BRAND, COPY, tc } from "../../_lib/guideCopy";
-import { isLocale, t } from "../../_lib/i18n";
+import { ALL_LINES, GUIDE_STATIONS } from "../../_lib/guide";
+import { BRAND, COPY, gt, lineLabel, tc } from "../../_lib/guideCopy";
+import { isGuideLocale } from "../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES } from "../../_lib/site";
 import GuideSearch from "../_guide/GuideSearch";
 import { AppPromo, LineLink, searchItems, StationLink } from "../_guide/parts";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/stations">): Promise<Metadata> {
   const { lang } = await params;
-  if (!isLocale(lang)) return {};
-  const title = `${t(COPY.allStationsTitle, lang)} | ${t(BRAND, lang)}`;
-  const description = t(COPY.allStationsDescription, lang);
+  if (!isGuideLocale(lang)) return {};
+  const title = `${gt(COPY.allStationsTitle, lang)} | ${gt(BRAND, lang)}`;
+  const description = gt(COPY.allStationsDescription, lang);
   return {
     title,
     description,
     alternates: guideAlternates("/stations", lang),
-    openGraph: { type: "website", siteName: t(BRAND, lang), title, description, locale: OG_LOCALES[lang] },
+    openGraph: { type: "website", siteName: gt(BRAND, lang), title, description, locale: OG_LOCALES[lang] },
   };
 }
 
 export default async function StationDirectory({ params }: PageProps<"/[lang]/stations">) {
   const { lang } = await params;
-  if (!isLocale(lang)) notFound();
+  if (!isGuideLocale(lang)) notFound();
   const collator = new Intl.Collator(lang);
   return (
     <>
@@ -40,10 +40,10 @@ export default async function StationDirectory({ params }: PageProps<"/[lang]/st
 
       {ALL_LINES.map((line) => {
         const stations = GUIDE_STATIONS.filter((station) => station.lines.includes(line)).sort((a, b) =>
-          collator.compare(t(a.name, lang), t(b.name, lang)),
+          collator.compare(gt(a.name, lang), gt(b.name, lang)),
         );
         return (
-          <section key={line} className="mt-7" aria-label={localLine(line, lang)}>
+          <section key={line} className="mt-7" aria-label={lineLabel(line, lang)}>
             <h2 className="flex flex-wrap items-center gap-2">
               <LineLink line={line} locale={lang} />
               <span className="text-[12px] font-semibold text-ink-muted">

@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { TrainMark } from "../../_components/icons";
 import LanguageSelector from "../../_components/LanguageSelector";
-import { GUIDE_STATIONS, lineSlug, localLine, stationLineColor, type GuideStation } from "../../_lib/guide";
-import { BRAND_SHORT, TAGLINE, tc } from "../../_lib/guideCopy";
-import { t, type Locale } from "../../_lib/i18n";
+import { GUIDE_STATIONS, lineSlug, stationLineColor, type GuideStation } from "../../_lib/guide";
+import { BRAND_SHORT, gt, lineLabel, TAGLINE, tc } from "../../_lib/guideCopy";
+import { contentLocale, type GuideLocale } from "../../_lib/guideLocale";
+import { inScript } from "../../_lib/hant";
 import { APP_RELEASED, PLAY_STORE_URL } from "../../_lib/site";
 import type { GuideSearchItem } from "./GuideSearch";
 import { normalizeQuery } from "./searchKeys";
 
-export function GuideHeader({ locale }: { locale: Locale }) {
+export function GuideHeader({ locale }: { locale: GuideLocale }) {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-app/90 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex w-full max-w-[760px] items-center justify-between gap-3 px-4 py-2.5">
@@ -18,9 +19,9 @@ export function GuideHeader({ locale }: { locale: Locale }) {
           </span>
           <span className="min-w-0">
             <span className="block text-[16px] font-extrabold leading-tight tracking-tight text-honey-strong">
-              {t(BRAND_SHORT, locale)}
+              {gt(BRAND_SHORT, locale)}
             </span>
-            <span className="block break-words text-[11px] font-semibold text-ink-muted">{t(TAGLINE, locale)}</span>
+            <span className="block break-words text-[11px] font-semibold text-ink-muted">{gt(TAGLINE, locale)}</span>
           </span>
         </Link>
         <LanguageSelector current={locale} label={tc("language", locale)} />
@@ -41,7 +42,7 @@ function PlayLogo() {
 }
 
 /** Download box: Google Play (marked "coming soon" until release) plus the web app as the fallback. */
-export function AppPromo({ locale }: { locale: Locale }) {
+export function AppPromo({ locale }: { locale: GuideLocale }) {
   return (
     <section
       aria-labelledby="get-app"
@@ -74,7 +75,7 @@ export function AppPromo({ locale }: { locale: Locale }) {
           </span>
         </a>
         <a
-          href={`/?lang=${locale}`}
+          href={`/?lang=${contentLocale(locale)}`}
           className="inline-flex items-center rounded-xl bg-honey px-4 py-2.5 text-[14px] font-bold text-white transition active:scale-[0.98]"
         >
           {tc("openWebApp", locale)} →
@@ -85,45 +86,48 @@ export function AppPromo({ locale }: { locale: Locale }) {
   );
 }
 
-export function LineChip({ line, locale }: { line: string; locale: Locale }) {
+export function LineChip({ line, locale }: { line: string; locale: GuideLocale }) {
   return (
     <span
       className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold text-white"
       style={{ backgroundColor: stationLineColor(line) }}
     >
-      {localLine(line, locale)}
+      {lineLabel(line, locale)}
     </span>
   );
 }
 
 /** A line chip that opens the line's station list. */
-export function LineLink({ line, locale }: { line: string; locale: Locale }) {
+export function LineLink({ line, locale }: { line: string; locale: GuideLocale }) {
   return (
     <Link
       href={`/${locale}/lines/${lineSlug(line)}`}
       className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold text-white transition active:scale-95"
       style={{ backgroundColor: stationLineColor(line) }}
     >
-      {localLine(line, locale)}
+      {lineLabel(line, locale)}
       <span aria-hidden>›</span>
     </Link>
   );
 }
 
-export function searchItems(locale: Locale): GuideSearchItem[] {
-  return GUIDE_STATIONS.map((station) => ({
-    slug: station.slug,
-    label: t(station.name, locale),
-    sub: station.lines.map((line) => localLine(line, locale)).join(" · "),
-    color: stationLineColor(station.lines[0] ?? ""),
-    keys: [station.name.ko, station.name.en, station.name.zh ?? "", station.name.ja ?? ""]
-      .map(normalizeQuery)
-      .filter(Boolean)
-      .join("|"),
-  }));
+export function searchItems(locale: GuideLocale): GuideSearchItem[] {
+  return GUIDE_STATIONS.map((station) => {
+    const zh = station.name.zh ?? "";
+    return {
+      slug: station.slug,
+      label: gt(station.name, locale),
+      sub: station.lines.map((line) => lineLabel(line, locale)).join(" · "),
+      color: stationLineColor(station.lines[0] ?? ""),
+      keys: [station.name.ko, station.name.en, zh, inScript("zh-tw", zh), station.name.ja ?? ""]
+        .map(normalizeQuery)
+        .filter(Boolean)
+        .join("|"),
+    };
+  });
 }
 
-export function StationLink({ station, locale }: { station: GuideStation; locale: Locale }) {
+export function StationLink({ station, locale }: { station: GuideStation; locale: GuideLocale }) {
   return (
     <Link
       href={`/${locale}/stations/${station.slug}`}
@@ -134,7 +138,7 @@ export function StationLink({ station, locale }: { station: GuideStation; locale
         style={{ backgroundColor: stationLineColor(station.lines[0] ?? "") }}
         aria-hidden
       />
-      {t(station.name, locale)}
+      {gt(station.name, locale)}
     </Link>
   );
 }

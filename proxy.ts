@@ -1,24 +1,28 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { LOCALE_COOKIE, type Locale } from "./app/_lib/i18n";
+import { contentLocale, type GuideLocale } from "./app/_lib/guideLocale";
+import { LOCALE_COOKIE } from "./app/_lib/i18n";
 import { localePath } from "./app/_lib/site";
 
 const BOT_AGENT = /bot|crawl|spider|slurp|lighthouse|headless/i;
 /** Android WebViews: the Play app loads the site and must stay on the app home. */
 const WEBVIEW_AGENT = /; wv\)/;
+/** Taiwan, Hong Kong, Macau or an explicit Traditional script. */
+const TRADITIONAL_CHINESE = /^zh-(tw|hk|mo|hant)\b/;
 
 /** The visitor's top Accept-Language entry; anything other than Korean, Japanese or Chinese gets English. */
-function preferredLocale(acceptLanguage: string): Locale {
+function preferredLocale(acceptLanguage: string): GuideLocale {
   const [top] = acceptLanguage
     .split(",")
     .map((entry, index) => {
       const [tag, ...params] = entry.trim().toLowerCase().split(";");
       const q = params.map((param) => param.trim()).find((param) => param.startsWith("q="));
-      return { base: tag.split("-")[0], q: q ? Number(q.slice(2)) : 1, index };
+      return { tag, base: tag.split("-")[0], q: q ? Number(q.slice(2)) : 1, index };
     })
     .filter((entry) => entry.base && entry.base !== "*" && entry.q > 0)
     .sort((a, b) => b.q - a.q || a.index - b.index);
   const base = top?.base;
-  return base === "ko" || base === "ja" || base === "zh" ? base : "en";
+  if (base === "zh") return TRADITIONAL_CHINESE.test(top.tag) ? "zh-tw" : "zh";
+  return base === "ko" || base === "ja" ? base : "en";
 }
 
 /**
@@ -51,7 +55,7 @@ export function proxy(request: NextRequest) {
     url.pathname = target;
     response = NextResponse.redirect(url);
   }
-  response.cookies.set(LOCALE_COOKIE, locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  response.cookies.set(LOCALE_COOKIE, contentLocale(locale), { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
   return response;
 }
 
