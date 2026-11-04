@@ -22,8 +22,10 @@ import {
   gt,
   lineLabel,
   stationFaq,
+  stationKeywords,
   stationMetaDescription,
   stationMetaTitle,
+  stationOgDescription,
   stationOgTitle,
   stationSummary,
   stationTitle,
@@ -33,8 +35,9 @@ import {
 import { GUIDE_LANGUAGES, isGuideLocale, contentLocale, type GuideLocale } from "../../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
 import { Icon, IconTile, type IconName } from "../../_guide/icons";
-import { AppPromo, JsonLd, LineChip, LineLink, StationLink } from "../../_guide/parts";
+import { AppPromo, LineChip, LineLink, StationLink } from "../../_guide/parts";
 import ShowKorean from "../../_guide/ShowKorean";
+import StationSeoSchema from "../../_guide/StationSeoSchema";
 
 export function generateStaticParams() {
   return GUIDE_STATIONS.map((station) => ({ slug: station.slug }));
@@ -59,6 +62,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/stations/[
   const title = stationMetaTitle(station, detail, lang);
   const description = stationMetaDescription(station, detail, lang);
   const ogTitle = stationOgTitle(station, lang);
+  const ogDescription = stationOgDescription(station, detail, lang);
   const image = {
     url: ogImagePath(station, lang),
     width: 1200,
@@ -68,17 +72,18 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/stations/[
   return {
     title,
     description,
+    keywords: stationKeywords(station, lang),
     alternates: guideAlternates(`/stations/${station.slug}`, lang),
     openGraph: {
       type: "website",
       siteName: gt(BRAND, lang),
       title: ogTitle,
-      description,
+      description: ogDescription,
       locale: OG_LOCALES[lang],
       url: `${SITE_URL}/${lang}/stations/${station.slug}`,
       images: [image],
     },
-    twitter: { card: "summary_large_image", title: ogTitle, description, images: [image] },
+    twitter: { card: "summary_large_image", title: ogTitle, description: ogDescription, images: [image] },
   };
 }
 
@@ -285,50 +290,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
 
   return (
     <>
-      <JsonLd
-        data={[
-          {
-            "@context": "https://schema.org",
-            "@type": "TrainStation",
-            name: title,
-            alternateName: [station.name.ko, station.name.en, station.name.zh, station.name.ja].filter(
-              (name) => name && name !== title,
-            ),
-            url,
-            geo: { "@type": "GeoCoordinates", latitude: station.lat, longitude: station.lng },
-            ...(detail.address
-              ? { address: { "@type": "PostalAddress", streetAddress: detail.address, addressCountry: "KR" } }
-              : {}),
-          },
-          {
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: tc("breadcrumbHome", lang), item: `${SITE_URL}/${lang}` },
-              {
-                "@type": "ListItem",
-                position: 2,
-                name: tc("breadcrumbStations", lang),
-                item: `${SITE_URL}/${lang}/stations`,
-              },
-              { "@type": "ListItem", position: 3, name: title, item: url },
-            ],
-          },
-          ...(faq.length
-            ? [
-                {
-                  "@context": "https://schema.org",
-                  "@type": "FAQPage",
-                  mainEntity: faq.map((item) => ({
-                    "@type": "Question",
-                    name: item.question,
-                    acceptedAnswer: { "@type": "Answer", text: item.answer },
-                  })),
-                },
-              ]
-            : []),
-        ]}
-      />
+      <StationSeoSchema station={station} detail={detail} lang={lang} faq={faq} />
 
       <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted">
         <ol className="flex flex-wrap items-center gap-1">

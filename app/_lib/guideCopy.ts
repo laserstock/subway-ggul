@@ -696,29 +696,31 @@ function faqText(station: GuideStation, detail: GuideDetail, locale: Locale): Fa
   if (locale === "en") {
     if (detail.lockers.length || desk)
       out.push({
-        question: `Are there luggage lockers (coin lockers) at ${title}?`,
+        question: `Are there luggage lockers (T-Lockers) at ${title}?`,
         answer:
           (detail.lockers.length
-            ? `Yes. There ${detail.lockers.length === 1 ? "is 1 coin locker bank" : `are ${detail.lockers.length} coin locker banks`}` +
+            ? `Yes. There ${detail.lockers.length === 1 ? "is 1 luggage locker bank" : `are ${detail.lockers.length} luggage locker banks`}` +
               (lockerSlots ? ` with about ${lockerSlots} lockers in total` : "") +
-              `, ${lockerGate === "both" ? "both inside and outside" : lockerGate} the fare gates.`
-            : "There are no coin lockers listed here.") + (desk ? ` A staffed T-Luggage desk is available: ${desk}.` : ""),
-      });
-    if (detail.toilets.length)
-      out.push({
-        question: `Where are the restrooms located in ${title}?`,
-        answer:
-          (detail.toilets.length === 1
-            ? `There is 1 restroom, ${toiletGate} the fare gates.`
-            : toiletGate === "both"
-              ? `There are ${detail.toilets.length} restrooms: ${inside} inside and ${outside} outside the fare gates.`
-              : `There are ${detail.toilets.length} restrooms, all ${toiletGate} the fare gates.`) +
-          (toiletExits.length ? ` They're near ${listJoin(toiletExits, locale)}.` : ""),
+              `, ${lockerGate === "both" ? "both inside and outside" : lockerGate} the ticket gates. The locker list on this page shows the line and floor of each one.`
+            : `No lockers are listed at ${title}.`) + (desk ? ` A staffed T-Luggage desk is available: ${desk}.` : ""),
       });
     if (elevatorExits.length)
       out.push({
-        question: `Which exit of ${title} has elevators?`,
-        answer: `Use ${listJoin(elevatorExits, locale)} to go between the street and the platform by elevator, the easiest route with big luggage or a stroller.`,
+        question: `Which exit at ${title} has elevators for heavy luggage?`,
+        answer: `Use ${listJoin(elevatorExits, locale)} to go between the street and the platform by elevator, the easiest route with heavy bags or a stroller.`,
+      });
+    if (detail.toilets.length)
+      out.push({
+        question: `Are restrooms located inside the ticket gates at ${title}?`,
+        answer:
+          (detail.toilets.length === 1
+            ? `${inside ? "Yes" : "No"}. The station's only restroom is ${toiletGate} the ticket gates.`
+            : toiletGate === "both"
+              ? `Yes. ${inside} of the ${detail.toilets.length} restrooms are inside the ticket gates and ${outside} are outside.`
+              : `${inside ? "Yes" : "No"}. ${detail.toilets.length === 2 ? "Both" : `All ${detail.toilets.length}`} restrooms are ${toiletGate} the ticket gates.`) +
+          (toiletExits.length
+            ? ` ${detail.toilets.length === 1 ? "It's" : "They're"} near ${listJoin(toiletExits, locale)}.`
+            : ""),
       });
     out.push({
       question: `Which subway lines stop at ${title}?`,
@@ -906,7 +908,7 @@ export function stationMetaTitle(station: GuideStation, detail: GuideDetail, loc
   return inScript(
     locale,
     {
-      en: `${name} Exit Map, Lockers & Restrooms Guide | K-SUB`,
+      en: `${name} Exit Map, Luggage Storage & Restrooms | K-SUB`,
       ja: `${name} コインロッカー・出口マップ・トイレ位置ガイド | K-SUB`,
       zh: `${name}出口地图、储物柜及洗手间位置指南 | K-SUB`,
       ko: `${name} ${insideRestroom ? "개찰구 안 " : ""}화장실 위치, 물품보관함 & ${transfers ? "빠른환승 " : ""}출구 꿀팁 | 지하철꿀정보`,
@@ -921,7 +923,7 @@ export function stationOgTitle(station: GuideStation, locale: GuideLocale) {
   return inScript(
     locale,
     {
-      en: `${name} Guide & Exit Map - K-SUB`,
+      en: `${name} Exit & Locker Guide - K-SUB`,
       ja: `${name}ガイド & 出口マップ - K-SUB`,
       zh: `${name}指南 & 出口地图 - K-SUB`,
       ko: `${name} 정보 & 출구 지도 - 지하철꿀정보`,
@@ -935,18 +937,31 @@ export function stationMetaDescription(station: GuideStation, detail: GuideDetai
 }
 
 function metaDescriptionText(station: GuideStation, detail: GuideDetail, locale: Locale) {
-  if (locale === "en" || locale === "ja") {
-    const name = stationName(station, locale);
-    const insideRestroom = detail.toilets.some((row) => row.gate === "inside");
+  if (locale === "en")
+    return `Looking for T-Lockers, elevator exits, or inside-gate restrooms at ${englishName(station)} station? Check real-time exit maps & travel guide.`;
+  if (locale === "ja") {
     const transfers = detail.transfers.length > 0;
-    if (locale === "ja")
-      return `${name}のコインロッカー位置、改札内外のトイレ、エレベーター出口情報を分かりやすく案内。${transfers ? "最速乗り換えドアも掲載。" : ""}`;
-    return (
-      `Find ${name} exit maps, luggage storage/lockers, ${insideRestroom ? "restrooms inside the gates" : "restroom locations"}, ` +
-      `and ${transfers ? "transfer info" : "elevator access"} for travelers in Seoul.`
-    );
+    return `${stationName(station, locale)}のコインロッカー位置、改札内外のトイレ、エレベーター出口情報を分かりやすく案内。${transfers ? "最速乗り換えドアも掲載。" : ""}`;
   }
   return stationFactsDescription(station, detail, locale);
+}
+
+/** English name without its "Station" word, for "{name} station" search phrases. */
+function englishName(station: GuideStation) {
+  return station.name.en.replace(/\s+station$/i, "");
+}
+
+/** Link-preview description; English pitches the exit, locker and elevator details. */
+export function stationOgDescription(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
+  if (locale !== "en") return stationMetaDescription(station, detail, locale);
+  return `Find exact exit maps, T-Locker spots, and elevator routes at ${englishName(station)} station.`;
+}
+
+/** The phrases English-speaking travelers search for; other languages don't set keywords. */
+export function stationKeywords(station: GuideStation, locale: GuideLocale) {
+  if (locale !== "en") return undefined;
+  const name = englishName(station);
+  return [`${name} station`, `${name} station exit map`, `${name} station lockers`, `t-locker ${name}`, "seoul subway guide"];
 }
 
 function stationFactsDescription(station: GuideStation, detail: GuideDetail, locale: Locale) {
