@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ALL_LINES } from "../../_lib/guide";
-import { BRAND, COPY, gt, stationTitle, tc } from "../../_lib/guideCopy";
-import { isGuideLocale } from "../../_lib/guideLocale";
+import { ALL_LINES, guideDetail } from "../../_lib/guide";
+import { BRAND, COPY, gt, lineLabel, tc } from "../../_lib/guideCopy";
+import { contentLocale, isGuideLocale, type GuideLocale } from "../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../_lib/site";
-import { SUBWAY_MAP } from "../../_lib/subwayMap";
+import { MAP_LEVELS, MAP_MAX_ZOOM, placeLabels, SUBWAY_MAP } from "../../_lib/subwayMap";
 import { AppPromo, JsonLd, LineLink } from "../_guide/parts";
-import MapViewport from "./MapViewport";
+import SubwayMap, { type MapCopy, type MapLineData, type MapStationData } from "./SubwayMap";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/map">): Promise<Metadata> {
   const { lang } = await params;
@@ -22,11 +22,69 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/map">): Pr
   };
 }
 
+function mapData(lang: GuideLocale) {
+  const { nodes, lines } = SUBWAY_MAP;
+  const names = nodes.map((node) => gt(node.station.name, lang));
+  const labels = placeLabels(names);
+  const lineIndex = new Map(lines.map((line, index) => [line.line, index]));
+  const mapLines: MapLineData[] = lines.map((line) => ({ ko: line.line, name: lineLabel(line.line, lang), color: line.color, d: line.d }));
+  const stations: MapStationData[] = nodes.map((node, index) => {
+    const detail = guideDetail(node.station);
+    const inside = detail.toilets.filter((row) => row.gate === "inside").length;
+    return {
+      slug: node.station.slug,
+      name: names[index],
+      ko: node.station.ko,
+      alt: lang === "en" ? null : gt(node.station.name, "en"),
+      x: node.x,
+      y: node.y,
+      lines: node.lines.map((line) => lineIndex.get(line)).filter((line) => line !== undefined),
+      hub: node.hub,
+      level: Math.min(labels[index].level, MAP_LEVELS.length - 1),
+      position: labels[index].position,
+      lat: node.station.lat,
+      lng: node.station.lng,
+      exits: detail.exits.length,
+      restroomsIn: inside,
+      restroomsOut: detail.toilets.length - inside,
+      lockers: detail.lockers.length,
+      desk: Boolean(detail.luggageDesk),
+      elevator: detail.elevators[0] ? gt(detail.elevators[0].exit, lang) : null,
+    };
+  });
+  return { lines: mapLines, stations };
+}
+
 export default async function SubwayMapPage({ params }: PageProps<"/[lang]/map">) {
   const { lang } = await params;
   if (!isGuideLocale(lang)) notFound();
-  const { width, height, lines, stations, focus } = SUBWAY_MAP;
+  const { width, height, focus } = SUBWAY_MAP;
+  const { lines, stations } = mapData(lang);
   const heading = tc("mapHeading", lang);
+  const copy: MapCopy = {
+    label: tc("mapLabel", lang),
+    search: tc("mapSearch", lang),
+    empty: tc("searchEmpty", lang),
+    allLines: tc("mapAllLines", lang),
+    close: tc("mapClose", lang),
+    expand: tc("mapExpand", lang),
+    collapse: tc("mapCollapse", lang),
+    zoomIn: tc("mapZoomIn", lang),
+    zoomOut: tc("mapZoomOut", lang),
+    reset: tc("mapReset", lang),
+    exits: tc("mapFactExits", lang),
+    restrooms: tc("mapFactRestrooms", lang),
+    lockers: tc("mapFactLockers", lang),
+    elevator: tc("mapFactElevator", lang),
+    exitsCount: tc("mapExitsCount", lang),
+    restroomCount: tc("utilRestroomCount", lang),
+    lockersCount: tc("utilLockersCount", lang),
+    desk: tc("utilLuggageDesk", lang),
+    elevatorVia: tc("utilElevatorVia", lang),
+    noData: tc("utilNoData", lang),
+    guide: tc("mapGuide", lang),
+    live: tc("mapLive", lang),
+  };
 
   return (
     <>
@@ -44,29 +102,21 @@ export default async function SubwayMapPage({ params }: PageProps<"/[lang]/map">
       <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">
         {tc("mapLead", lang, { lines: lines.length, n: stations.length })}
       </p>
-      <p className="mt-3 text-[12px] font-semibold text-ink-muted">{tc("mapHint", lang)}</p>
+      <p className="mt-2 text-[12px] font-semibold text-ink-muted">{tc("mapHint", lang)}</p>
 
-      <div className="mt-2 -mx-2 sm:mx-0">
-        <MapViewport
+      <div className="-mx-2 mt-3 sm:mx-0">
+        <SubwayMap
+          lang={lang}
+          appLang={contentLocale(lang)}
           width={width}
           height={height}
           focus={focus}
-          label={tc("mapLabel", lang)}
-          controls={{ zoomIn: tc("mapZoomIn", lang), zoomOut: tc("mapZoomOut", lang), reset: tc("mapReset", lang) }}
-        >
-          {lines.map(({ line, color, d }) => (
-            <path key={line} className="ln" d={d} stroke={color} />
-          ))}
-          {stations.map(({ x, y, station, tier }) => (
-            <a key={station.slug} href={`/${lang}/stations/${station.slug}`}>
-              <title>{stationTitle(station, lang)}</title>
-              <circle className={`dot t${tier}`} cx={x} cy={y} r={1.5} />
-              <text className={`name t${tier}`} x={x} y={y} aria-hidden>
-                {gt(station.name, lang)}
-              </text>
-            </a>
-          ))}
-        </MapViewport>
+          levels={MAP_LEVELS}
+          maxZoom={MAP_MAX_ZOOM}
+          lines={lines}
+          stations={stations}
+          copy={copy}
+        />
       </div>
 
       <section aria-labelledby="map-lines" className="mt-7">
