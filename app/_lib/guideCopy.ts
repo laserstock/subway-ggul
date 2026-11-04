@@ -18,16 +18,42 @@ export const TAGLINE: Localized = {
   ja: "ソウル地下鉄ガイド",
 };
 
+/** The English title ends in the short "K-SUB" mark searchers see in results; other languages keep BRAND. */
+export function homeMetaTitle(locale: Locale) {
+  return `${t(COPY.homeTitle, locale)} | ${locale === "en" ? "K-SUB" : t(BRAND, locale)}`;
+}
+
+export const HOME_KEYWORDS = [
+  "seoul subway",
+  "seoul subway map",
+  "seoul subway exit",
+  "seoul subway lockers",
+  "t-locker seoul",
+  "seoul subway guide",
+];
+
+/** Shown on the English landing page; FAQPage data must match questions visible on the page. */
+export const HOME_FAQ_EN = [
+  {
+    question: "How to use Seoul Subway with heavy luggage?",
+    answer: "Check K-SUB for exact elevator exits and T-Locker storage locations at each station.",
+  },
+  {
+    question: "Are there restrooms inside Seoul subway ticket gates?",
+    answer: "K-SUB clearly marks whether station restrooms are inside or outside ticket gates.",
+  },
+];
+
 export const COPY = {
   homeTitle: {
     ko: "서울 지하철 역 정보 가이드: 출구·화장실·물품보관함·빠른환승",
-    en: "Seoul Subway Guide for Travelers: Exits, Restrooms, Lockers & Transfers",
+    en: "Seoul Subway Guide & Exit Maps: Lockers, Restrooms & Elevators",
     zh: "首尔地铁出行指南：出口、洗手间、储物柜、换乘",
     ja: "ソウル地下鉄 旅行者ガイド：出口・トイレ・コインロッカー・乗り換え",
   },
   homeHeading: {
     ko: "서울 지하철, 역마다 꿀정보",
-    en: "Find your way around every Seoul subway station",
+    en: "Seoul Subway Exit & Locker Guide for Travelers",
     zh: "首尔地铁每一站，一查就懂",
     ja: "ソウル地下鉄の全駅を、迷わずスイスイ",
   },
@@ -39,7 +65,7 @@ export const COPY = {
   },
   homeDescription: {
     ko: "서울·수도권 지하철 모든 역의 출구 위치, 화장실, 물품보관함, 빠른환승 칸과 실시간 도착 정보를 한눈에.",
-    en: "Free Seoul subway guide in English: station exits with maps, restrooms, coin lockers, fastest transfer doors and live train arrivals for every Seoul metro station.",
+    en: "The ultimate Seoul subway guide for travelers. Find real-time exit maps, luggage storage (T-Locker) locations, inside-gate restrooms, and elevator routes in Seoul.",
     zh: "免费首尔地铁中文指南：各站出口地图、洗手间、投币储物柜、最快换乘车门及实时列车到站信息。",
     ja: "無料のソウル地下鉄日本語ガイド。全駅の出口マップ、トイレ、コインロッカー、最速乗り換えドア、リアルタイム列車到着情報。",
   },

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ALL_LINES, GUIDE_STATIONS, POPULAR_GUIDES } from "../_lib/guide";
-import { BRAND, COPY, tc } from "../_lib/guideCopy";
+import GoogleSeoSchema from "../_components/GoogleSeoSchema";
+import { BRAND, COPY, HOME_FAQ_EN, HOME_KEYWORDS, homeMetaTitle, tc } from "../_lib/guideCopy";
 import { isLocale, LANGUAGES, t } from "../_lib/i18n";
 import { APP_RELEASED, guideAlternates, OG_LOCALES, PLAY_STORE_URL, SITE_URL } from "../_lib/site";
 import GuideSearch from "./_guide/GuideSearch";
@@ -11,11 +12,12 @@ import { AppPromo, JsonLd, LineLink, searchItems, StationLink } from "./_guide/p
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
-  const title = `${t(COPY.homeTitle, lang)} | ${t(BRAND, lang)}`;
+  const title = homeMetaTitle(lang);
   const description = t(COPY.homeDescription, lang);
   return {
     title,
     description,
+    ...(lang === "en" ? { keywords: HOME_KEYWORDS } : {}),
     alternates: guideAlternates("", lang),
     openGraph: { type: "website", siteName: t(BRAND, lang), title, description, locale: OG_LOCALES[lang], url: `/${lang}` },
   };
@@ -32,30 +34,26 @@ const FEATURES = [
 export default async function GuideHome({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
+  const faq = lang === "en" ? HOME_FAQ_EN : [];
   return (
     <>
+      <GoogleSeoSchema
+        url={`${SITE_URL}/${lang}`}
+        inLanguage={LANGUAGES[lang].htmlLang}
+        faq={faq}
+        publisherId={`${SITE_URL}/#organization`}
+      />
       <JsonLd
-        data={[
-          {
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            name: "K-Sub",
-            alternateName: [t(BRAND, lang), "지하철꿀정보"],
-            url: `${SITE_URL}/${lang}`,
-            inLanguage: LANGUAGES[lang].htmlLang,
-            publisher: { "@id": `${SITE_URL}/#organization` },
-          },
-          {
-            "@context": "https://schema.org",
-            "@type": "Organization",
-            "@id": `${SITE_URL}/#organization`,
-            name: "K-Sub",
-            alternateName: "지하철꿀정보",
-            url: SITE_URL,
-            logo: `${SITE_URL}/icon.png`,
-            ...(APP_RELEASED ? { sameAs: [PLAY_STORE_URL] } : {}),
-          },
-        ]}
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "@id": `${SITE_URL}/#organization`,
+          name: "K-Sub",
+          alternateName: [t(BRAND, lang), "지하철꿀정보"],
+          url: SITE_URL,
+          logo: `${SITE_URL}/icon.png`,
+          ...(APP_RELEASED ? { sameAs: [PLAY_STORE_URL] } : {}),
+        }}
       />
       <section className="pt-2">
         <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink">{tc("homeHeading", lang)}</h1>
@@ -116,6 +114,22 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
           ))}
         </ul>
       </section>
+
+      {faq.length ? (
+        <section className="mt-8" aria-labelledby="faq">
+          <h2 id="faq" className="text-[17px] font-extrabold text-ink">
+            {tc("faq", lang)}
+          </h2>
+          <div className="mt-3 flex flex-col gap-2">
+            {faq.map((item) => (
+              <div key={item.question} className="rounded-2xl border border-line bg-surface px-4 py-3">
+                <h3 className="text-[14px] font-bold text-ink">{item.question}</h3>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">{item.answer}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="mt-8">
         <AppPromo locale={lang} />

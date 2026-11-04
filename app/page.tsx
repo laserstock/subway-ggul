@@ -1,25 +1,24 @@
 import type { Metadata } from "next";
-import { JsonLd } from "./[lang]/_guide/parts";
+import GoogleSeoSchema from "./_components/GoogleSeoSchema";
 import HomeScreen from "./_components/HomeScreen";
+import { COPY, HOME_KEYWORDS, homeMetaTitle } from "./_lib/guideCopy";
 import { guideLanguages, SITE_URL } from "./_lib/site";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/", languages: guideLanguages("") },
-};
+const TITLE = homeMetaTitle("en");
+const DESCRIPTION = COPY.homeDescription.en;
 
-/** Google takes a domain's site name from the WebSite data on its home page. */
-const SITE_NAME = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "K-Sub",
-  alternateName: ["K-Sub Seoul Subway Guide", "지하철꿀정보", "k-sub.com"],
-  url: `${SITE_URL}/`,
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  keywords: HOME_KEYWORDS,
+  alternates: { canonical: "/", languages: guideLanguages("") },
+  openGraph: { type: "website", siteName: "K-Sub", title: TITLE, description: DESCRIPTION, locale: "ko_KR", url: "/" },
 };
 
 export default function Home() {
   return (
     <>
-      <JsonLd data={SITE_NAME} />
+      <GoogleSeoSchema url={`${SITE_URL}/`} inLanguage="ko" />
       <HomeScreen />
     </>
   );
