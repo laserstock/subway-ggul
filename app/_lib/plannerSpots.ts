@@ -1,9 +1,10 @@
-import type { PlannerCategory } from "./plannerParams";
+import type { PlannerCategory, QuickTag } from "./plannerTypes";
 
 export type PlannerSpot = {
   name: string;
   blurb: string;
   categories: PlannerCategory[];
+  tags?: QuickTag[];
   lat: number;
   lng: number;
   /** The exit travelers are pointed to; when missing, the nearest exit to the spot is used. */
@@ -17,11 +18,19 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
   명동역: [
     {
       name: "Myeongdong Shopping Street",
-      blurb: "Seoul's busiest shopping strip: K-beauty flagships, fashion and evening street-food stalls.",
-      categories: ["shopping", "k-beauty"],
+      blurb: "Seoul's busiest shopping strip: several Olive Young stores, K-beauty flagships, fashion and evening street-food stalls.",
+      categories: ["shopping", "beauty"],
+      tags: ["#OliveYoung"],
       lat: 37.5637,
       lng: 126.9852,
       exit: "6",
+    },
+    {
+      name: "Myeongdong Money Changers",
+      blurb: "A cluster of currency exchange booths, often with better rates than the airport; bring your passport.",
+      categories: ["essentials"],
+      lat: 37.5617,
+      lng: 126.9842,
     },
     {
       name: "Myeongdong Kyoja",
@@ -33,14 +42,14 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Myeongdong Cathedral",
       blurb: "Korea's first Gothic-style cathedral (1898), a quiet stop between the shops.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5633,
       lng: 126.9873,
     },
     {
       name: "Namsan Cable Car to N Seoul Tower",
       blurb: "Ride up Namsan for the classic city view; the base station is uphill from the exit.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5579,
       lng: 126.983,
       exit: "3",
@@ -50,8 +59,9 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
   홍대입구역: [
     {
       name: "Hongdae Street & Busking Zone",
-      blurb: "Indie fashion, character shops and street performers, liveliest from late afternoon.",
-      categories: ["shopping", "attraction"],
+      blurb: "Indie fashion, character shops, photo booths and street performers, liveliest from late afternoon.",
+      categories: ["shopping", "culture"],
+      tags: ["#Life4Cut"],
       lat: 37.5552,
       lng: 126.9227,
       exit: "9",
@@ -59,7 +69,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Gyeongui Line Forest Park",
       blurb: "A long park on a former rail line, lined with cafés toward Yeonnam-dong.",
-      categories: ["attraction", "cafe"],
+      categories: ["culture", "cafe"],
       lat: 37.5601,
       lng: 126.9246,
       exit: "3",
@@ -77,7 +87,8 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Yeonmujang-gil Pop-up Street",
       blurb: "Brand pop-ups, concept stores and K-beauty showrooms in old factories; the line-up changes every few weeks.",
-      categories: ["shopping", "k-beauty"],
+      categories: ["shopping", "beauty"],
+      tags: ["#Pop-up"],
       lat: 37.5434,
       lng: 127.0553,
       exit: "3",
@@ -94,7 +105,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Seoul Forest",
       blurb: "A big park with lawns, a deer enclosure and paths down to the Han River.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5443,
       lng: 127.0374,
       exit: "3",
@@ -104,7 +115,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Dongdaemun Design Plaza (DDP)",
       blurb: "Zaha Hadid's curving landmark with exhibitions and design shops, lit up at night.",
-      categories: ["attraction", "shopping"],
+      categories: ["culture", "shopping"],
       lat: 37.5667,
       lng: 127.0093,
       exit: "1",
@@ -130,7 +141,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Gyeongbokgung Palace",
       blurb: "The main Joseon palace; visitors in hanbok get in free. Closed on Tuesdays.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5788,
       lng: 126.977,
       exit: "5",
@@ -147,6 +158,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
       name: "Seochon Village",
       blurb: "Hanok alleys west of the palace with small galleries, cafés and bookshops.",
       categories: ["cafe", "shopping"],
+      tags: ["#HanokVillage"],
       lat: 37.5795,
       lng: 126.9705,
     },
@@ -155,7 +167,8 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Bukchon Hanok Village",
       blurb: "Hillside lanes of traditional homes. Residents live here: visit between 10 AM and 5 PM and keep voices down.",
-      categories: ["attraction"],
+      categories: ["culture"],
+      tags: ["#HanokVillage"],
       lat: 37.5826,
       lng: 126.9836,
       exit: "2",
@@ -163,7 +176,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Insadong-gil",
       blurb: "Traditional crafts, tea houses and the spiral Ssamziegil shopping courtyard.",
-      categories: ["shopping", "attraction", "cafe"],
+      categories: ["shopping", "culture", "cafe"],
       lat: 37.5742,
       lng: 126.9852,
       exit: "6",
@@ -171,7 +184,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Changdeokgung Palace",
       blurb: "UNESCO-listed palace; the Secret Garden needs a separate timed ticket.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5794,
       lng: 126.991,
       exit: "3",
@@ -182,15 +195,26 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
       name: "Ikseon-dong Hanok Street",
       blurb: "Narrow hanok alleys turned into cafés, dessert shops and small restaurants.",
       categories: ["cafe", "food", "shopping"],
+      tags: ["#HanokVillage"],
       lat: 37.5743,
       lng: 126.9898,
+    },
+  ],
+  충무로역: [
+    {
+      name: "Namsangol Hanok Village",
+      blurb: "Five restored Joseon-era houses, a garden and free traditional games at the foot of Namsan.",
+      categories: ["culture"],
+      tags: ["#HanokVillage"],
+      lat: 37.5592,
+      lng: 126.9946,
     },
   ],
   광화문역: [
     {
       name: "Gwanghwamun Square",
       blurb: "Statues of King Sejong and Admiral Yi, with Gwanghwamun Gate and the mountains behind.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5727,
       lng: 126.9769,
     },
@@ -204,7 +228,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Cheonggyecheon Stream",
       blurb: "A sunken stream walk starting at Cheonggye Plaza, cool on summer evenings.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5694,
       lng: 126.978,
     },
@@ -213,7 +237,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Deoksugung Palace",
       blurb: "A palace with Western-style stone halls; leave along the Deoksugung stone-wall road.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5658,
       lng: 126.9752,
       exit: "2",
@@ -231,7 +255,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Shinsegae Department Store (Main)",
       blurb: "The historic flagship, with luxury floors and a big basement food hall.",
-      categories: ["shopping", "food", "k-beauty"],
+      categories: ["shopping", "food", "beauty"],
       lat: 37.5609,
       lng: 126.981,
       exit: "7",
@@ -241,7 +265,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Lotte Department Store & Duty Free (Main)",
       blurb: "Department store and duty-free floors under one roof; bring your passport for duty-free.",
-      categories: ["shopping", "k-beauty"],
+      categories: ["shopping", "beauty"],
       lat: 37.5646,
       lng: 126.9817,
       exit: "7",
@@ -251,14 +275,14 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Seoullo 7017",
       blurb: "A garden walkway on a former highway overpass next to the station.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5563,
       lng: 126.9706,
     },
     {
       name: "Lotte Mart Seoul Station",
       blurb: "Popular with travelers for snacks, ramyeon and K-beauty basics before flying home.",
-      categories: ["shopping", "k-beauty"],
+      categories: ["shopping", "beauty"],
       lat: 37.5555,
       lng: 126.9698,
     },
@@ -276,7 +300,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Leeum Museum of Art",
       blurb: "Korean ceramics through to contemporary art; booking ahead is recommended.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5382,
       lng: 126.999,
       exit: "1",
@@ -286,7 +310,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Garosu-gil",
       blurb: "A tree-lined street of brand flagships, boutiques and cafés.",
-      categories: ["shopping", "cafe", "k-beauty"],
+      categories: ["shopping", "cafe", "beauty"],
       lat: 37.5208,
       lng: 127.023,
       exit: "8",
@@ -296,7 +320,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Galleria Department Store",
       blurb: "Seoul's best-known luxury department store, split into East and West halls.",
-      categories: ["shopping", "k-beauty"],
+      categories: ["shopping", "beauty"],
       lat: 37.5279,
       lng: 127.04,
       exit: "7",
@@ -313,7 +337,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Starfield COEX Mall & Library",
       blurb: "A giant underground mall around the photogenic two-story Starfield Library.",
-      categories: ["shopping", "attraction"],
+      categories: ["shopping", "culture"],
       lat: 37.51,
       lng: 127.06,
       exit: "5",
@@ -321,7 +345,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Bongeunsa Temple",
       blurb: "A Buddhist temple founded in 794, facing the COEX towers; free to enter.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5146,
       lng: 127.0576,
       exit: "6",
@@ -331,7 +355,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Lotte World Tower & Seoul Sky",
       blurb: "Korea's tallest building, with the Seoul Sky observatory and Lotte World Mall below.",
-      categories: ["attraction", "shopping"],
+      categories: ["culture", "shopping"],
       lat: 37.5126,
       lng: 127.1025,
       exit: "1",
@@ -339,7 +363,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Lotte World Adventure",
       blurb: "An indoor theme park plus the outdoor Magic Island on Seokchon Lake.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5111,
       lng: 127.098,
       exit: "4",
@@ -347,7 +371,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Seokchon Lake",
       blurb: "An easy lakeside loop beside Lotte World; cherry blossoms in early April.",
-      categories: ["attraction", "cafe"],
+      categories: ["culture", "cafe"],
       lat: 37.5095,
       lng: 127.104,
     },
@@ -356,7 +380,8 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "The Hyundai Seoul",
       blurb: "A department store with an indoor garden, rotating pop-ups and a big food hall.",
-      categories: ["shopping", "food", "k-beauty"],
+      categories: ["shopping", "food", "beauty"],
+      tags: ["#Pop-up"],
       lat: 37.5259,
       lng: 126.9284,
       exit: "3",
@@ -373,7 +398,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Yeouido Hangang Park",
       blurb: "Riverside lawns, bike rental and convenience-store ramyeon by the Han River.",
-      categories: ["attraction"],
+      categories: ["culture"],
       lat: 37.5283,
       lng: 126.933,
     },
@@ -389,7 +414,7 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
     {
       name: "Shinsegae Gangnam",
       blurb: "One of Korea's biggest department stores, with a large food hall.",
-      categories: ["shopping", "food", "k-beauty"],
+      categories: ["shopping", "food", "beauty"],
       lat: 37.5046,
       lng: 127.004,
     },
@@ -397,8 +422,9 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
   강남역: [
     {
       name: "Gangnam-daero",
-      blurb: "The main strip of K-beauty stores, restaurants and the underground shopping arcade.",
-      categories: ["shopping", "k-beauty", "food"],
+      blurb: "The main strip of Olive Young and other K-beauty stores, restaurants and the underground shopping arcade.",
+      categories: ["shopping", "beauty", "food"],
+      tags: ["#OliveYoung"],
       lat: 37.499,
       lng: 127.0275,
     },
@@ -406,13 +432,13 @@ export const PLANNER_SPOTS: Record<string, PlannerSpot[]> = {
 };
 
 /** Suggested day trips for the planner home and the sitemap, by Korean station name. */
-export const PLANNER_PAIRS: [string, string, PlannerCategory[]][] = [
-  ["서울역", "명동역", ["shopping", "k-beauty"]],
-  ["명동역", "성수역", ["shopping", "cafe"]],
-  ["홍대입구역", "명동역", ["shopping", "food"]],
-  ["서울역", "경복궁역", ["attraction", "food"]],
-  ["명동역", "잠실역", ["attraction", "shopping"]],
-  ["홍대입구역", "성수역", ["cafe", "shopping"]],
-  ["강남역", "삼성역", ["shopping", "attraction"]],
-  ["을지로입구역", "동대문역사문화공원역", ["shopping", "food"]],
+export const PLANNER_PAIRS: [string, string, PlannerCategory[], QuickTag[]][] = [
+  ["서울역", "명동역", ["beauty", "shopping"], ["#OliveYoung", "#Daiso"]],
+  ["명동역", "성수역", ["shopping", "cafe"], ["#Pop-up"]],
+  ["홍대입구역", "명동역", ["shopping", "food"], ["#Life4Cut"]],
+  ["서울역", "경복궁역", ["culture", "food"], ["#HanokVillage"]],
+  ["명동역", "잠실역", ["culture", "shopping"], []],
+  ["홍대입구역", "성수역", ["cafe", "shopping"], ["#Pop-up"]],
+  ["강남역", "삼성역", ["shopping", "culture"], ["#OliveYoung"]],
+  ["을지로입구역", "동대문역사문화공원역", ["shopping", "food"], ["#K-BBQ"]],
 ];

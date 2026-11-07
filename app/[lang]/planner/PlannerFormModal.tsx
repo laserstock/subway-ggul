@@ -1,30 +1,14 @@
 "use client";
 
+import { ArrowDownUp, ArrowLeftRight, ArrowRight, Clock, Hash, Map as MapIcon, Pencil, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import type { PlannerStationOption } from "../../_lib/planner";
-import {
-  CATEGORY_LABELS,
-  clockLabel,
-  EARLIEST,
-  LATEST,
-  MIN_WINDOW,
-  PLANNER_CATEGORIES,
-  plannerHref,
-  type PlannerCategory,
-  type PlannerQuery,
-} from "../../_lib/plannerParams";
-import { Icon, type IconName } from "../_guide/icons";
+import { clockLabel, EARLIEST, LATEST, MIN_WINDOW, plannerHref, type PlannerQuery } from "../../_lib/plannerParams";
+import { CATEGORY_META, PLANNER_CATEGORIES, QUICK_TAGS, type PlannerCategory, type QuickTag } from "../../_lib/plannerTypes";
 import { normalizeQuery } from "../_guide/searchKeys";
 import SubwayMap, { type MapCopy, type MapLineData, type MapStationData } from "../map/SubwayMap";
-
-export const CATEGORY_ICONS: Record<PlannerCategory, IconName> = {
-  shopping: "bag",
-  cafe: "cup",
-  food: "food",
-  attraction: "landmark",
-  "k-beauty": "sparkle",
-};
+import { CATEGORY_ICONS, LineBadge } from "./plannerIcons";
 
 const TIMES = Array.from({ length: (LATEST - EARLIEST) / 30 + 1 }, (_, index) => EARLIEST + index * 30);
 
@@ -51,6 +35,8 @@ function loadMap() {
   });
   return mapRequest;
 }
+
+const fieldLabel = "text-[12px] font-bold uppercase tracking-wide text-ink-muted";
 
 function StationField({
   label,
@@ -80,7 +66,7 @@ function StationField({
     return stations
       .map((station, index) => ({ station, index, rank: keys[index].some((key) => key.startsWith(q)) ? 0 : 1 }))
       .filter(({ index }) => keys[index].some((key) => key.includes(q)))
-      .sort((a, b) => a.rank - b.rank || b.station.colors.length - a.station.colors.length)
+      .sort((a, b) => a.rank - b.rank || b.station.badges.length - a.station.badges.length)
       .slice(0, 8)
       .map(({ station }) => station);
   }, [keys, query, stations]);
@@ -93,19 +79,19 @@ function StationField({
 
   const showList = open && query.length > 0;
   return (
-    <div className="relative">
-      <label htmlFor={id} className="text-[12px] font-bold uppercase tracking-wide text-ink-muted">
+    <div className="relative min-w-0">
+      <label htmlFor={id} className={fieldLabel}>
         {label}
       </label>
       <div className="mt-1 flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 focus-within:border-honey focus-within:ring-2 focus-within:ring-honey/20">
         {selected && !query ? (
-          <span className="flex shrink-0 gap-0.5" aria-hidden>
-            {selected.colors.map((color, index) => (
-              <span key={index} className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+          <span className="flex shrink-0 gap-0.5">
+            {selected.badges.map((badge, index) => (
+              <LineBadge key={index} short={badge.short} color={badge.color} />
             ))}
           </span>
         ) : (
-          <Icon name="search" size={17} className="text-ink-muted" />
+          <Search size={17} className="shrink-0 text-ink-muted" aria-hidden />
         )}
         <input
           id={id}
@@ -161,9 +147,9 @@ function StationField({
                   onClick={() => choose(station)}
                   className={`flex w-full items-center gap-2.5 px-3 py-2 text-left ${index === active ? "bg-surface-muted" : "hover:bg-surface-muted"}`}
                 >
-                  <span className="flex shrink-0 gap-0.5" aria-hidden>
-                    {station.colors.map((color, dot) => (
-                      <span key={dot} className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="flex w-[58px] shrink-0 flex-wrap gap-0.5">
+                    {station.badges.map((badge, dot) => (
+                      <LineBadge key={dot} short={badge.short} color={badge.color} />
                     ))}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -250,7 +236,32 @@ function MapPicker({ onPick, onClose }: { onPick: (field: "from" | "to", slug: s
   );
 }
 
-/** Departure, arrival, day window and interests; submitting opens the itinerary page. */
+function TimeSelect({ label, value, options, onChange }: { label: string; value: number; options: number[]; onChange: (value: number) => void }) {
+  return (
+    <label className="block min-w-0">
+      <span className={fieldLabel}>{label}</span>
+      <span className="relative mt-1 block">
+        <Clock size={16} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-honey-strong" />
+        <select
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="w-full appearance-none rounded-xl border border-line bg-surface py-2.5 pl-9 pr-3 text-[15px] font-bold text-ink outline-none focus:border-honey focus:ring-2 focus:ring-honey/20"
+        >
+          {options.map((time) => (
+            <option key={time} value={time}>
+              {clockLabel(time)}
+            </option>
+          ))}
+        </select>
+      </span>
+    </label>
+  );
+}
+
+const toggleIn = <T,>(order: readonly T[], current: T[], item: T) =>
+  current.includes(item) ? current.filter((value) => value !== item) : order.filter((value) => value === item || current.includes(value));
+
+/** Step 1: stations, day window, categories and quick tags; submitting opens the itinerary page. */
 export function PlannerForm({
   stations,
   initial,
@@ -266,18 +277,11 @@ export function PlannerForm({
   const [start, setStart] = useState(initial.start);
   const [end, setEnd] = useState(initial.end);
   const [categories, setCategories] = useState<PlannerCategory[]>(initial.categories);
+  const [tags, setTags] = useState<QuickTag[]>(initial.tags);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const known = (slug: string) => stations.some((station) => station.slug === slug);
-
-  function toggle(category: PlannerCategory) {
-    setCategories((current) =>
-      current.includes(category)
-        ? current.filter((item) => item !== category)
-        : PLANNER_CATEGORIES.filter((item) => item === category || current.includes(item)),
-    );
-  }
 
   function submit() {
     if (!known(from) || !known(to)) return setError("Choose both a departure and an arrival station.");
@@ -285,13 +289,10 @@ export function PlannerForm({
     if (end - start < MIN_WINDOW) return setError("Leave at least 2 hours between the start and return times.");
     setError(null);
     startTransition(() => {
-      router.push(plannerHref({ from, to, categories, start, end }));
+      router.push(plannerHref({ from, to, categories, tags, start, end }));
       onSubmitted?.();
     });
   }
-
-  const select =
-    "mt-1 w-full appearance-none rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px] font-bold text-ink outline-none focus:border-honey focus:ring-2 focus:ring-honey/20";
 
   return (
     <form
@@ -299,72 +300,88 @@ export function PlannerForm({
         event.preventDefault();
         submit();
       }}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-5"
     >
-      <div className="relative flex flex-col gap-3">
-        <StationField label="Departure station" placeholder="e.g. Seoul Station" stations={stations} value={from} onChange={setFrom} />
-        <button
-          type="button"
-          aria-label="Swap departure and arrival"
-          onClick={() => {
-            setFrom(to);
-            setTo(from);
-          }}
-          className="absolute right-3 top-[58px] z-10 flex h-8 w-8 items-center justify-center rounded-full border border-line bg-surface text-ink-muted shadow-sm transition hover:text-honey-strong active:scale-95"
-        >
-          <Icon name="swap" size={16} />
-        </button>
-        <StationField label="Arrival station" placeholder="e.g. Seongsu" stations={stations} value={to} onChange={setTo} />
+      <fieldset className="flex flex-col gap-2.5">
+        <legend className="sr-only">Stations</legend>
+        <div className="grid gap-2 sm:grid-cols-[1fr_40px_1fr] sm:items-end">
+          <StationField label="Departure station" placeholder="e.g. Seoul Station" stations={stations} value={from} onChange={setFrom} />
+          <button
+            type="button"
+            aria-label="Swap departure and arrival"
+            onClick={() => {
+              setFrom(to);
+              setTo(from);
+            }}
+            className="flex h-9 w-9 items-center justify-center justify-self-center rounded-full border border-line bg-surface text-ink-muted shadow-sm transition hover:border-honey/50 hover:text-honey-strong active:scale-95 sm:mb-1"
+          >
+            <ArrowDownUp size={16} aria-hidden className="sm:hidden" />
+            <ArrowLeftRight size={16} aria-hidden className="hidden sm:block" />
+          </button>
+          <StationField label="Arrival station" placeholder="e.g. Seongsu" stations={stations} value={to} onChange={setTo} />
+        </div>
         <button
           type="button"
           onClick={() => setPicking(true)}
           className="inline-flex items-center gap-1.5 self-start rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-bold text-ink transition hover:border-honey/50 hover:text-honey-strong active:scale-95"
         >
-          <Icon name="map" size={15} />
+          <MapIcon size={15} aria-hidden />
           Pick on the subway map
         </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block">
-          <span className="text-[12px] font-bold uppercase tracking-wide text-ink-muted">Start time</span>
-          <select value={start} onChange={(event) => setStart(Number(event.target.value))} className={select}>
-            {TIMES.filter((time) => time <= LATEST - MIN_WINDOW).map((time) => (
-              <option key={time} value={time}>
-                {clockLabel(time)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-[12px] font-bold uppercase tracking-wide text-ink-muted">Return time</span>
-          <select value={end} onChange={(event) => setEnd(Number(event.target.value))} className={select}>
-            {TIMES.filter((time) => time >= EARLIEST + MIN_WINDOW).map((time) => (
-              <option key={time} value={time}>
-                {clockLabel(time)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      </fieldset>
 
       <fieldset>
-        <legend className="text-[12px] font-bold uppercase tracking-wide text-ink-muted">What are you into?</legend>
-        <div className="mt-1.5 flex flex-wrap gap-2">
+        <legend className={fieldLabel}>Travel schedule</legend>
+        <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+          <TimeSelect label="Start" value={start} options={TIMES.filter((time) => time <= LATEST - MIN_WINDOW)} onChange={setStart} />
+          <span aria-hidden className="pb-3 text-[15px] font-bold text-ink-muted">
+            ~
+          </span>
+          <TimeSelect label="Return" value={end} options={TIMES.filter((time) => time >= EARLIEST + MIN_WINDOW)} onChange={setEnd} />
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className={fieldLabel}>What are you into?</legend>
+        <div className="mt-2 flex flex-wrap gap-2">
           {PLANNER_CATEGORIES.map((category) => {
             const on = categories.includes(category);
+            const CategoryIcon = CATEGORY_ICONS[category];
             return (
               <button
                 key={category}
                 type="button"
                 aria-pressed={on}
-                onClick={() => toggle(category)}
+                onClick={() => setCategories((current) => toggleIn(PLANNER_CATEGORIES, current, category))}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-bold transition active:scale-95 ${
                   on ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink hover:border-honey/50"
                 }`}
               >
-                <Icon name={CATEGORY_ICONS[category]} size={15} />
-                {CATEGORY_LABELS[category]}
+                <CategoryIcon size={15} aria-hidden className={on ? "text-[#f5b800]" : "text-honey-strong"} />
+                {CATEGORY_META[category].label}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className={fieldLabel}>Popular quick tags</legend>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {QUICK_TAGS.map((tag) => {
+            const on = tags.includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setTags((current) => toggleIn(QUICK_TAGS, current, tag))}
+                className={`inline-flex items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-bold transition active:scale-95 ${
+                  on ? "bg-honey text-white shadow-[0_4px_12px_rgba(245,167,0,0.28)]" : "bg-surface-muted text-ink-muted hover:text-ink"
+                }`}
+              >
+                <Hash size={12} aria-hidden strokeWidth={2.5} />
+                {tag.slice(1)}
               </button>
             );
           })}
@@ -380,10 +397,10 @@ export function PlannerForm({
       <button
         type="submit"
         disabled={pending}
-        className="flex items-center justify-center gap-2 rounded-2xl bg-honey px-5 py-3.5 text-[16px] font-extrabold text-white shadow-[0_8px_20px_rgba(245,167,0,0.28)] transition active:scale-[0.98] disabled:opacity-70"
+        className="group flex items-center justify-center gap-2 rounded-2xl bg-honey px-5 py-3.5 text-[16px] font-extrabold text-white shadow-[0_8px_20px_rgba(245,167,0,0.28)] transition active:scale-[0.98] disabled:opacity-70"
       >
-        <Icon name="route" size={19} />
-        {pending ? "Building your itinerary…" : "Generate Subway Itinerary"}
+        {pending ? "Building your tour route…" : "Generate Subway Tour Route"}
+        <ArrowRight size={18} aria-hidden className="transition group-hover:translate-x-0.5" />
       </button>
 
       {picking ? (
@@ -424,28 +441,28 @@ export default function PlannerFormModal({
         }}
         className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-2 text-[13px] font-bold text-ink shadow-[0_2px_8px_rgba(15,23,42,0.05)] transition hover:border-honey/50 hover:text-honey-strong active:scale-95"
       >
-        <Icon name="route" size={15} />
+        <Pencil size={14} aria-hidden />
         {label}
       </button>
       <dialog
         ref={dialog}
-        aria-label="Plan your subway day"
+        aria-label="Set up your subway tour"
         onClose={() => setOpen(false)}
         onClick={(event) => {
           if (event.target === event.currentTarget) close();
         }}
-        className="m-auto max-h-[92dvh] w-[min(560px,calc(100%-24px))] overflow-visible rounded-3xl bg-transparent p-0 backdrop:bg-black/50"
+        className="m-auto max-h-[92dvh] w-[min(640px,calc(100%-24px))] overflow-visible rounded-3xl bg-transparent p-0 backdrop:bg-black/50"
       >
         <div className="max-h-[92dvh] overflow-y-auto rounded-3xl bg-app p-5 text-ink">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <p className="text-[18px] font-extrabold tracking-tight">Plan your subway day</p>
+            <p className="text-[18px] font-extrabold tracking-tight">Set up your subway tour</p>
             <button
               type="button"
               onClick={close}
               aria-label="Close"
               className="rounded-full p-1.5 text-ink-muted transition hover:bg-surface-muted hover:text-ink"
             >
-              <Icon name="close" size={18} />
+              <X size={18} aria-hidden />
             </button>
           </div>
           {open ? <PlannerForm stations={stations} initial={initial} onSubmitted={close} /> : null}

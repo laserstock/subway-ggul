@@ -1,10 +1,11 @@
 import { GUIDE_STATIONS, guideByKo, guideDetail, guideStation, stationLineColor, type GuideDetail, type GuideStation } from "./guide";
 import { floorLabel, gt, lineLabel, stationTitle } from "./guideCopy";
-import { DEFAULT_END, DEFAULT_START, plannerHref, type PlannerCategory, type PlannerQuery } from "./plannerParams";
+import { DEFAULT_END, DEFAULT_START, plannerHref, type PlannerQuery } from "./plannerParams";
 import { PLANNER_PAIRS, PLANNER_SPOTS, type PlannerSpot } from "./plannerSpots";
+import type { PlannerCategory, QuickTag } from "./plannerTypes";
 import { findRoute, networkStationId, networkStationName, networkStationPoint, type Route, type RouteLeg, type RouteMode, type RouteTransfer } from "./routeFinder";
 
-export type PlanLine = { name: string; color: string };
+export type PlanLine = { name: string; short: string; color: string };
 
 export type PlanStation = {
   slug: string;
@@ -16,40 +17,69 @@ export type PlanStation = {
   ko: string;
   lines: PlanLine[];
   exits: string[];
+  /** Korean road address, for taxi drivers. */
+  address: string | null;
 };
 
 export type PlanSpot = {
   name: string;
   blurb: string;
   categories: PlannerCategory[];
+  tags: QuickTag[];
   exit: string | null;
   walk: number;
   maps: string;
 };
 
-export type PlanLink = { category: PlannerCategory; label: string; maps: string };
+/** A Google Maps search standing in for spots we haven't hand-picked. */
+export type PlanLink = { label: string; maps: string; category: PlannerCategory | null; tag: QuickTag | null };
+
+/** A locker bank or a restroom inside the station. */
+export type PlanFacility = { line: PlanLine; floor: string | null; inside: boolean; exit: string | null; note: string | null };
 
 export type PlanStep =
   | {
       kind: "depart";
       time: number;
       station: PlanStation;
-      lockers: string[];
+      lockers: PlanFacility[];
+      luggageDesk: string | null;
+      restrooms: PlanFacility[];
       elevator: string | null;
-      meal: { lunch: boolean; spots: PlanSpot[]; link: PlanLink | null };
+      links: PlanLink[];
+      meal: { lunch: boolean; spots: PlanSpot[]; links: PlanLink[] };
     }
   | { kind: "ride"; time: number; line: PlanLine; from: string; to: string; next: string | null; stops: number; minutes: number }
   | { kind: "transfer"; time: number; station: string; toStation: string | null; line: PlanLine; walk: number }
-  | { kind: "stop"; time: number; until: number; station: PlanStation; spots: PlanSpot[]; links: PlanLink[] }
+  | {
+      kind: "stop";
+      time: number;
+      until: number;
+      station: PlanStation;
+      /** The stop is where the route changes lines anyway. */
+      transfer: boolean;
+      spots: PlanSpot[];
+      links: PlanLink[];
+      lockers: PlanFacility[];
+    }
   | {
       kind: "arrive";
       time: number;
       station: PlanStation;
+      /** In suggested walking order, nearest first. */
       spots: PlanSpot[];
       links: PlanLink[];
+      lockers: PlanFacility[];
+      restrooms: PlanFacility[];
       leaveBy: number;
       back: number;
     };
+
+/** The one-way ride at a glance: boarding, each change of line, arrival. */
+export type PlanFlow = {
+  stations: { name: string; kind: "start" | "transfer" | "end" }[];
+  legs: { line: PlanLine; minutes: number; stops: number }[];
+};
 
 export type Plan = {
   mode: RouteMode;
@@ -57,6 +87,7 @@ export type Plan = {
   minutes: number;
   transfers: number;
   lines: PlanLine[];
+  flow: PlanFlow;
   steps: PlanStep[];
   /** Same value for two plans that ride the same lines through the same transfers. */
   signature: string;
@@ -82,13 +113,51 @@ const WALK_METERS_PER_MINUTE = 75;
 /** Streets are longer than the straight line. */
 const DETOUR = 1.3;
 
-const SEARCH: Record<PlannerCategory, { label: string; query: string }> = {
-  shopping: { label: "Shops", query: "shopping" },
-  cafe: { label: "Cafés", query: "cafe" },
+const CATEGORY_SEARCH: Record<PlannerCategory, { label: string; query: string }> = {
   food: { label: "Restaurants", query: "restaurants" },
-  attraction: { label: "Sights", query: "tourist attractions" },
-  "k-beauty": { label: "K-beauty stores", query: "Olive Young" },
+  cafe: { label: "Cafés & bakeries", query: "cafe" },
+  shopping: { label: "Shops", query: "shopping" },
+  beauty: { label: "K-beauty stores", query: "cosmetics store" },
+  culture: { label: "Sights", query: "tourist attractions" },
+  essentials: { label: "Currency exchange", query: "currency exchange" },
 };
+
+const TAG_SEARCH: Partial<Record<QuickTag, { label: string; query: string }>> = {
+  "#OliveYoung": { label: "Olive Young stores", query: "Olive Young" },
+  "#Daiso": { label: "Daiso stores", query: "Daiso" },
+  "#WOWPASS": { label: "WOWPASS machines", query: "WOWPASS machine" },
+  "#K-BBQ": { label: "Korean BBQ", query: "Korean BBQ" },
+  "#Pop-up": { label: "Pop-up stores", query: "pop-up store" },
+  "#Life4Cut": { label: "Life4Cut photo booths", query: "Life4cut photo booth" },
+  "#LuggageLocker": { label: "Luggage storage", query: "luggage storage" },
+};
+
+/** Where on the day each searchable tag fits best. */
+const DEPART_TAGS: QuickTag[] = ["#WOWPASS"];
+const STOP_TAGS: QuickTag[] = ["#OliveYoung", "#Daiso", "#Life4Cut"];
+const ARRIVE_TAGS: QuickTag[] = ["#Pop-up", "#K-BBQ"];
+
+const SHORT_LINES: Record<string, string> = {
+  경의중앙선: "GJ",
+  수인분당선: "SU",
+  신분당선: "SB",
+  공항철도: "A",
+  경춘선: "GC",
+  경강선: "GG",
+  서해선: "SH",
+  우이신설선: "UI",
+  신림선: "SL",
+  인천1호선: "I1",
+  인천2호선: "I2",
+  김포골드라인: "GP",
+  용인에버라인: "EV",
+  의정부경전철: "U",
+};
+
+/** "2호선" → "2", other lines get the letters on their official badges. */
+function shortLine(line: string) {
+  return /^(\d+)호선$/.exec(line)?.[1] ?? SHORT_LINES[line] ?? (line.startsWith("GTX") ? "GTX" : line.slice(0, 2));
+}
 
 function meters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const rad = Math.PI / 180;
@@ -109,7 +178,7 @@ function baseName(station: GuideStation) {
 }
 
 function planLine(line: string, express = false): PlanLine {
-  return { name: `${lineLabel(line, "en")}${express ? " Express" : ""}`, color: stationLineColor(line) };
+  return { name: `${lineLabel(line, "en")}${express ? " Express" : ""}`, short: shortLine(line), color: stationLineColor(line) };
 }
 
 export function planStation(station: GuideStation, detail = guideDetail(station)): PlanStation {
@@ -120,6 +189,7 @@ export function planStation(station: GuideStation, detail = guideDetail(station)
     ko: station.ko,
     lines: station.lines.map((line) => planLine(line)),
     exits: detail.exits.map((exit) => exit.label),
+    address: detail.address,
   };
 }
 
@@ -138,6 +208,11 @@ function guideAt(id: number) {
 function titleAt(id: number) {
   const station = guideAt(id);
   return station ? stationTitle(station, "en") : networkStationName(id);
+}
+
+function nameAt(id: number) {
+  const station = guideAt(id);
+  return station ? baseName(station) : networkStationName(id);
 }
 
 function stationSpots(station: GuideStation) {
@@ -159,32 +234,49 @@ function planSpot(spot: PlannerSpot, station: GuideStation, detail: GuideDetail)
     name: spot.name,
     blurb: spot.blurb,
     categories: spot.categories,
+    tags: spot.tags ?? [],
     exit: spot.exit ?? nearest?.label ?? null,
     walk: spot.walk ?? Math.max(1, Math.round((meters(from, spot) * DETOUR) / WALK_METERS_PER_MINUTE)),
     maps: mapsSearch(`${spot.name}, Seoul`),
   };
 }
 
-/** How well a spot fits: each wanted category counts, the visitor's own picks count double. */
-function spotScore(spot: PlannerSpot, wanted: PlannerCategory[], preferred: PlannerCategory[]) {
-  return spot.categories.reduce(
+/** How well a spot fits: each wanted category counts, the visitor's own picks double and each picked tag counts twice. */
+function spotScore(spot: PlannerSpot, wanted: PlannerCategory[], preferred: PlannerCategory[], tags: QuickTag[]) {
+  const byCategory = spot.categories.reduce(
     (score, category) => score + (wanted.includes(category) ? 1 : 0) + (preferred.includes(category) ? 1 : 0),
     0,
   );
+  return byCategory + (spot.tags ?? []).filter((tag) => tags.includes(tag)).length * 2;
 }
 
-function pickSpots(station: GuideStation, detail: GuideDetail, wanted: PlannerCategory[], limit: number, preferred: PlannerCategory[] = []) {
+function pickSpots(
+  station: GuideStation,
+  detail: GuideDetail,
+  wanted: PlannerCategory[],
+  limit: number,
+  preferred: PlannerCategory[] = [],
+  tags: QuickTag[] = [],
+) {
   return stationSpots(station)
-    .map((spot, index) => ({ spot, index, score: spotScore(spot, wanted, preferred) }))
+    .map((spot, index) => ({ spot, index, score: spotScore(spot, wanted, preferred, tags) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, limit)
     .map(({ spot }) => planSpot(spot, station, detail));
 }
 
-function searchLink(category: PlannerCategory, station: GuideStation): PlanLink {
+function categoryLink(category: PlannerCategory, station: GuideStation): PlanLink {
   const title = stationTitle(station, "en");
-  return { category, label: `${SEARCH[category].label} near ${title}`, maps: mapsSearch(`${SEARCH[category].query} near ${title}, Seoul`) };
+  const search = CATEGORY_SEARCH[category];
+  return { label: `${search.label} near ${title}`, maps: mapsSearch(`${search.query} near ${title}, Seoul`), category, tag: null };
+}
+
+function tagLink(tag: QuickTag, station: GuideStation): PlanLink | null {
+  const search = TAG_SEARCH[tag];
+  if (!search) return null;
+  const title = stationTitle(station, "en");
+  return { label: `${search.label} near ${title}`, maps: mapsSearch(`${search.query} near ${title}, Seoul`), category: null, tag };
 }
 
 /** Google Maps searches for the wanted categories the picked spots don't cover. */
@@ -192,22 +284,49 @@ function missingLinks(station: GuideStation, wanted: PlannerCategory[], spots: P
   return wanted
     .filter((category) => !spots.some((spot) => spot.categories.includes(category)))
     .slice(0, limit)
-    .map((category) => searchLink(category, station));
+    .map((category) => categoryLink(category, station));
 }
 
-function lockerLines(detail: GuideDetail) {
-  const lines = detail.lockers.slice(0, 3).map((row) =>
-    [
-      lineLabel(row.line, "en"),
-      row.floor ? floorLabel(row.floor, "en") : null,
-      `${row.insideGate ? "inside" : "outside"} the ticket gates`,
-      row.slots ? `${row.slots} lockers` : null,
-    ]
-      .filter(Boolean)
-      .join(" · "),
-  );
-  if (detail.luggageDesk) lines.push(`Staffed T-Luggage desk: ${gt(detail.luggageDesk, "en")}`);
-  return lines;
+/** Searches for the picked tags that belong at this point of the day and aren't covered by a spot. */
+function tagLinks(station: GuideStation, picked: QuickTag[], place: QuickTag[], spots: PlanSpot[]) {
+  return picked
+    .filter((tag) => place.includes(tag) && !spots.some((spot) => spot.tags.includes(tag)))
+    .map((tag) => tagLink(tag, station))
+    .filter((link): link is PlanLink => link !== null);
+}
+
+/** Locker notes name the exit in Korean ("7번 출입구", "1번 출구"). */
+function exitIn(text: string) {
+  return /(\d+(?:-\d+)?)\s*번\s*출(?:입)?구/.exec(text)?.[1] ?? null;
+}
+
+function lockers(detail: GuideDetail): PlanFacility[] {
+  return detail.lockers.slice(0, 4).map((row) => ({
+    line: planLine(row.line),
+    floor: row.floor ? floorLabel(row.floor, "en") : null,
+    inside: row.insideGate,
+    exit: exitIn(row.detail),
+    note: row.slots ? `${row.slots} lockers` : null,
+  }));
+}
+
+function restrooms(detail: GuideDetail): PlanFacility[] {
+  const seen = new Set<string>();
+  return detail.toilets
+    .filter((row) => {
+      const key = `${row.line}|${row.floor}|${row.gate}|${row.exit}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 4)
+    .map((row) => ({
+      line: planLine(row.line),
+      floor: row.floor ? floorLabel(row.floor, "en") : null,
+      inside: row.gate === "inside",
+      exit: row.exit,
+      note: null,
+    }));
 }
 
 function elevatorLine(detail: GuideDetail) {
@@ -255,8 +374,28 @@ function signature(route: Route) {
   return route.legs.map((leg) => `${leg.line}${leg.express ? "+" : ""}:${leg.stationIds[0]}`).join("|");
 }
 
+function flowOf(route: Route): PlanFlow {
+  return {
+    stations: [
+      { name: nameAt(route.legs[0].stationIds[0]), kind: "start" },
+      ...route.legs.map((leg, index) => ({
+        name: nameAt(leg.stationIds.at(-1)!),
+        kind: index === route.legs.length - 1 ? ("end" as const) : ("transfer" as const),
+      })),
+    ],
+    legs: route.legs.map((leg) => ({ line: planLine(leg.line, leg.express), minutes: ceilMinutes(leg.seconds), stops: leg.stationIds.length - 1 })),
+  };
+}
+
 /** The station on the way with the best-fitting spots (nearest the middle on ties), else the first transfer station. */
-function stopOnTheWay(route: Route, wanted: PlannerCategory[], preferred: PlannerCategory[], from: GuideStation, to: GuideStation) {
+function stopOnTheWay(
+  route: Route,
+  wanted: PlannerCategory[],
+  preferred: PlannerCategory[],
+  tags: QuickTag[],
+  from: GuideStation,
+  to: GuideStation,
+) {
   const seen = new Set([from.slug, to.slug]);
   const candidates: { station: GuideStation; leg: number; index: number; position: number; score: number }[] = [];
   let position = 0;
@@ -266,7 +405,7 @@ function stopOnTheWay(route: Route, wanted: PlannerCategory[], preferred: Planne
       const station = guideAt(id);
       if (!station || seen.has(station.slug)) return;
       seen.add(station.slug);
-      const score = stationSpots(station).reduce((sum, spot) => sum + spotScore(spot, wanted, preferred), 0);
+      const score = stationSpots(station).reduce((sum, spot) => sum + spotScore(spot, wanted, preferred, tags), 0);
       candidates.push({ station, leg: legIndex, index, position, score });
     });
   });
@@ -335,18 +474,23 @@ function buildPlan(
   query: PlannerQuery,
   ids: { from: number; to: number },
 ): Plan {
+  const { categories, tags } = query;
+  const wantsLockers = tags.includes("#LuggageLocker");
   const fromDetail = guideDetail(from);
   const toDetail = guideDetail(to);
   const lunch = query.start >= LUNCH_FROM && query.start <= LUNCH_TO;
-  const mealSpots = pickSpots(from, fromDetail, ["food"], 2);
+  const mealSpots = pickSpots(from, fromDetail, ["food"], 2, [], tags);
   const steps: PlanStep[] = [
     {
       kind: "depart",
       time: query.start,
       station: planStation(from, fromDetail),
-      lockers: lockerLines(fromDetail),
+      lockers: lockers(fromDetail),
+      luggageDesk: fromDetail.luggageDesk ? gt(fromDetail.luggageDesk, "en") : null,
+      restrooms: restrooms(fromDetail),
       elevator: elevatorLine(fromDetail),
-      meal: { lunch, spots: mealSpots, link: mealSpots.length ? null : searchLink("food", from) },
+      links: tagLinks(from, tags, DEPART_TAGS, []),
+      meal: { lunch, spots: mealSpots, links: mealSpots.length ? [] : [categoryLink("food", from)] },
     },
   ];
   const board = query.start + PREP_MINUTES + (lunch ? LUNCH_MINUTES : 0);
@@ -354,45 +498,61 @@ function buildPlan(
   const leaveBy = query.end - back;
   const rideMinutes = route.seconds / 60;
 
-  const wanted: PlannerCategory[] = ["cafe", "attraction"];
-  const preferred = query.categories.filter((category) => wanted.includes(category));
+  const midWanted = [...new Set<PlannerCategory>([...categories.filter((category) => category !== "essentials"), "cafe", "culture"])];
   const roomForStop = leaveBy - (board + rideMinutes + STOP_MINUTES + REBOARD_MINUTES) >= MIN_DESTINATION_MINUTES;
-  const stop = roomForStop ? stopOnTheWay(route, wanted, preferred, from, to) : null;
+  const stop = roomForStop ? stopOnTheWay(route, midWanted, categories, tags, from, to) : null;
   const parts = stop ? splitRoute(route, stop.leg, stop.index) : null;
 
   let arrive: number;
+  let stopped = false;
   if (stop && parts) {
     const [toStop, fromStop] = parts;
     const first = rideSteps(toStop, board);
     steps.push(...first.steps);
     const detail = guideDetail(stop.station);
-    const spots = pickSpots(stop.station, detail, wanted, 2, preferred);
+    const spots = pickSpots(stop.station, detail, midWanted, 3, categories, tags);
+    const stopLockers = wantsLockers ? lockers(detail) : [];
     const until = first.end + STOP_MINUTES;
+    const preferred = categories.filter((category) => midWanted.includes(category));
     steps.push({
       kind: "stop",
       time: first.end,
       until,
       station: planStation(stop.station, detail),
+      transfer: fromStop.legs[0].line !== toStop.legs.at(-1)!.line,
       spots,
-      links: missingLinks(stop.station, preferred.length ? preferred : wanted, spots, spots.length ? 1 : 2),
+      links: [
+        ...missingLinks(stop.station, preferred.length ? preferred : midWanted, spots, spots.length ? 1 : 2),
+        ...tagLinks(stop.station, tags, STOP_TAGS, spots),
+        ...(wantsLockers && !stopLockers.length ? [tagLink("#LuggageLocker", stop.station)!] : []),
+      ],
+      lockers: stopLockers,
     });
     const second = rideSteps(fromStop, until + REBOARD_MINUTES);
     steps.push(...second.steps);
     arrive = second.end;
+    stopped = true;
   } else {
     const ride = rideSteps(route, board);
     steps.push(...ride.steps);
     arrive = ride.end;
   }
 
-  const destinationWanted: PlannerCategory[] = query.categories.length ? query.categories : ["shopping"];
-  const spots = pickSpots(to, toDetail, destinationWanted, 3);
+  const destinationWanted: PlannerCategory[] = categories.length ? categories : ["shopping"];
+  const spots = pickSpots(to, toDetail, destinationWanted, 3, [], tags).sort((a, b) => a.walk - b.walk);
+  const arriveLockers = wantsLockers ? lockers(toDetail) : [];
   steps.push({
     kind: "arrive",
     time: arrive,
     station: planStation(to, toDetail),
     spots,
-    links: missingLinks(to, destinationWanted, spots, 3),
+    links: [
+      ...missingLinks(to, destinationWanted, spots, 3),
+      ...tagLinks(to, tags, stopped ? ARRIVE_TAGS : [...STOP_TAGS, ...ARRIVE_TAGS], spots),
+      ...(wantsLockers && !arriveLockers.length ? [tagLink("#LuggageLocker", to)!] : []),
+    ],
+    lockers: arriveLockers,
+    restrooms: categories.includes("essentials") ? restrooms(toDetail) : [],
     leaveBy,
     back,
   });
@@ -402,7 +562,15 @@ function buildPlan(
     const line = planLine(leg.line, leg.express);
     if (!lines.some((known) => known.name === line.name)) lines.push(line);
   }
-  return { mode, minutes: ceilMinutes(route.seconds), transfers: route.transfers.length, lines, steps, signature: signature(route) };
+  return {
+    mode,
+    minutes: ceilMinutes(route.seconds),
+    transfers: route.transfers.length,
+    lines,
+    flow: flowOf(route),
+    steps,
+    signature: signature(route),
+  };
 }
 
 export function buildPlanner(query: PlannerQuery): PlannerResult {
@@ -444,13 +612,14 @@ export function routeSummary(fromSlug: string, toSlug: string) {
     minutes: ceilMinutes(route.seconds),
     transfers: route.transfers.length,
     lines: [...new Set(route.legs.map((leg) => lineLabel(leg.line, "en")))],
+    colors: [...new Set(route.legs.map((leg) => stationLineColor(leg.line)))],
     via: route.transfers.map((transfer, index) => titleAt(route.legs[index].stationIds.at(-1)!) || transfer.station),
   };
 }
 
 /** Suggested trips with their one-way ride, for the planner home and the sitemap. */
 export function plannerPairs() {
-  return PLANNER_PAIRS.flatMap(([fromKo, toKo, categories]) => {
+  return PLANNER_PAIRS.flatMap(([fromKo, toKo, categories, tags]) => {
     const from = guideByKo(fromKo);
     const to = guideByKo(toKo);
     const summary = from && to ? routeSummary(from.slug, to.slug) : null;
@@ -459,14 +628,15 @@ export function plannerPairs() {
       {
         from: from.slug,
         to: to.slug,
-        href: plannerHref({ from: from.slug, to: to.slug, categories, start: DEFAULT_START, end: DEFAULT_END }),
+        tags,
+        href: plannerHref({ from: from.slug, to: to.slug, categories, tags, start: DEFAULT_START, end: DEFAULT_END }),
         summary,
       },
     ];
   });
 }
 
-export type PlannerStationOption = { slug: string; name: string; ko: string; colors: string[]; lines: string };
+export type PlannerStationOption = { slug: string; name: string; ko: string; lines: string; badges: { short: string; color: string }[] };
 
 let options: PlannerStationOption[] | null = null;
 
@@ -476,8 +646,8 @@ export function plannerStations() {
     slug: station.slug,
     name: baseName(station),
     ko: station.ko,
-    colors: station.lines.slice(0, 4).map((line) => stationLineColor(line)),
     lines: station.lines.map((line) => lineLabel(line, "en")).join(" · "),
+    badges: station.lines.slice(0, 4).map((line) => ({ short: shortLine(line), color: stationLineColor(line) })),
   }));
   return options;
 }

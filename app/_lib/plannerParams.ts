@@ -1,20 +1,11 @@
 /** Planner URL parameters, shared by the server pages and the client form (no server-only imports). */
 
-export const PLANNER_CATEGORIES = ["shopping", "cafe", "food", "attraction", "k-beauty"] as const;
-export type PlannerCategory = (typeof PLANNER_CATEGORIES)[number];
+import { PLANNER_CATEGORIES, QUICK_TAGS, tagFromSlug, tagSlug, type PlannerCategory, type QuickTag } from "./plannerTypes";
 
-export const CATEGORY_LABELS: Record<PlannerCategory, string> = {
-  shopping: "Shopping",
-  cafe: "Cafe",
-  food: "Food",
-  attraction: "Attraction",
-  "k-beauty": "K-Beauty",
-};
-
-export const DEFAULT_CATEGORIES: PlannerCategory[] = ["shopping", "cafe"];
+export const DEFAULT_CATEGORIES: PlannerCategory[] = ["food", "cafe", "shopping"];
 /** Minutes after midnight. */
-export const DEFAULT_START = 11 * 60;
-export const DEFAULT_END = 19 * 60;
+export const DEFAULT_START = 12 * 60;
+export const DEFAULT_END = 18 * 60;
 export const EARLIEST = 6 * 60;
 export const LATEST = 23 * 60 + 30;
 /** The shortest day the form accepts. */
@@ -24,13 +15,13 @@ export type PlannerQuery = {
   from: string;
   to: string;
   categories: PlannerCategory[];
+  tags: QuickTag[];
   start: number;
   end: number;
 };
 
-export function isCategory(value: string): value is PlannerCategory {
-  return (PLANNER_CATEGORIES as readonly string[]).includes(value);
-}
+/** Category values from the first version of the planner, still found in shared links. */
+const LEGACY_CATEGORIES: Record<string, PlannerCategory> = { attraction: "culture", "k-beauty": "beauty" };
 
 /** "11:00" → 660; anything malformed or outside the planner's day gives null. */
 export function parseClock(value: string | undefined | null): number | null {
@@ -52,9 +43,20 @@ export function clockLabel(minutes: number) {
   return `${hours % 12 || 12}:${String(total % 60).padStart(2, "0")} ${suffix}`;
 }
 
+const parts = (value: string | undefined | null) =>
+  (value ?? "")
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+
 export function parseCategories(value: string | undefined | null): PlannerCategory[] {
-  const picked = (value ?? "").split(",").map((part) => part.trim().toLowerCase()).filter(isCategory);
+  const picked = parts(value).map((part) => LEGACY_CATEGORIES[part] ?? part);
   return PLANNER_CATEGORIES.filter((category) => picked.includes(category));
+}
+
+export function parseTags(value: string | undefined | null): QuickTag[] {
+  const picked = parts(value).map(tagFromSlug);
+  return QUICK_TAGS.filter((tag) => picked.includes(tag));
 }
 
 type RawParams = Record<string, string | string[] | undefined>;
@@ -69,15 +71,17 @@ export function parsePlannerQuery(params: RawParams): PlannerQuery {
     from: first(params.from).toLowerCase(),
     to: first(params.to).toLowerCase(),
     categories: categories.length ? categories : DEFAULT_CATEGORIES,
+    tags: parseTags(first(params.tags)),
     start,
     end: end - start >= MIN_WINDOW ? end : Math.min(LATEST, start + MIN_WINDOW),
   };
 }
 
-/** `/en/planner/route?from=…&to=…&category=…`, with times only when they differ from the defaults. */
+/** `/en/planner/route?from=…&to=…&category=…`, with tags and times only when set. */
 export function plannerHref(query: PlannerQuery) {
   const params = new URLSearchParams({ from: query.from, to: query.to });
   if (query.categories.length) params.set("category", query.categories.join(","));
+  if (query.tags.length) params.set("tags", query.tags.map(tagSlug).join(","));
   if (query.start !== DEFAULT_START) params.set("start", clockValue(query.start));
   if (query.end !== DEFAULT_END) params.set("end", clockValue(query.end));
   return `/en/planner/route?${params.toString().replace(/%2C/g, ",")}`;

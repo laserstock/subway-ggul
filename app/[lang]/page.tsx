@@ -106,9 +106,9 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
         >
           <IconTile name="route" onSurface />
           <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-extrabold leading-snug text-ink">Subway Itinerary Planner</span>
+            <span className="block text-[15px] font-extrabold leading-snug text-ink">Seoul Subway Travel Planner</span>
             <span className="mt-0.5 block text-[12px] leading-snug text-ink-muted">
-              Two stations and your hours in, a timed day plan with lockers, lunch and shopping out.
+              Two stations and your hours in, a timed tour with lockers, Olive Young, cafés and pop-ups out.
             </span>
           </span>
           <Icon name="arrow" size={16} className="text-ink-muted transition group-hover:translate-x-0.5 group-hover:text-honey-strong" />
