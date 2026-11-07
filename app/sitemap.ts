@@ -3,6 +3,7 @@ import { ALL_LINES, GUIDE_STATIONS, lineSlug } from "./_lib/guide";
 import { GUIDE_ARTICLES } from "./_lib/guideArticles";
 import { GUIDE_LOCALES } from "./_lib/guideLocale";
 import { LEGAL_UPDATED } from "./_lib/legal";
+import { plannerPairs } from "./_lib/planner";
 import { GUIDE_UPDATED, guideLanguages, SITE_URL } from "./_lib/site";
 
 function absolute(languages: Record<string, string>) {
@@ -37,6 +38,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...guideEntries("/stations", 0.8),
     ...ALL_LINES.flatMap((line) => guideEntries(`/lines/${lineSlug(line)}`, 0.8)),
     ...GUIDE_STATIONS.flatMap((station) => guideEntries(`/stations/${station.slug}`, 0.7)),
+    { url: `${SITE_URL}/en/planner`, lastModified: GUIDE_UPDATED, changeFrequency: "monthly", priority: 0.8 },
+    // Next writes sitemap URLs into the XML as-is, so the query's & must be escaped here.
+    ...plannerPairs().map((pair) => ({
+      url: `${SITE_URL}/en/planner/route?from=${pair.from}&amp;to=${pair.to}`,
+      lastModified: GUIDE_UPDATED,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
     ...["/privacy", "/terms", "/contact"].map((path) => ({
       url: `${SITE_URL}${path}`,
       lastModified: LEGAL_UPDATED,

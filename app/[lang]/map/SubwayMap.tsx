@@ -33,6 +33,9 @@ export type MapStationData = {
 
 export type MapLineData = { ko: string; name: string; color: string; d: string };
 
+/** Buttons that replace the station panel's links when the map is used to pick a station. */
+export type MapPickAction = { label: string; icon: IconName; onPick: (slug: string) => void };
+
 export type MapCopy = Record<
   | "label"
   | "search"
@@ -209,6 +212,7 @@ function StationPanel({
   lang,
   appLang,
   copy,
+  actions,
   onClose,
 }: {
   station: MapStationData;
@@ -216,6 +220,7 @@ function StationPanel({
   lang: string;
   appLang: string;
   copy: MapCopy;
+  actions?: MapPickAction[];
   onClose: () => void;
 }) {
   const live = `/station?${new URLSearchParams({
@@ -281,20 +286,40 @@ function StationPanel({
           muted={!station.elevator}
         />
       </dl>
-      <Link
-        href={`/${lang}/stations/${station.slug}`}
-        className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-honey px-4 py-3 text-[14px] font-bold text-white transition active:scale-[0.98]"
-      >
-        {copy.guide}
-        <Icon name="arrow" size={16} />
-      </Link>
-      <a
-        href={live}
-        className="mt-2 flex items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-[13px] font-bold text-ink transition hover:bg-surface-muted active:scale-[0.98]"
-      >
-        <Icon name="clock" size={15} className="text-honey-strong" />
-        {copy.live}
-      </a>
+      {actions ? (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {actions.map((action, index) => (
+            <button
+              key={action.label}
+              type="button"
+              onClick={() => action.onPick(station.slug)}
+              className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[14px] font-bold transition active:scale-[0.98] ${
+                index === 0 ? "bg-honey text-white" : "border border-line text-ink hover:bg-surface-muted"
+              }`}
+            >
+              <Icon name={action.icon} size={16} />
+              {action.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <>
+          <Link
+            href={`/${lang}/stations/${station.slug}`}
+            className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-honey px-4 py-3 text-[14px] font-bold text-white transition active:scale-[0.98]"
+          >
+            {copy.guide}
+            <Icon name="arrow" size={16} />
+          </Link>
+          <a
+            href={live}
+            className="mt-2 flex items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-[13px] font-bold text-ink transition hover:bg-surface-muted active:scale-[0.98]"
+          >
+            <Icon name="clock" size={15} className="text-honey-strong" />
+            {copy.live}
+          </a>
+        </>
+      )}
     </section>
   );
 }
@@ -315,6 +340,7 @@ export default function SubwayMap({
   lines,
   stations,
   copy,
+  actions,
 }: {
   lang: string;
   appLang: string;
@@ -326,6 +352,8 @@ export default function SubwayMap({
   lines: MapLineData[];
   stations: MapStationData[];
   copy: MapCopy;
+  /** Picker mode: the map fills its container, has no full-screen toggle, and the panel offers these buttons. */
+  actions?: MapPickAction[];
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const sizeRef = useRef<Size>(SERVER_SIZE);
@@ -613,9 +641,11 @@ export default function SubwayMap({
   return (
     <div
       className={
-        expanded
-          ? "fixed inset-0 z-[70] flex flex-col bg-[#fbfbf9] pt-[env(safe-area-inset-top)]"
-          : "flex h-[min(80dvh,760px)] min-h-[480px] flex-col overflow-hidden rounded-3xl border border-line bg-[#fbfbf9]"
+        actions
+          ? "flex h-full min-h-0 flex-col overflow-hidden bg-[#fbfbf9]"
+          : expanded
+            ? "fixed inset-0 z-[70] flex flex-col bg-[#fbfbf9] pt-[env(safe-area-inset-top)]"
+            : "flex h-[min(80dvh,760px)] min-h-[480px] flex-col overflow-hidden rounded-3xl border border-line bg-[#fbfbf9]"
       }
     >
       <style>{STYLE}</style>
@@ -750,15 +780,17 @@ export default function SubwayMap({
           <button type="button" aria-label={copy.reset} className={control} onClick={() => flyTo(fitBox(focus, sizeRef.current))}>
             <Icon name="target" size={18} />
           </button>
-          <button
-            type="button"
-            aria-label={expanded ? copy.collapse : copy.expand}
-            aria-pressed={expanded}
-            className={control}
-            onClick={() => setExpanded((value) => !value)}
-          >
-            <Icon name={expanded ? "collapse" : "expand"} size={18} />
-          </button>
+          {actions ? null : (
+            <button
+              type="button"
+              aria-label={expanded ? copy.collapse : copy.expand}
+              aria-pressed={expanded}
+              className={control}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              <Icon name={expanded ? "collapse" : "expand"} size={18} />
+            </button>
+          )}
         </div>
 
         {selected !== null ? (
@@ -768,6 +800,7 @@ export default function SubwayMap({
             lang={lang}
             appLang={appLang}
             copy={copy}
+            actions={actions}
             onClose={() => setSelected(null)}
           />
         ) : null}

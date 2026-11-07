@@ -99,6 +99,21 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
           </Link>
         ))}
       </nav>
+      {lang === "en" ? (
+        <Link
+          href="/en/planner"
+          className="group mt-2 flex items-center gap-3 rounded-2xl border border-[#f6e3a8] bg-gradient-to-r from-[#fff8e1] to-surface p-4 transition hover:border-honey/50 active:scale-[0.98]"
+        >
+          <IconTile name="route" onSurface />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-extrabold leading-snug text-ink">Subway Itinerary Planner</span>
+            <span className="mt-0.5 block text-[12px] leading-snug text-ink-muted">
+              Two stations and your hours in, a timed day plan with lockers, lunch and shopping out.
+            </span>
+          </span>
+          <Icon name="arrow" size={16} className="text-ink-muted transition group-hover:translate-x-0.5 group-hover:text-honey-strong" />
+        </Link>
+      ) : null}
 
       <section className="mt-7" aria-labelledby="popular">
         <h2 id="popular" className="text-[17px] font-extrabold text-ink">
