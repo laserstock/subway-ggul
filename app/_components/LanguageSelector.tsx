@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { contentLocale, GUIDE_LANGUAGES, type GuideLocale } from "../_lib/guideLocale";
 import type { Locale } from "../_lib/i18n";
@@ -43,6 +43,7 @@ export default function LanguageSelector({
 }) {
   const options = onSelect ? OPTIONS : GUIDE_OPTIONS;
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -129,7 +130,14 @@ export default function LanguageSelector({
                 <Link
                   href={localePath(code, rest ? `/${rest}` : "")}
                   hrefLang={GUIDE_LANGUAGES[code].htmlLang}
-                  onClick={() => choose(code)}
+                  onClick={(event) => {
+                    choose(code);
+                    // A planner itinerary lives in its query; keep it in the other language.
+                    if (rest.startsWith("planner/") && location.search) {
+                      event.preventDefault();
+                      router.push(`${localePath(code, `/${rest}`)}${location.search}`);
+                    }
+                  }}
                   aria-current={selected ? "true" : undefined}
                   className={`${ITEM_CLASS} ${stateClass}`}
                 >

@@ -12,15 +12,6 @@ export type PlannerCategory = (typeof PlannerCategory)[keyof typeof PlannerCateg
 
 export const PLANNER_CATEGORIES: readonly PlannerCategory[] = Object.values(PlannerCategory);
 
-export const CATEGORY_META: Record<PlannerCategory, { label: string; short: string }> = {
-  food: { label: "Food & Eats", short: "Food" },
-  cafe: { label: "Cafes & Bakery", short: "Cafe" },
-  shopping: { label: "Shopping & Pop-ups", short: "Shopping" },
-  beauty: { label: "K-Beauty & Clinics", short: "K-Beauty" },
-  culture: { label: "Sights & Culture", short: "Culture" },
-  essentials: { label: "Essentials & Services", short: "Essentials" },
-};
-
 export const QUICK_TAGS = ["#OliveYoung", "#Daiso", "#WOWPASS", "#K-BBQ", "#Pop-up", "#Life4Cut", "#LuggageLocker", "#HanokVillage"] as const;
 export type QuickTag = (typeof QUICK_TAGS)[number];
 

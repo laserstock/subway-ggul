@@ -1,7 +1,10 @@
 import { GUIDE_STATIONS, guideByKo, guideDetail, guideStation, stationLineColor, type GuideDetail, type GuideStation } from "./guide";
 import { floorLabel, gt, lineLabel, stationTitle } from "./guideCopy";
+import type { GuideLocale } from "./guideLocale";
+import type { Localized } from "./i18n";
 import { DEFAULT_END, DEFAULT_START, plannerHref, type PlannerQuery } from "./plannerParams";
 import { PLANNER_PAIRS, PLANNER_SPOTS, type PlannerSpot } from "./plannerSpots";
+import { pt } from "./plannerText";
 import type { PlannerCategory, QuickTag } from "./plannerTypes";
 import { findRoute, networkStationId, networkStationName, networkStationPoint, type Route, type RouteLeg, type RouteMode, type RouteTransfer } from "./routeFinder";
 
@@ -9,7 +12,7 @@ export type PlanLine = { name: string; short: string; color: string };
 
 export type PlanStation = {
   slug: string;
-  /** "Myeongdong", for headings and titles. */
+  /** "Myeongdong" in English, the full station name elsewhere; for headings and titles. */
   name: string;
   /** "Myeongdong Station". */
   title: string;
@@ -113,23 +116,38 @@ const WALK_METERS_PER_MINUTE = 75;
 /** Streets are longer than the straight line. */
 const DETOUR = 1.3;
 
-const CATEGORY_SEARCH: Record<PlannerCategory, { label: string; query: string }> = {
-  food: { label: "Restaurants", query: "restaurants" },
-  cafe: { label: "Cafés & bakeries", query: "cafe" },
-  shopping: { label: "Shops", query: "shopping" },
-  beauty: { label: "K-beauty stores", query: "cosmetics store" },
-  culture: { label: "Sights", query: "tourist attractions" },
-  essentials: { label: "Currency exchange", query: "currency exchange" },
+/** `query` is the English Google Maps search, `ko` the Korean one used on the Korean pages. */
+type Search = { label: Localized; query: string; ko: string };
+
+const CATEGORY_SEARCH: Record<PlannerCategory, Search> = {
+  food: { label: { ko: "맛집", en: "Restaurants", zh: "餐厅", ja: "レストラン" }, query: "restaurants", ko: "맛집" },
+  cafe: { label: { ko: "카페·베이커리", en: "Cafés & bakeries", zh: "咖啡馆和面包店", ja: "カフェ・ベーカリー" }, query: "cafe", ko: "카페" },
+  shopping: { label: { ko: "쇼핑", en: "Shops", zh: "商店", ja: "ショップ" }, query: "shopping", ko: "쇼핑" },
+  beauty: { label: { ko: "화장품 매장", en: "K-beauty stores", zh: "韩妆店", ja: "コスメショップ" }, query: "cosmetics store", ko: "화장품" },
+  culture: { label: { ko: "관광 명소", en: "Sights", zh: "景点", ja: "観光スポット" }, query: "tourist attractions", ko: "관광명소" },
+  essentials: { label: { ko: "환전소", en: "Currency exchange", zh: "换钱所", ja: "両替所" }, query: "currency exchange", ko: "환전소" },
 };
 
-const TAG_SEARCH: Partial<Record<QuickTag, { label: string; query: string }>> = {
-  "#OliveYoung": { label: "Olive Young stores", query: "Olive Young" },
-  "#Daiso": { label: "Daiso stores", query: "Daiso" },
-  "#WOWPASS": { label: "WOWPASS machines", query: "WOWPASS machine" },
-  "#K-BBQ": { label: "Korean BBQ", query: "Korean BBQ" },
-  "#Pop-up": { label: "Pop-up stores", query: "pop-up store" },
-  "#Life4Cut": { label: "Life4Cut photo booths", query: "Life4cut photo booth" },
-  "#LuggageLocker": { label: "Luggage storage", query: "luggage storage" },
+const TAG_SEARCH: Partial<Record<QuickTag, Search>> = {
+  "#OliveYoung": {
+    label: { ko: "올리브영 매장", en: "Olive Young stores", zh: "Olive Young门店", ja: "オリーブヤング店舗" },
+    query: "Olive Young",
+    ko: "올리브영",
+  },
+  "#Daiso": { label: { ko: "다이소 매장", en: "Daiso stores", zh: "大创门店", ja: "ダイソー店舗" }, query: "Daiso", ko: "다이소" },
+  "#WOWPASS": {
+    label: { ko: "와우패스 기기", en: "WOWPASS machines", zh: "WOWPASS机器", ja: "WOWPASS機" },
+    query: "WOWPASS machine",
+    ko: "와우패스",
+  },
+  "#K-BBQ": { label: { ko: "고깃집", en: "Korean BBQ", zh: "韩国烤肉", ja: "韓国焼肉" }, query: "Korean BBQ", ko: "고깃집" },
+  "#Pop-up": { label: { ko: "팝업스토어", en: "Pop-up stores", zh: "快闪店", ja: "ポップアップストア" }, query: "pop-up store", ko: "팝업스토어" },
+  "#Life4Cut": {
+    label: { ko: "인생네컷 사진관", en: "Life4Cut photo booths", zh: "人生四格照相馆", ja: "人生4カット" },
+    query: "Life4cut photo booth",
+    ko: "인생네컷",
+  },
+  "#LuggageLocker": { label: { ko: "짐 보관", en: "Luggage storage", zh: "行李寄存", ja: "荷物預かり" }, query: "luggage storage", ko: "짐보관" },
 };
 
 /** Where on the day each searchable tag fits best. */
@@ -172,22 +190,24 @@ function mapsSearch(query: string) {
 
 const CITY_NAMES = new Set(["Seoul", "Incheon", "Suwon", "Bucheon", "Anyang", "Cheonan"]);
 
-function baseName(station: GuideStation) {
+/** English drops "Station" unless the name is also a city's; the other languages keep 역/站/駅. */
+function baseName(station: GuideStation, locale: GuideLocale) {
+  if (locale !== "en") return stationTitle(station, locale);
   const name = station.name.en.replace(/\s+station$/i, "");
   return CITY_NAMES.has(name) ? `${name} Station` : name;
 }
 
-function planLine(line: string, express = false): PlanLine {
-  return { name: `${lineLabel(line, "en")}${express ? " Express" : ""}`, short: shortLine(line), color: stationLineColor(line) };
+function planLine(line: string, locale: GuideLocale, express = false): PlanLine {
+  return { name: `${lineLabel(line, locale)}${express ? pt("express", locale) : ""}`, short: shortLine(line), color: stationLineColor(line) };
 }
 
-export function planStation(station: GuideStation, detail = guideDetail(station)): PlanStation {
+export function planStation(station: GuideStation, locale: GuideLocale, detail = guideDetail(station)): PlanStation {
   return {
     slug: station.slug,
-    name: baseName(station),
-    title: stationTitle(station, "en"),
+    name: baseName(station, locale),
+    title: stationTitle(station, locale),
     ko: station.ko,
-    lines: station.lines.map((line) => planLine(line)),
+    lines: station.lines.map((line) => planLine(line, locale)),
     exits: detail.exits.map((exit) => exit.label),
     address: detail.address,
   };
@@ -205,21 +225,21 @@ function guideAt(id: number) {
   return guideByKo(networkStationName(id), point ?? undefined);
 }
 
-function titleAt(id: number) {
+function titleAt(id: number, locale: GuideLocale) {
   const station = guideAt(id);
-  return station ? stationTitle(station, "en") : networkStationName(id);
+  return station ? stationTitle(station, locale) : networkStationName(id);
 }
 
-function nameAt(id: number) {
+function nameAt(id: number, locale: GuideLocale) {
   const station = guideAt(id);
-  return station ? baseName(station) : networkStationName(id);
+  return station ? baseName(station, locale) : networkStationName(id);
 }
 
 function stationSpots(station: GuideStation) {
   return (PLANNER_SPOTS[station.ko] ?? []).filter((spot) => meters(station, spot) <= SPOT_RADIUS_METERS);
 }
 
-function planSpot(spot: PlannerSpot, station: GuideStation, detail: GuideDetail): PlanSpot {
+function planSpot(spot: PlannerSpot, station: GuideStation, detail: GuideDetail, locale: GuideLocale): PlanSpot {
   const named = spot.exit ? detail.exits.find((exit) => exit.label === spot.exit) : undefined;
   const nearest =
     named ??
@@ -231,13 +251,13 @@ function planSpot(spot: PlannerSpot, station: GuideStation, detail: GuideDetail)
         ));
   const from = nearest ?? station;
   return {
-    name: spot.name,
-    blurb: spot.blurb,
+    name: gt(spot.name, locale),
+    blurb: gt(spot.blurb, locale),
     categories: spot.categories,
     tags: spot.tags ?? [],
     exit: spot.exit ?? nearest?.label ?? null,
     walk: spot.walk ?? Math.max(1, Math.round((meters(from, spot) * DETOUR) / WALK_METERS_PER_MINUTE)),
-    maps: mapsSearch(`${spot.name}, Seoul`),
+    maps: mapsSearch(locale === "ko" ? spot.name.ko : `${spot.name.en}, Seoul`),
   };
 }
 
@@ -253,6 +273,7 @@ function spotScore(spot: PlannerSpot, wanted: PlannerCategory[], preferred: Plan
 function pickSpots(
   station: GuideStation,
   detail: GuideDetail,
+  locale: GuideLocale,
   wanted: PlannerCategory[],
   limit: number,
   preferred: PlannerCategory[] = [],
@@ -263,35 +284,37 @@ function pickSpots(
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, limit)
-    .map(({ spot }) => planSpot(spot, station, detail));
+    .map(({ spot }) => planSpot(spot, station, detail, locale));
 }
 
-function categoryLink(category: PlannerCategory, station: GuideStation): PlanLink {
-  const title = stationTitle(station, "en");
-  const search = CATEGORY_SEARCH[category];
-  return { label: `${search.label} near ${title}`, maps: mapsSearch(`${search.query} near ${title}, Seoul`), category, tag: null };
+function searchLink(search: Search, station: GuideStation, locale: GuideLocale) {
+  const label = pt("linkNear", locale, { label: gt(search.label, locale), station: stationTitle(station, locale) });
+  const query = locale === "ko" ? `${station.ko} ${search.ko}` : `${search.query} near ${stationTitle(station, "en")}, Seoul`;
+  return { label, maps: mapsSearch(query) };
 }
 
-function tagLink(tag: QuickTag, station: GuideStation): PlanLink | null {
+function categoryLink(category: PlannerCategory, station: GuideStation, locale: GuideLocale): PlanLink {
+  return { ...searchLink(CATEGORY_SEARCH[category], station, locale), category, tag: null };
+}
+
+function tagLink(tag: QuickTag, station: GuideStation, locale: GuideLocale): PlanLink | null {
   const search = TAG_SEARCH[tag];
-  if (!search) return null;
-  const title = stationTitle(station, "en");
-  return { label: `${search.label} near ${title}`, maps: mapsSearch(`${search.query} near ${title}, Seoul`), category: null, tag };
+  return search ? { ...searchLink(search, station, locale), category: null, tag } : null;
 }
 
 /** Google Maps searches for the wanted categories the picked spots don't cover. */
-function missingLinks(station: GuideStation, wanted: PlannerCategory[], spots: PlanSpot[], limit: number) {
+function missingLinks(station: GuideStation, locale: GuideLocale, wanted: PlannerCategory[], spots: PlanSpot[], limit: number) {
   return wanted
     .filter((category) => !spots.some((spot) => spot.categories.includes(category)))
     .slice(0, limit)
-    .map((category) => categoryLink(category, station));
+    .map((category) => categoryLink(category, station, locale));
 }
 
 /** Searches for the picked tags that belong at this point of the day and aren't covered by a spot. */
-function tagLinks(station: GuideStation, picked: QuickTag[], place: QuickTag[], spots: PlanSpot[]) {
+function tagLinks(station: GuideStation, locale: GuideLocale, picked: QuickTag[], place: QuickTag[], spots: PlanSpot[]) {
   return picked
     .filter((tag) => place.includes(tag) && !spots.some((spot) => spot.tags.includes(tag)))
-    .map((tag) => tagLink(tag, station))
+    .map((tag) => tagLink(tag, station, locale))
     .filter((link): link is PlanLink => link !== null);
 }
 
@@ -300,17 +323,17 @@ function exitIn(text: string) {
   return /(\d+(?:-\d+)?)\s*번\s*출(?:입)?구/.exec(text)?.[1] ?? null;
 }
 
-function lockers(detail: GuideDetail): PlanFacility[] {
+function lockers(detail: GuideDetail, locale: GuideLocale): PlanFacility[] {
   return detail.lockers.slice(0, 4).map((row) => ({
-    line: planLine(row.line),
-    floor: row.floor ? floorLabel(row.floor, "en") : null,
+    line: planLine(row.line, locale),
+    floor: row.floor ? floorLabel(row.floor, locale) : null,
     inside: row.insideGate,
     exit: exitIn(row.detail),
-    note: row.slots ? `${row.slots} lockers` : null,
+    note: row.slots ? pt("lockerCount", locale, { n: row.slots }) : null,
   }));
 }
 
-function restrooms(detail: GuideDetail): PlanFacility[] {
+function restrooms(detail: GuideDetail, locale: GuideLocale): PlanFacility[] {
   const seen = new Set<string>();
   return detail.toilets
     .filter((row) => {
@@ -321,25 +344,25 @@ function restrooms(detail: GuideDetail): PlanFacility[] {
     })
     .slice(0, 4)
     .map((row) => ({
-      line: planLine(row.line),
-      floor: row.floor ? floorLabel(row.floor, "en") : null,
+      line: planLine(row.line, locale),
+      floor: row.floor ? floorLabel(row.floor, locale) : null,
       inside: row.gate === "inside",
       exit: row.exit,
       note: null,
     }));
 }
 
-function elevatorLine(detail: GuideDetail) {
+function elevatorLine(detail: GuideDetail, locale: GuideLocale) {
   if (!detail.elevators.length) return null;
   const exits = detail.elevators.map((row) =>
-    detail.elevators.length > 1 ? `${gt(row.exit, "en")} (${lineLabel(row.line, "en")})` : gt(row.exit, "en"),
+    detail.elevators.length > 1 ? `${gt(row.exit, locale)} (${lineLabel(row.line, locale)})` : gt(row.exit, locale),
   );
-  return `Street-to-platform elevator: ${exits.join(", ")}`;
+  return pt("elevator", locale, { exits: exits.join(", ") });
 }
 
 const ceilMinutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60));
 
-function rideSteps(route: Route, start: number) {
+function rideSteps(route: Route, start: number, locale: GuideLocale) {
   const steps: PlanStep[] = [];
   let time = start;
   route.legs.forEach((leg, index) => {
@@ -348,9 +371,9 @@ function rideSteps(route: Route, start: number) {
       steps.push({
         kind: "transfer",
         time,
-        station: titleAt(route.legs[index - 1].stationIds.at(-1)!),
-        toStation: transfer.toStation ? titleAt(leg.stationIds[0]) : null,
-        line: planLine(leg.line, leg.express),
+        station: titleAt(route.legs[index - 1].stationIds.at(-1)!, locale),
+        toStation: transfer.toStation ? titleAt(leg.stationIds[0], locale) : null,
+        line: planLine(leg.line, locale, leg.express),
         walk: ceilMinutes(transfer.walkSeconds),
       });
       time += (transfer.walkSeconds + transfer.waitSeconds) / 60;
@@ -358,10 +381,10 @@ function rideSteps(route: Route, start: number) {
     steps.push({
       kind: "ride",
       time,
-      line: planLine(leg.line, leg.express),
-      from: titleAt(leg.stationIds[0]),
-      to: titleAt(leg.stationIds.at(-1)!),
-      next: leg.stationIds[1] !== undefined ? titleAt(leg.stationIds[1]) : null,
+      line: planLine(leg.line, locale, leg.express),
+      from: titleAt(leg.stationIds[0], locale),
+      to: titleAt(leg.stationIds.at(-1)!, locale),
+      next: leg.stationIds[1] !== undefined ? titleAt(leg.stationIds[1], locale) : null,
       stops: leg.stationIds.length - 1,
       minutes: ceilMinutes(leg.seconds),
     });
@@ -374,16 +397,20 @@ function signature(route: Route) {
   return route.legs.map((leg) => `${leg.line}${leg.express ? "+" : ""}:${leg.stationIds[0]}`).join("|");
 }
 
-function flowOf(route: Route): PlanFlow {
+function flowOf(route: Route, locale: GuideLocale): PlanFlow {
   return {
     stations: [
-      { name: nameAt(route.legs[0].stationIds[0]), kind: "start" },
+      { name: nameAt(route.legs[0].stationIds[0], locale), kind: "start" },
       ...route.legs.map((leg, index) => ({
-        name: nameAt(leg.stationIds.at(-1)!),
+        name: nameAt(leg.stationIds.at(-1)!, locale),
         kind: index === route.legs.length - 1 ? ("end" as const) : ("transfer" as const),
       })),
     ],
-    legs: route.legs.map((leg) => ({ line: planLine(leg.line, leg.express), minutes: ceilMinutes(leg.seconds), stops: leg.stationIds.length - 1 })),
+    legs: route.legs.map((leg) => ({
+      line: planLine(leg.line, locale, leg.express),
+      minutes: ceilMinutes(leg.seconds),
+      stops: leg.stationIds.length - 1,
+    })),
   };
 }
 
@@ -473,24 +500,25 @@ function buildPlan(
   to: GuideStation,
   query: PlannerQuery,
   ids: { from: number; to: number },
+  locale: GuideLocale,
 ): Plan {
   const { categories, tags } = query;
   const wantsLockers = tags.includes("#LuggageLocker");
   const fromDetail = guideDetail(from);
   const toDetail = guideDetail(to);
   const lunch = query.start >= LUNCH_FROM && query.start <= LUNCH_TO;
-  const mealSpots = pickSpots(from, fromDetail, ["food"], 2, [], tags);
+  const mealSpots = pickSpots(from, fromDetail, locale, ["food"], 2, [], tags);
   const steps: PlanStep[] = [
     {
       kind: "depart",
       time: query.start,
-      station: planStation(from, fromDetail),
-      lockers: lockers(fromDetail),
-      luggageDesk: fromDetail.luggageDesk ? gt(fromDetail.luggageDesk, "en") : null,
-      restrooms: restrooms(fromDetail),
-      elevator: elevatorLine(fromDetail),
-      links: tagLinks(from, tags, DEPART_TAGS, []),
-      meal: { lunch, spots: mealSpots, links: mealSpots.length ? [] : [categoryLink("food", from)] },
+      station: planStation(from, locale, fromDetail),
+      lockers: lockers(fromDetail, locale),
+      luggageDesk: fromDetail.luggageDesk ? gt(fromDetail.luggageDesk, locale) : null,
+      restrooms: restrooms(fromDetail, locale),
+      elevator: elevatorLine(fromDetail, locale),
+      links: tagLinks(from, locale, tags, DEPART_TAGS, []),
+      meal: { lunch, spots: mealSpots, links: mealSpots.length ? [] : [categoryLink("food", from, locale)] },
     },
   ];
   const board = query.start + PREP_MINUTES + (lunch ? LUNCH_MINUTES : 0);
@@ -507,59 +535,59 @@ function buildPlan(
   let stopped = false;
   if (stop && parts) {
     const [toStop, fromStop] = parts;
-    const first = rideSteps(toStop, board);
+    const first = rideSteps(toStop, board, locale);
     steps.push(...first.steps);
     const detail = guideDetail(stop.station);
-    const spots = pickSpots(stop.station, detail, midWanted, 3, categories, tags);
-    const stopLockers = wantsLockers ? lockers(detail) : [];
+    const spots = pickSpots(stop.station, detail, locale, midWanted, 3, categories, tags);
+    const stopLockers = wantsLockers ? lockers(detail, locale) : [];
     const until = first.end + STOP_MINUTES;
     const preferred = categories.filter((category) => midWanted.includes(category));
     steps.push({
       kind: "stop",
       time: first.end,
       until,
-      station: planStation(stop.station, detail),
+      station: planStation(stop.station, locale, detail),
       transfer: fromStop.legs[0].line !== toStop.legs.at(-1)!.line,
       spots,
       links: [
-        ...missingLinks(stop.station, preferred.length ? preferred : midWanted, spots, spots.length ? 1 : 2),
-        ...tagLinks(stop.station, tags, STOP_TAGS, spots),
-        ...(wantsLockers && !stopLockers.length ? [tagLink("#LuggageLocker", stop.station)!] : []),
+        ...missingLinks(stop.station, locale, preferred.length ? preferred : midWanted, spots, spots.length ? 1 : 2),
+        ...tagLinks(stop.station, locale, tags, STOP_TAGS, spots),
+        ...(wantsLockers && !stopLockers.length ? [tagLink("#LuggageLocker", stop.station, locale)!] : []),
       ],
       lockers: stopLockers,
     });
-    const second = rideSteps(fromStop, until + REBOARD_MINUTES);
+    const second = rideSteps(fromStop, until + REBOARD_MINUTES, locale);
     steps.push(...second.steps);
     arrive = second.end;
     stopped = true;
   } else {
-    const ride = rideSteps(route, board);
+    const ride = rideSteps(route, board, locale);
     steps.push(...ride.steps);
     arrive = ride.end;
   }
 
   const destinationWanted: PlannerCategory[] = categories.length ? categories : ["shopping"];
-  const spots = pickSpots(to, toDetail, destinationWanted, 3, [], tags).sort((a, b) => a.walk - b.walk);
-  const arriveLockers = wantsLockers ? lockers(toDetail) : [];
+  const spots = pickSpots(to, toDetail, locale, destinationWanted, 3, [], tags).sort((a, b) => a.walk - b.walk);
+  const arriveLockers = wantsLockers ? lockers(toDetail, locale) : [];
   steps.push({
     kind: "arrive",
     time: arrive,
-    station: planStation(to, toDetail),
+    station: planStation(to, locale, toDetail),
     spots,
     links: [
-      ...missingLinks(to, destinationWanted, spots, 3),
-      ...tagLinks(to, tags, stopped ? ARRIVE_TAGS : [...STOP_TAGS, ...ARRIVE_TAGS], spots),
-      ...(wantsLockers && !arriveLockers.length ? [tagLink("#LuggageLocker", to)!] : []),
+      ...missingLinks(to, locale, destinationWanted, spots, 3),
+      ...tagLinks(to, locale, tags, stopped ? ARRIVE_TAGS : [...STOP_TAGS, ...ARRIVE_TAGS], spots),
+      ...(wantsLockers && !arriveLockers.length ? [tagLink("#LuggageLocker", to, locale)!] : []),
     ],
     lockers: arriveLockers,
-    restrooms: categories.includes("essentials") ? restrooms(toDetail) : [],
+    restrooms: categories.includes("essentials") ? restrooms(toDetail, locale) : [],
     leaveBy,
     back,
   });
 
   const lines: PlanLine[] = [];
   for (const leg of route.legs) {
-    const line = planLine(leg.line, leg.express);
+    const line = planLine(leg.line, locale, leg.express);
     if (!lines.some((known) => known.name === line.name)) lines.push(line);
   }
   return {
@@ -567,17 +595,17 @@ function buildPlan(
     minutes: ceilMinutes(route.seconds),
     transfers: route.transfers.length,
     lines,
-    flow: flowOf(route),
+    flow: flowOf(route, locale),
     steps,
     signature: signature(route),
   };
 }
 
-export function buildPlanner(query: PlannerQuery): PlannerResult {
+export function buildPlanner(query: PlannerQuery, locale: GuideLocale): PlannerResult {
   const from = guideStation(query.from);
   const to = guideStation(query.to);
-  const fromPlan = from ? planStation(from) : null;
-  const toPlan = to ? planStation(to) : null;
+  const fromPlan = from ? planStation(from, locale) : null;
+  const toPlan = to ? planStation(to, locale) : null;
   if (!from || !to) return { ok: false, reason: "station", from: fromPlan, to: toPlan };
   if (from.slug === to.slug) return { ok: false, reason: "same", from: fromPlan, to: toPlan };
   const ids = { from: networkId(from), to: networkId(to) };
@@ -591,14 +619,14 @@ export function buildPlanner(query: PlannerQuery): PlannerResult {
     from: fromPlan!,
     to: toPlan!,
     plans: {
-      fastest: buildPlan("fastest", fastest, from, to, query, known),
-      fewest: buildPlan("fewest", fewest, from, to, query, known),
+      fastest: buildPlan("fastest", fastest, from, to, query, known, locale),
+      fewest: buildPlan("fewest", fewest, from, to, query, known, locale),
     },
   };
 }
 
 /** One-way summary for titles, descriptions and the suggested trips. */
-export function routeSummary(fromSlug: string, toSlug: string) {
+export function routeSummary(fromSlug: string, toSlug: string, locale: GuideLocale) {
   const from = guideStation(fromSlug);
   const to = guideStation(toSlug);
   if (!from || !to || from.slug === to.slug) return null;
@@ -607,47 +635,60 @@ export function routeSummary(fromSlug: string, toSlug: string) {
   const route = a !== null && b !== null ? findRoute(a, b, "fastest") : null;
   if (!route) return null;
   return {
-    from: baseName(from),
-    to: baseName(to),
+    from: baseName(from, locale),
+    to: baseName(to, locale),
     minutes: ceilMinutes(route.seconds),
     transfers: route.transfers.length,
-    lines: [...new Set(route.legs.map((leg) => lineLabel(leg.line, "en")))],
+    lines: [...new Set(route.legs.map((leg) => lineLabel(leg.line, locale)))],
     colors: [...new Set(route.legs.map((leg) => stationLineColor(leg.line)))],
-    via: route.transfers.map((transfer, index) => titleAt(route.legs[index].stationIds.at(-1)!) || transfer.station),
+    via: route.transfers.map((transfer, index) => titleAt(route.legs[index].stationIds.at(-1)!, locale) || transfer.station),
   };
 }
 
 /** Suggested trips with their one-way ride, for the planner home and the sitemap. */
-export function plannerPairs() {
+export function plannerPairs(locale: GuideLocale) {
   return PLANNER_PAIRS.flatMap(([fromKo, toKo, categories, tags]) => {
     const from = guideByKo(fromKo);
     const to = guideByKo(toKo);
-    const summary = from && to ? routeSummary(from.slug, to.slug) : null;
+    const summary = from && to ? routeSummary(from.slug, to.slug, locale) : null;
     if (!from || !to || !summary) return [];
     return [
       {
         from: from.slug,
         to: to.slug,
         tags,
-        href: plannerHref({ from: from.slug, to: to.slug, categories, tags, start: DEFAULT_START, end: DEFAULT_END }),
+        href: plannerHref({ from: from.slug, to: to.slug, categories, tags, start: DEFAULT_START, end: DEFAULT_END }, locale),
         summary,
       },
     ];
   });
 }
 
-export type PlannerStationOption = { slug: string; name: string; ko: string; lines: string; badges: { short: string; color: string }[] };
+export type PlannerStationOption = {
+  slug: string;
+  name: string;
+  ko: string;
+  /** English name, so a station can be searched in English on any language's page. */
+  en: string;
+  lines: string;
+  badges: { short: string; color: string }[];
+};
 
-let options: PlannerStationOption[] | null = null;
+const options = new Map<GuideLocale, PlannerStationOption[]>();
 
 /** Every guide station the route finder can reach, for the form's search. */
-export function plannerStations() {
-  options ??= GUIDE_STATIONS.filter((station) => networkId(station) !== null).map((station) => ({
-    slug: station.slug,
-    name: baseName(station),
-    ko: station.ko,
-    lines: station.lines.map((line) => lineLabel(line, "en")).join(" · "),
-    badges: station.lines.slice(0, 4).map((line) => ({ short: shortLine(line), color: stationLineColor(line) })),
-  }));
-  return options;
+export function plannerStations(locale: GuideLocale) {
+  let list = options.get(locale);
+  if (!list) {
+    list = GUIDE_STATIONS.filter((station) => networkId(station) !== null).map((station) => ({
+      slug: station.slug,
+      name: baseName(station, locale),
+      ko: station.ko,
+      en: station.name.en,
+      lines: station.lines.map((line) => lineLabel(line, locale)).join(" · "),
+      badges: station.lines.slice(0, 4).map((line) => ({ short: shortLine(line), color: stationLineColor(line) })),
+    }));
+    options.set(locale, list);
+  }
+  return list;
 }

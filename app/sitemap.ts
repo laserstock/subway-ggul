@@ -22,6 +22,20 @@ function guideEntries(path: string, priority: number): MetadataRoute.Sitemap {
   }));
 }
 
+/** Next writes sitemap URLs into the XML as-is, so the query's & must be escaped here. */
+const escapeXml = (url: string) => url.replace(/&/g, "&amp;");
+
+function plannerRouteEntries(path: string): MetadataRoute.Sitemap {
+  const languages = Object.fromEntries(Object.entries(absolute(guideLanguages(path))).map(([lang, url]) => [lang, escapeXml(url)]));
+  return GUIDE_LOCALES.map((locale) => ({
+    url: escapeXml(`${SITE_URL}/${locale}${path}`),
+    lastModified: GUIDE_UPDATED,
+    changeFrequency: "monthly",
+    priority: 0.6,
+    alternates: { languages },
+  }));
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
@@ -38,14 +52,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...guideEntries("/stations", 0.8),
     ...ALL_LINES.flatMap((line) => guideEntries(`/lines/${lineSlug(line)}`, 0.8)),
     ...GUIDE_STATIONS.flatMap((station) => guideEntries(`/stations/${station.slug}`, 0.7)),
-    { url: `${SITE_URL}/en/planner`, lastModified: GUIDE_UPDATED, changeFrequency: "monthly", priority: 0.8 },
-    // Next writes sitemap URLs into the XML as-is, so the query's & must be escaped here.
-    ...plannerPairs().map((pair) => ({
-      url: `${SITE_URL}/en/planner/route?from=${pair.from}&amp;to=${pair.to}`,
-      lastModified: GUIDE_UPDATED,
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
-    })),
+    ...guideEntries("/planner", 0.8),
+    ...plannerPairs("en").flatMap((pair) => plannerRouteEntries(`/planner/route?from=${pair.from}&to=${pair.to}`)),
     ...["/privacy", "/terms", "/contact"].map((path) => ({
       url: `${SITE_URL}${path}`,
       lastModified: LEGAL_UPDATED,

@@ -1,5 +1,7 @@
-/** Planner URL parameters, shared by the server pages and the client form (no server-only imports). */
+/** Planner URL parameters and text helpers, shared by the server pages and the client components (no server-only imports). */
 
+import type { GuideLocale } from "./guideLocale";
+import type { PlannerCopy } from "./plannerText";
 import { PLANNER_CATEGORIES, QUICK_TAGS, tagFromSlug, tagSlug, type PlannerCategory, type QuickTag } from "./plannerTypes";
 
 export const DEFAULT_CATEGORIES: PlannerCategory[] = ["food", "cafe", "shopping"];
@@ -35,12 +37,36 @@ export function clockValue(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-/** 660 → "11:00 AM"; times past midnight wrap. */
-export function clockLabel(minutes: number) {
+/** 660 → "11:00 AM" in English, "11:00" elsewhere; times past midnight wrap. */
+export function clockLabel(minutes: number, locale: GuideLocale = "en") {
   const total = ((Math.round(minutes) % 1440) + 1440) % 1440;
   const hours = Math.floor(total / 60);
-  const suffix = hours < 12 ? "AM" : "PM";
-  return `${hours % 12 || 12}:${String(total % 60).padStart(2, "0")} ${suffix}`;
+  const mins = String(total % 60).padStart(2, "0");
+  if (locale !== "en") return `${String(hours).padStart(2, "0")}:${mins}`;
+  return `${hours % 12 || 12}:${mins} ${hours < 12 ? "AM" : "PM"}`;
+}
+
+export function fillCopy(template: string, values: Record<string, string | number>) {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
+}
+
+export function durationText(copy: PlannerCopy, minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!hours) return fillCopy(copy.minutes, { n: rest });
+  return rest ? fillCopy(copy.hoursMinutes, { h: hours, m: rest }) : fillCopy(copy.hours, { n: hours });
+}
+
+export function stopsText(copy: PlannerCopy, stops: number) {
+  return fillCopy(stops === 1 ? copy.stopsOne : copy.stopsMany, { n: stops });
+}
+
+export function transfersText(copy: PlannerCopy, transfers: number) {
+  return transfers === 0 ? copy.transfersNone : transfers === 1 ? copy.transfersOne : fillCopy(copy.transfersMany, { n: transfers });
+}
+
+export function exitWalkText(copy: PlannerCopy, exit: string | null, walk: number) {
+  return exit ? fillCopy(copy.exitWalk, { exit, n: walk }) : fillCopy(copy.walk, { n: walk });
 }
 
 const parts = (value: string | undefined | null) =>
@@ -77,12 +103,12 @@ export function parsePlannerQuery(params: RawParams): PlannerQuery {
   };
 }
 
-/** `/en/planner/route?from=…&to=…&category=…`, with tags and times only when set. */
-export function plannerHref(query: PlannerQuery) {
+/** `/{locale}/planner/route?from=…&to=…&category=…`, with tags and times only when set. */
+export function plannerHref(query: PlannerQuery, locale: GuideLocale) {
   const params = new URLSearchParams({ from: query.from, to: query.to });
   if (query.categories.length) params.set("category", query.categories.join(","));
   if (query.tags.length) params.set("tags", query.tags.map(tagSlug).join(","));
   if (query.start !== DEFAULT_START) params.set("start", clockValue(query.start));
   if (query.end !== DEFAULT_END) params.set("end", clockValue(query.end));
-  return `/en/planner/route?${params.toString().replace(/%2C/g, ",")}`;
+  return `/${locale}/planner/route?${params.toString().replace(/%2C/g, ",")}`;
 }

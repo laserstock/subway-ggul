@@ -2,7 +2,10 @@
 
 import { Car } from "lucide-react";
 import { useState } from "react";
+import type { GuideLocale } from "../../_lib/guideLocale";
 import type { Plan, PlanStation } from "../../_lib/planner";
+import { fillCopy } from "../../_lib/plannerParams";
+import type { PlannerCopy } from "../../_lib/plannerText";
 import type { RouteMode } from "../../_lib/routeFinder";
 import ItineraryTimeline from "./ItineraryTimeline";
 import { StepHeader } from "./PlannerSteps";
@@ -16,11 +19,15 @@ export default function PlannerResultView({
   from,
   to,
   tour,
+  copy,
+  lang,
 }: {
   plans: Record<RouteMode, Plan>;
   from: PlanStation;
   to: PlanStation;
   tour: { href: string; title: string };
+  copy: PlannerCopy;
+  lang: GuideLocale;
 }) {
   const [mode, setMode] = useState<RouteMode>("fastest");
   const [local, setLocal] = useState<PlanStation | null>(null);
@@ -28,22 +35,23 @@ export default function PlannerResultView({
   return (
     <>
       <section id="step-2" aria-labelledby="step-2-title" className="mt-8 scroll-mt-20">
-        <StepHeader step={2} id="step-2-title" title="Route Options">
-          Compare the quickest ride with the one that changes trains the least. The itinerary below follows your pick.
+        <StepHeader copy={copy} step={2} id="step-2-title" title={copy.stepRoutes}>
+          {copy.routesLead}
         </StepHeader>
         <div className="mt-4">
-          <RouteOptionsTab plans={plans} mode={mode} onChange={setMode} />
+          <RouteOptionsTab plans={plans} mode={mode} copy={copy} onChange={setMode} />
         </div>
       </section>
 
       <section id="step-3" aria-labelledby="step-3-title" className="mt-10 scroll-mt-20">
         <StepHeader
+          copy={copy}
           step={3}
           id="step-3-title"
-          title="Interactive Itinerary"
-          action={<SaveTourActions href={tour.href} title={tour.title} />}
+          title={copy.stepItinerary}
+          action={<SaveTourActions href={tour.href} title={tour.title} copy={copy} />}
         >
-          Timed cards from {from.name} to {to.name}, with exits, walking times and Google Maps links.
+          {fillCopy(copy.itineraryLead, { from: from.name, to: to.name })}
         </StepHeader>
         <button
           type="button"
@@ -51,17 +59,17 @@ export default function PlannerResultView({
           className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#111827] px-4 py-2 text-[13px] font-extrabold text-white ring-2 ring-[#f5b800] transition active:scale-95"
         >
           <Car size={16} aria-hidden className="text-[#f5b800]" />
-          Show to Local
+          {copy.showToLocal}
           <span lang="ko" className="rounded-md bg-[#f5b800] px-1.5 text-[12px] font-black text-neutral-900">
             {to.ko}
           </span>
         </button>
         <div className="mt-5">
-          <ItineraryTimeline plan={plans[mode]} mode={mode} from={from} onShowLocal={setLocal} />
+          <ItineraryTimeline plan={plans[mode]} mode={mode} from={from} copy={copy} lang={lang} onShowLocal={setLocal} />
         </div>
       </section>
 
-      <ShowToLocalModal station={local} onClose={() => setLocal(null)} />
+      <ShowToLocalModal station={local} copy={copy} lang={lang} onClose={() => setLocal(null)} />
     </>
   );
 }

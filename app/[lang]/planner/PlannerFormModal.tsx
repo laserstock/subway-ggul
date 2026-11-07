@@ -3,9 +3,11 @@
 import { ArrowDownUp, ArrowLeftRight, ArrowRight, Clock, Hash, Map as MapIcon, Pencil, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
+import { contentLocale, type GuideLocale } from "../../_lib/guideLocale";
 import type { PlannerStationOption } from "../../_lib/planner";
 import { clockLabel, EARLIEST, LATEST, MIN_WINDOW, plannerHref, type PlannerQuery } from "../../_lib/plannerParams";
-import { CATEGORY_META, PLANNER_CATEGORIES, QUICK_TAGS, type PlannerCategory, type QuickTag } from "../../_lib/plannerTypes";
+import type { PlannerCopy } from "../../_lib/plannerText";
+import { PLANNER_CATEGORIES, QUICK_TAGS, type PlannerCategory, type QuickTag } from "../../_lib/plannerTypes";
 import { normalizeQuery } from "../_guide/searchKeys";
 import SubwayMap, { type MapCopy, type MapLineData, type MapStationData } from "../map/SubwayMap";
 import { CATEGORY_ICONS, LineBadge } from "./plannerIcons";
@@ -23,17 +25,19 @@ type MapPayload = {
   copy: MapCopy;
 };
 
-let mapRequest: Promise<MapPayload> | null = null;
+const mapRequests = new Map<GuideLocale, Promise<MapPayload>>();
 
-function loadMap() {
-  mapRequest ??= fetch("/en/planner/map-data").then((response) => {
-    if (!response.ok) throw new Error(`map data ${response.status}`);
-    return response.json() as Promise<MapPayload>;
-  });
-  mapRequest.catch(() => {
-    mapRequest = null;
-  });
-  return mapRequest;
+function loadMap(lang: GuideLocale) {
+  let request = mapRequests.get(lang);
+  if (!request) {
+    request = fetch(`/${lang}/planner/map-data`).then((response) => {
+      if (!response.ok) throw new Error(`map data ${response.status}`);
+      return response.json() as Promise<MapPayload>;
+    });
+    request.catch(() => mapRequests.delete(lang));
+    mapRequests.set(lang, request);
+  }
+  return request;
 }
 
 const fieldLabel = "text-[12px] font-bold uppercase tracking-wide text-ink-muted";
@@ -41,12 +45,14 @@ const fieldLabel = "text-[12px] font-bold uppercase tracking-wide text-ink-muted
 function StationField({
   label,
   placeholder,
+  empty,
   stations,
   value,
   onChange,
 }: {
   label: string;
   placeholder: string;
+  empty: string;
   stations: PlannerStationOption[];
   value: string;
   onChange: (slug: string) => void;
@@ -57,7 +63,8 @@ function StationField({
   const [active, setActive] = useState(0);
   const selected = stations.find((station) => station.slug === value) ?? null;
   const keys = useMemo(
-    () => stations.map((station) => [normalizeQuery(station.name), normalizeQuery(station.ko)].filter(Boolean)),
+    () =>
+      stations.map((station) => [...new Set([station.name, station.ko, station.en].map(normalizeQuery))].filter(Boolean)),
     [stations],
   );
   const results = useMemo(() => {
@@ -126,7 +133,7 @@ function StationField({
             selected ? "placeholder:text-ink" : "placeholder:font-semibold placeholder:text-ink-muted"
           }`}
         />
-        {selected && !query ? (
+        {selected && !query && selected.ko !== selected.name ? (
           <span lang="ko" className="shrink-0 text-[12px] font-semibold text-ink-muted">
             {selected.ko}
           </span>
@@ -155,14 +162,19 @@ function StationField({
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-bold text-ink">{station.name}</span>
                     <span className="block truncate text-[12px] text-ink-muted">
-                      <span lang="ko">{station.ko}</span> · {station.lines}
+                      {station.ko !== station.name ? (
+                        <>
+                          <span lang="ko">{station.ko}</span> ·{" "}
+                        </>
+                      ) : null}
+                      {station.lines}
                     </span>
                   </span>
                 </button>
               </li>
             ))
           ) : (
-            <li className="px-3 py-2.5 text-[13px] text-ink-muted">No station found. Try another spelling.</li>
+            <li className="px-3 py-2.5 text-[13px] text-ink-muted">{empty}</li>
           )}
         </ul>
       ) : null}
@@ -170,13 +182,23 @@ function StationField({
   );
 }
 
-function MapPicker({ onPick, onClose }: { onPick: (field: "from" | "to", slug: string) => void; onClose: () => void }) {
+function MapPicker({
+  copy,
+  lang,
+  onPick,
+  onClose,
+}: {
+  copy: PlannerCopy;
+  lang: GuideLocale;
+  onPick: (field: "from" | "to", slug: string) => void;
+  onClose: () => void;
+}) {
   const [data, setData] = useState<MapPayload | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let live = true;
-    loadMap().then(
+    loadMap(lang).then(
       (payload) => live && setData(payload),
       () => live && setFailed(true),
     );
@@ -186,33 +208,33 @@ function MapPicker({ onPick, onClose }: { onPick: (field: "from" | "to", slug: s
       live = false;
       document.body.style.overflow = previous;
     };
-  }, []);
+  }, [lang]);
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Pick a station on the map"
+      aria-label={copy.mapPickerLabel}
       className="fixed inset-0 z-[90] flex flex-col bg-app pt-[env(safe-area-inset-top)]"
     >
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3">
         <div className="min-w-0">
-          <p className="text-[16px] font-extrabold text-ink">Pick on the map</p>
-          <p className="text-[12px] text-ink-muted">Tap a station, then set it as your departure or arrival.</p>
+          <p className="text-[16px] font-extrabold text-ink">{copy.mapPickerTitle}</p>
+          <p className="text-[12px] text-ink-muted">{copy.mapPickerHint}</p>
         </div>
         <button
           type="button"
           onClick={onClose}
           className="shrink-0 rounded-full bg-surface-muted px-4 py-2 text-[14px] font-bold text-ink active:scale-95"
         >
-          Close
+          {copy.close}
         </button>
       </div>
       <div className="min-h-0 flex-1">
         {data ? (
           <SubwayMap
-            lang="en"
-            appLang="en"
+            lang={lang}
+            appLang={contentLocale(lang)}
             width={data.width}
             height={data.height}
             focus={data.focus}
@@ -222,21 +244,31 @@ function MapPicker({ onPick, onClose }: { onPick: (field: "from" | "to", slug: s
             stations={data.stations}
             copy={data.copy}
             actions={[
-              { label: "Departure", icon: "train", onPick: (slug) => onPick("from", slug) },
-              { label: "Arrival", icon: "pin", onPick: (slug) => onPick("to", slug) },
+              { label: copy.departure, icon: "train", onPick: (slug) => onPick("from", slug) },
+              { label: copy.arrival, icon: "pin", onPick: (slug) => onPick("to", slug) },
             ]}
           />
         ) : (
-          <p className="p-6 text-center text-[14px] text-ink-muted">
-            {failed ? "The map couldn't load. Check your connection and try again." : "Loading the subway map…"}
-          </p>
+          <p className="p-6 text-center text-[14px] text-ink-muted">{failed ? copy.mapFailed : copy.mapLoading}</p>
         )}
       </div>
     </div>
   );
 }
 
-function TimeSelect({ label, value, options, onChange }: { label: string; value: number; options: number[]; onChange: (value: number) => void }) {
+function TimeSelect({
+  label,
+  lang,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  lang: GuideLocale;
+  value: number;
+  options: number[];
+  onChange: (value: number) => void;
+}) {
   return (
     <label className="block min-w-0">
       <span className={fieldLabel}>{label}</span>
@@ -249,7 +281,7 @@ function TimeSelect({ label, value, options, onChange }: { label: string; value:
         >
           {options.map((time) => (
             <option key={time} value={time}>
-              {clockLabel(time)}
+              {clockLabel(time, lang)}
             </option>
           ))}
         </select>
@@ -265,10 +297,14 @@ const toggleIn = <T,>(order: readonly T[], current: T[], item: T) =>
 export function PlannerForm({
   stations,
   initial,
+  copy,
+  lang,
   onSubmitted,
 }: {
   stations: PlannerStationOption[];
   initial: PlannerQuery;
+  copy: PlannerCopy;
+  lang: GuideLocale;
   onSubmitted?: () => void;
 }) {
   const router = useRouter();
@@ -284,12 +320,12 @@ export function PlannerForm({
   const known = (slug: string) => stations.some((station) => station.slug === slug);
 
   function submit() {
-    if (!known(from) || !known(to)) return setError("Choose both a departure and an arrival station.");
-    if (from === to) return setError("Departure and arrival need to be different stations.");
-    if (end - start < MIN_WINDOW) return setError("Leave at least 2 hours between the start and return times.");
+    if (!known(from) || !known(to)) return setError(copy.errorStations);
+    if (from === to) return setError(copy.errorSame);
+    if (end - start < MIN_WINDOW) return setError(copy.errorWindow);
     setError(null);
     startTransition(() => {
-      router.push(plannerHref({ from, to, categories, tags, start, end }));
+      router.push(plannerHref({ from, to, categories, tags, start, end }, lang));
       onSubmitted?.();
     });
   }
@@ -303,12 +339,19 @@ export function PlannerForm({
       className="flex flex-col gap-5"
     >
       <fieldset className="flex flex-col gap-2.5">
-        <legend className="sr-only">Stations</legend>
+        <legend className="sr-only">{copy.stationsLegend}</legend>
         <div className="grid gap-2 sm:grid-cols-[1fr_40px_1fr] sm:items-end">
-          <StationField label="Departure station" placeholder="e.g. Seoul Station" stations={stations} value={from} onChange={setFrom} />
+          <StationField
+            label={copy.departureStation}
+            placeholder={copy.departurePlaceholder}
+            empty={copy.searchEmpty}
+            stations={stations}
+            value={from}
+            onChange={setFrom}
+          />
           <button
             type="button"
-            aria-label="Swap departure and arrival"
+            aria-label={copy.swap}
             onClick={() => {
               setFrom(to);
               setTo(from);
@@ -318,7 +361,14 @@ export function PlannerForm({
             <ArrowDownUp size={16} aria-hidden className="sm:hidden" />
             <ArrowLeftRight size={16} aria-hidden className="hidden sm:block" />
           </button>
-          <StationField label="Arrival station" placeholder="e.g. Seongsu" stations={stations} value={to} onChange={setTo} />
+          <StationField
+            label={copy.arrivalStation}
+            placeholder={copy.arrivalPlaceholder}
+            empty={copy.searchEmpty}
+            stations={stations}
+            value={to}
+            onChange={setTo}
+          />
         </div>
         <button
           type="button"
@@ -326,23 +376,35 @@ export function PlannerForm({
           className="inline-flex items-center gap-1.5 self-start rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-bold text-ink transition hover:border-honey/50 hover:text-honey-strong active:scale-95"
         >
           <MapIcon size={15} aria-hidden />
-          Pick on the subway map
+          {copy.pickOnMap}
         </button>
       </fieldset>
 
       <fieldset>
-        <legend className={fieldLabel}>Travel schedule</legend>
+        <legend className={fieldLabel}>{copy.schedule}</legend>
         <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-          <TimeSelect label="Start" value={start} options={TIMES.filter((time) => time <= LATEST - MIN_WINDOW)} onChange={setStart} />
+          <TimeSelect
+            label={copy.start}
+            lang={lang}
+            value={start}
+            options={TIMES.filter((time) => time <= LATEST - MIN_WINDOW)}
+            onChange={setStart}
+          />
           <span aria-hidden className="pb-3 text-[15px] font-bold text-ink-muted">
             ~
           </span>
-          <TimeSelect label="Return" value={end} options={TIMES.filter((time) => time >= EARLIEST + MIN_WINDOW)} onChange={setEnd} />
+          <TimeSelect
+            label={copy.return}
+            lang={lang}
+            value={end}
+            options={TIMES.filter((time) => time >= EARLIEST + MIN_WINDOW)}
+            onChange={setEnd}
+          />
         </div>
       </fieldset>
 
       <fieldset>
-        <legend className={fieldLabel}>What are you into?</legend>
+        <legend className={fieldLabel}>{copy.interests}</legend>
         <div className="mt-2 flex flex-wrap gap-2">
           {PLANNER_CATEGORIES.map((category) => {
             const on = categories.includes(category);
@@ -358,7 +420,7 @@ export function PlannerForm({
                 }`}
               >
                 <CategoryIcon size={15} aria-hidden className={on ? "text-[#f5b800]" : "text-honey-strong"} />
-                {CATEGORY_META[category].label}
+                {copy.categories[category].label}
               </button>
             );
           })}
@@ -366,7 +428,7 @@ export function PlannerForm({
       </fieldset>
 
       <fieldset>
-        <legend className={fieldLabel}>Popular quick tags</legend>
+        <legend className={fieldLabel}>{copy.quickTags}</legend>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {QUICK_TAGS.map((tag) => {
             const on = tags.includes(tag);
@@ -381,7 +443,7 @@ export function PlannerForm({
                 }`}
               >
                 <Hash size={12} aria-hidden strokeWidth={2.5} />
-                {tag.slice(1)}
+                {copy.tags[tag].slice(1)}
               </button>
             );
           })}
@@ -399,12 +461,14 @@ export function PlannerForm({
         disabled={pending}
         className="group flex items-center justify-center gap-2 rounded-2xl bg-honey px-5 py-3.5 text-[16px] font-extrabold text-white shadow-[0_8px_20px_rgba(245,167,0,0.28)] transition active:scale-[0.98] disabled:opacity-70"
       >
-        {pending ? "Building your tour route…" : "Generate Subway Tour Route"}
+        {pending ? copy.submitting : copy.submit}
         <ArrowRight size={18} aria-hidden className="transition group-hover:translate-x-0.5" />
       </button>
 
       {picking ? (
         <MapPicker
+          copy={copy}
+          lang={lang}
           onClose={() => setPicking(false)}
           onPick={(field, slug) => {
             if (!known(slug)) return;
@@ -421,10 +485,14 @@ export function PlannerForm({
 export default function PlannerFormModal({
   stations,
   initial,
-  label = "Edit trip",
+  copy,
+  lang,
+  label = copy.editTrip,
 }: {
   stations: PlannerStationOption[];
   initial: PlannerQuery;
+  copy: PlannerCopy;
+  lang: GuideLocale;
   label?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -446,7 +514,7 @@ export default function PlannerFormModal({
       </button>
       <dialog
         ref={dialog}
-        aria-label="Set up your subway tour"
+        aria-label={copy.setupDialog}
         onClose={() => setOpen(false)}
         onClick={(event) => {
           if (event.target === event.currentTarget) close();
@@ -455,17 +523,17 @@ export default function PlannerFormModal({
       >
         <div className="max-h-[92dvh] overflow-y-auto rounded-3xl bg-app p-5 text-ink">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <p className="text-[18px] font-extrabold tracking-tight">Set up your subway tour</p>
+            <p className="text-[18px] font-extrabold tracking-tight">{copy.setupDialog}</p>
             <button
               type="button"
               onClick={close}
-              aria-label="Close"
+              aria-label={copy.close}
               className="rounded-full p-1.5 text-ink-muted transition hover:bg-surface-muted hover:text-ink"
             >
               <X size={18} aria-hidden />
             </button>
           </div>
-          {open ? <PlannerForm stations={stations} initial={initial} onSubmitted={close} /> : null}
+          {open ? <PlannerForm stations={stations} initial={initial} copy={copy} lang={lang} onSubmitted={close} /> : null}
         </div>
       </dialog>
     </>

@@ -5,6 +5,7 @@ import { ALL_LINES, GUIDE_STATIONS, POPULAR_GUIDES } from "../_lib/guide";
 import GoogleSeoSchema from "../_components/GoogleSeoSchema";
 import { BRAND, COPY, gt, HOME_FAQ_EN, HOME_KEYWORDS, homeMetaTitle, tc } from "../_lib/guideCopy";
 import { GUIDE_LANGUAGES, isGuideLocale } from "../_lib/guideLocale";
+import { pt } from "../_lib/plannerText";
 import { APP_RELEASED, guideAlternates, OG_LOCALES, PLAY_STORE_URL, SITE_URL } from "../_lib/site";
 import GuideSearch from "./_guide/GuideSearch";
 import { Icon, IconTile } from "./_guide/icons";
@@ -99,21 +100,17 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
           </Link>
         ))}
       </nav>
-      {lang === "en" ? (
-        <Link
-          href="/en/planner"
-          className="group mt-2 flex items-center gap-3 rounded-2xl border border-[#f6e3a8] bg-gradient-to-r from-[#fff8e1] to-surface p-4 transition hover:border-honey/50 active:scale-[0.98]"
-        >
-          <IconTile name="route" onSurface />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-extrabold leading-snug text-ink">Seoul Subway Travel Planner</span>
-            <span className="mt-0.5 block text-[12px] leading-snug text-ink-muted">
-              Two stations and your hours in, a timed tour with lockers, Olive Young, cafés and pop-ups out.
-            </span>
-          </span>
-          <Icon name="arrow" size={16} className="text-ink-muted transition group-hover:translate-x-0.5 group-hover:text-honey-strong" />
-        </Link>
-      ) : null}
+      <Link
+        href={`/${lang}/planner`}
+        className="group mt-2 flex items-center gap-3 rounded-2xl border border-[#f6e3a8] bg-gradient-to-r from-[#fff8e1] to-surface p-4 transition hover:border-honey/50 active:scale-[0.98]"
+      >
+        <IconTile name="route" onSurface />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-extrabold leading-snug text-ink">{pt("plannerName", lang)}</span>
+          <span className="mt-0.5 block text-[12px] leading-snug text-ink-muted">{pt("homeCardBody", lang)}</span>
+        </span>
+        <Icon name="arrow" size={16} className="text-ink-muted transition group-hover:translate-x-0.5 group-hover:text-honey-strong" />
+      </Link>
 
       <section className="mt-7" aria-labelledby="popular">
         <h2 id="popular" className="text-[17px] font-extrabold text-ink">

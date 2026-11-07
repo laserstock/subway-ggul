@@ -3,6 +3,9 @@
 import { ArrowRight, Bookmark, BookmarkCheck, Check, Link2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useSyncExternalStore } from "react";
+import { GUIDE_LANGUAGES, type GuideLocale } from "../../_lib/guideLocale";
+import { fillCopy } from "../../_lib/plannerParams";
+import type { PlannerCopy } from "../../_lib/plannerText";
 
 type SavedTour = { href: string; title: string; savedAt: number };
 
@@ -20,7 +23,7 @@ function parse(raw: string | null): SavedTour[] {
       ? value.filter(
           (item): item is SavedTour =>
             typeof item?.href === "string" &&
-            item.href.startsWith("/en/planner/") &&
+            /^\/[a-z-]+\/planner\/route\?/.test(item.href) &&
             typeof item.title === "string" &&
             typeof item.savedAt === "number",
         )
@@ -63,7 +66,7 @@ function useSavedTours() {
   return useSyncExternalStore(subscribe, snapshot, () => EMPTY);
 }
 
-async function copy(text: string) {
+async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
     return true;
@@ -73,7 +76,7 @@ async function copy(text: string) {
 }
 
 /** "Save Tour" (kept in this browser, with the share link copied) and "Copy link". */
-export function SaveTourActions({ href, title }: { href: string; title: string }) {
+export function SaveTourActions({ href, title, copy }: { href: string; title: string; copy: PlannerCopy }) {
   const tours = useSavedTours();
   const saved = tours.some((tour) => tour.href === href);
   const [status, setStatus] = useState<string | null>(null);
@@ -88,15 +91,15 @@ export function SaveTourActions({ href, title }: { href: string; title: string }
   async function toggleSave() {
     if (saved) {
       write(tours.filter((tour) => tour.href !== href));
-      flash("Removed from saved tours");
+      flash(copy.removedSaved);
       return;
     }
     write([{ href, title, savedAt: Date.now() }, ...tours.filter((tour) => tour.href !== href)]);
-    flash((await copy(`${location.origin}${href}`)) ? "Saved · share link copied" : "Saved in this browser");
+    flash((await copyText(`${location.origin}${href}`)) ? copy.savedCopied : copy.savedLocal);
   }
 
   async function copyLink() {
-    flash((await copy(`${location.origin}${href}`)) ? "Share link copied" : "Couldn't copy; use the address bar");
+    flash((await copyText(`${location.origin}${href}`)) ? copy.linkCopied : copy.copyFailed);
   }
 
   const button =
@@ -111,11 +114,11 @@ export function SaveTourActions({ href, title }: { href: string; title: string }
           className={`${button} ${saved ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink hover:border-honey/50 hover:text-honey-strong"}`}
         >
           {saved ? <BookmarkCheck size={15} aria-hidden className="text-[#f5b800]" /> : <Bookmark size={15} aria-hidden />}
-          {saved ? "Saved" : "Save Tour"}
+          {saved ? copy.saved : copy.saveTour}
         </button>
         <button type="button" onClick={copyLink} className={`${button} border-line bg-surface text-ink hover:border-honey/50 hover:text-honey-strong`}>
           <Link2 size={15} aria-hidden />
-          Copy link
+          {copy.copyLink}
         </button>
       </div>
       <p role="status" aria-live="polite" className="min-h-[16px] text-[11.5px] font-semibold text-ink-muted">
@@ -131,14 +134,15 @@ export function SaveTourActions({ href, title }: { href: string; title: string }
 }
 
 /** Tours saved in this browser, for the planner home. */
-export function SavedTourList() {
+export function SavedTourList({ copy, lang }: { copy: PlannerCopy; lang: GuideLocale }) {
   const tours = useSavedTours();
   if (!tours.length) return null;
+  const date = new Intl.DateTimeFormat(GUIDE_LANGUAGES[lang].htmlLang, { month: "short", day: "numeric" });
   return (
     <section aria-labelledby="planner-saved" className="mt-8">
       <h2 id="planner-saved" className="flex items-center gap-2 text-[18px] font-extrabold tracking-tight text-ink">
         <BookmarkCheck size={19} aria-hidden className="text-honey-strong" />
-        Your saved tours
+        {copy.savedTours}
       </h2>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
         {tours.map((tour) => (
@@ -147,14 +151,14 @@ export function SavedTourList() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14.5px] font-extrabold text-ink">{tour.title}</span>
                 <span className="block text-[12px] text-ink-muted">
-                  Saved {new Date(tour.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  {fillCopy(copy.savedOn, { date: date.format(tour.savedAt) })}
                 </span>
               </span>
               <ArrowRight size={15} aria-hidden className="shrink-0 text-ink-muted transition group-hover:translate-x-0.5 group-hover:text-honey-strong" />
             </Link>
             <button
               type="button"
-              aria-label={`Remove ${tour.title}`}
+              aria-label={fillCopy(copy.remove, { title: tour.title })}
               onClick={() => write(tours.filter((item) => item.href !== tour.href))}
               className="rounded-full p-2 text-ink-muted transition hover:bg-surface-muted hover:text-[#b42318]"
             >
