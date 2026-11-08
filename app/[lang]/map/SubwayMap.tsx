@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { DOT_R, HUB_R, labelLines, labelText } from "../../_lib/mapLabel";
 import { Icon, type IconName } from "../_guide/icons";
 import { normalizeQuery } from "../_guide/searchKeys";
@@ -332,6 +332,110 @@ function StationPanel({
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * The line filter row: scrolls sideways by touch, trackpad, mouse wheel or mouse drag, with arrow buttons
+ * and fades showing that more lines are hidden off either edge.
+ */
+function ChipScroller({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; left: number; moved: boolean; id: number } | null>(null);
+  const dragged = useRef(false);
+  const [edges, setEdges] = useState({ start: false, end: false });
+
+  const measure = useCallback(() => {
+    const node = ref.current;
+    if (!node) return;
+    const start = node.scrollLeft > 4;
+    const end = node.scrollLeft + node.clientWidth < node.scrollWidth - 4;
+    setEdges((current) => (current.start === start && current.end === end ? current : { start, end }));
+  }, []);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    function onWheel(event: WheelEvent) {
+      if (!node || node.scrollWidth <= node.clientWidth || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      node.scrollLeft += event.deltaY;
+    }
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      observer.disconnect();
+      node.removeEventListener("wheel", onWheel);
+    };
+  }, [measure]);
+
+  function scrollBy(direction: 1 | -1) {
+    const node = ref.current;
+    node?.scrollBy({ left: direction * Math.max(160, node.clientWidth * 0.7), behavior: "smooth" });
+  }
+
+  const arrow =
+    "absolute top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-ink shadow-[0_2px_8px_rgba(15,23,42,0.15)] transition hover:text-honey-strong active:scale-90";
+
+  return (
+    <div className="relative shrink-0 border-b border-line bg-surface">
+      <div
+        ref={ref}
+        onScroll={measure}
+        onPointerDown={(event) => {
+          if (event.pointerType !== "mouse" || event.button !== 0) return;
+          drag.current = { x: event.clientX, left: event.currentTarget.scrollLeft, moved: false, id: event.pointerId };
+        }}
+        onPointerMove={(event) => {
+          const state = drag.current;
+          if (!state) return;
+          const dx = event.clientX - state.x;
+          if (!state.moved && Math.abs(dx) > DRAG_THRESHOLD) {
+            state.moved = true;
+            event.currentTarget.setPointerCapture(state.id);
+          }
+          if (state.moved) event.currentTarget.scrollLeft = state.left - dx;
+        }}
+        onPointerUp={() => {
+          dragged.current = drag.current?.moved ?? false;
+          drag.current = null;
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+        }}
+        onClickCapture={(event) => {
+          if (!dragged.current) return;
+          dragged.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onFocusCapture={(event) => {
+          if (event.target instanceof HTMLElement && event.target !== event.currentTarget) {
+            event.target.scrollIntoView({ block: "nearest", inline: "nearest" });
+          }
+        }}
+        className="flex cursor-grab select-none gap-1.5 overflow-x-auto scroll-px-10 px-2.5 py-2 [scrollbar-width:none] active:cursor-grabbing [&::-webkit-scrollbar]:hidden"
+      >
+        {children}
+      </div>
+      {edges.start ? (
+        <>
+          <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-surface via-surface/80 to-transparent" />
+          <button type="button" tabIndex={-1} aria-hidden onClick={() => scrollBy(-1)} className={`${arrow} left-1.5`}>
+            <Icon name="arrow" size={14} className="rotate-180" />
+          </button>
+        </>
+      ) : null}
+      {edges.end ? (
+        <>
+          <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-surface via-surface/80 to-transparent" />
+          <button type="button" tabIndex={-1} aria-hidden onClick={() => scrollBy(1)} className={`${arrow} right-1.5`}>
+            <Icon name="arrow" size={14} />
+          </button>
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -676,7 +780,7 @@ export default function SubwayMap({
       }
     >
       <style>{STYLE}</style>
-      <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-line bg-surface px-2.5 py-2 [scrollbar-width:none]">
+      <ChipScroller>
         <button
           type="button"
           aria-pressed={activeLine === null}
@@ -706,7 +810,7 @@ export default function SubwayMap({
             </button>
           );
         })}
-      </div>
+      </ChipScroller>
 
       <div className="relative min-h-0 flex-1">
         <svg
