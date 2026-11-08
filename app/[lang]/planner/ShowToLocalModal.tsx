@@ -63,7 +63,7 @@ export default function ShowToLocalModal({
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
       }}
-      className="m-0 h-dvh max-h-none w-full max-w-none bg-white p-0 text-neutral-950 backdrop:bg-black/60"
+      className="planner-sheet m-0 h-dvh max-h-none w-full max-w-none bg-white p-0 text-neutral-950 backdrop:bg-black/60"
     >
       {station ? (
         <div className="mx-auto flex h-full max-w-[760px] flex-col px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]">

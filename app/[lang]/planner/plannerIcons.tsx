@@ -37,6 +37,9 @@ export const TAG_ICONS: Record<QuickTag, LucideIcon> = {
   "#HanokVillage": House,
 };
 
+/** Map pin and field dot colors for the departure and arrival stations. */
+export const PIN_COLORS = { from: "#f5a700", to: "#e11d48" } as const;
+
 /** Round line badge with the number or letters from the official signs. */
 export function LineBadge({ short, color, size = "sm" }: { short: string; color: string; size?: "sm" | "md" }) {
   return (

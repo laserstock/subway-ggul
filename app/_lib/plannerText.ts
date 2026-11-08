@@ -398,6 +398,26 @@ const TEXT = {
     ja: "地上〜ホームのエレベーター：{exits}",
   },
   linkNear: { ko: "{station} 주변 {label}", en: "{label} near {station}", zh: "{station}附近的{label}", ja: "{station}周辺の{label}" },
+
+  // Visual planner
+  setupTitle: { ko: "여행 플래너 설정", en: "Set up your tour planner", zh: "设置你的行程规划", ja: "旅のプランを設定" },
+  studioHint: {
+    ko: "지도에서 역을 눌러 출발역이나 도착역으로 지정할 수 있어요.",
+    en: "Tap a station on the map to set it as your departure or arrival.",
+    zh: "点击地图上的车站即可设为出发站或到达站。",
+    ja: "地図上の駅をタップすると出発駅・到着駅に設定できます。",
+  },
+  examplePhoto: { ko: "예시 이미지", en: "Example photo", zh: "示例图片", ja: "イメージ写真" },
+  photoNote: {
+    ko: "사진은 장소의 분위기를 보여주는 예시 이미지이며 실제 장소와 다를 수 있어요.",
+    en: "Photos are example images that show the kind of place; the actual spot may look different.",
+    zh: "照片为展示场所氛围的示例图片，可能与实际地点不同。",
+    ja: "写真は場所の雰囲気を伝えるイメージで、実際の場所とは異なる場合があります。",
+  },
+  shareItinerary: { ko: "일정 공유", en: "Share itinerary", zh: "分享行程", ja: "旅程を共有" },
+  backToPlanner: { ko: "플래너로 돌아가기", en: "Back to planner", zh: "返回规划器", ja: "プランナーに戻る" },
+  yourTrip: { ko: "내 여행", en: "Your trip", zh: "我的行程", ja: "あなたの旅" },
+  moreNearby: { ko: "구글 지도에서 더 찾기", en: "Find more on Google Maps", zh: "在谷歌地图上查找更多", ja: "Googleマップでもっと探す" },
 } satisfies Record<string, Localized>;
 
 export type PlannerTextKey = keyof typeof TEXT;

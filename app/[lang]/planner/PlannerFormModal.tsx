@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownUp, ArrowLeftRight, ArrowRight, Clock, Hash, Map as MapIcon, Pencil, Search, X } from "lucide-react";
+import { ArrowDownUp, ArrowLeftRight, Clock, Hash, LoaderCircle, Map as MapIcon, Pencil, Search, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { contentLocale, type GuideLocale } from "../../_lib/guideLocale";
@@ -10,7 +10,7 @@ import type { PlannerCopy } from "../../_lib/plannerText";
 import { PLANNER_CATEGORIES, QUICK_TAGS, type PlannerCategory, type QuickTag } from "../../_lib/plannerTypes";
 import { normalizeQuery } from "../_guide/searchKeys";
 import SubwayMap, { type MapCopy, type MapLineData, type MapStationData } from "../map/SubwayMap";
-import { CATEGORY_ICONS, LineBadge } from "./plannerIcons";
+import { CATEGORY_ICONS, LineBadge, PIN_COLORS } from "./plannerIcons";
 
 const TIMES = Array.from({ length: (LATEST - EARLIEST) / 30 + 1 }, (_, index) => EARLIEST + index * 30);
 
@@ -40,7 +40,45 @@ function loadMap(lang: GuideLocale) {
   return request;
 }
 
-const fieldLabel = "text-[12px] font-bold uppercase tracking-wide text-ink-muted";
+/** "light" sits on the page or in the dialog; "dark" sits on the navy side panel beside the map. */
+export type FormTone = "light" | "dark";
+
+const TONES = {
+  light: {
+    label: "text-ink-muted",
+    field: "border-line bg-surface focus-within:border-honey focus-within:ring-honey/20",
+    input: "text-ink",
+    placeholder: "placeholder:text-ink-muted",
+    chosen: "placeholder:text-ink",
+    muted: "text-ink-muted",
+    swap: "border-line bg-surface text-ink-muted hover:border-honey/50 hover:text-honey-strong",
+    select: "border-line bg-surface text-ink focus:border-honey",
+    chipOff: "border-line bg-surface text-ink hover:border-honey/50",
+    chipOn: "border-ink bg-ink text-white",
+    chipIconOn: "text-[#f5b800]",
+    tagOff: "bg-surface-muted text-ink-muted hover:text-ink",
+    secondary: "border-line bg-surface text-ink hover:border-honey/50 hover:text-honey-strong",
+  },
+  dark: {
+    label: "text-white/55",
+    field: "border-white/10 bg-white/[0.06] focus-within:border-[#f5b800] focus-within:ring-[#f5b800]/25",
+    input: "text-white",
+    placeholder: "placeholder:text-white/45",
+    chosen: "placeholder:text-white",
+    muted: "text-white/50",
+    swap: "border-white/15 bg-[#1f2937] text-white/80 hover:border-[#f5b800]/60 hover:text-[#f5b800]",
+    select: "border-white/10 bg-white/[0.06] text-white [color-scheme:dark] focus:border-[#f5b800]",
+    chipOff: "border-white/10 bg-white/[0.05] text-white/85 hover:border-[#f5b800]/50 hover:bg-white/[0.08]",
+    chipOn: "border-[#f5b800] bg-[#f5b800] text-neutral-900 shadow-[0_6px_16px_rgba(245,184,0,0.25)]",
+    chipIconOn: "text-neutral-900",
+    tagOff: "bg-white/[0.07] text-white/65 hover:text-white",
+    secondary: "border-white/15 bg-white/[0.06] text-white hover:border-[#f5b800]/60 hover:text-[#f5b800]",
+  },
+} satisfies Record<FormTone, Record<string, string>>;
+
+type Tone = (typeof TONES)[FormTone];
+
+const fieldLabel = "text-[12px] font-bold uppercase tracking-wide";
 
 function StationField({
   label,
@@ -48,6 +86,8 @@ function StationField({
   empty,
   stations,
   value,
+  pin,
+  tone,
   onChange,
 }: {
   label: string;
@@ -55,6 +95,8 @@ function StationField({
   empty: string;
   stations: PlannerStationOption[];
   value: string;
+  pin: string;
+  tone: Tone;
   onChange: (slug: string) => void;
 }) {
   const id = useId();
@@ -87,10 +129,11 @@ function StationField({
   const showList = open && query.length > 0;
   return (
     <div className="relative min-w-0">
-      <label htmlFor={id} className={fieldLabel}>
+      <label htmlFor={id} className={`flex items-center gap-1.5 ${fieldLabel} ${tone.label}`}>
+        <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: pin }} />
         {label}
       </label>
-      <div className="mt-1 flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 focus-within:border-honey focus-within:ring-2 focus-within:ring-honey/20">
+      <div className={`mt-1 flex items-center gap-2 rounded-xl border px-3 py-2.5 transition focus-within:ring-2 ${tone.field}`}>
         {selected && !query ? (
           <span className="flex shrink-0 gap-0.5">
             {selected.badges.map((badge, index) => (
@@ -98,7 +141,7 @@ function StationField({
             ))}
           </span>
         ) : (
-          <Search size={17} className="shrink-0 text-ink-muted" aria-hidden />
+          <Search size={17} className={`shrink-0 ${tone.muted}`} aria-hidden />
         )}
         <input
           id={id}
@@ -129,12 +172,12 @@ function StationField({
               choose(results[active] ?? results[0]);
             }
           }}
-          className={`min-w-0 flex-1 bg-transparent text-[15px] font-bold outline-none ${
-            selected ? "placeholder:text-ink" : "placeholder:font-semibold placeholder:text-ink-muted"
+          className={`min-w-0 flex-1 bg-transparent text-[15px] font-bold outline-none ${tone.input} ${
+            selected ? tone.chosen : `placeholder:font-semibold ${tone.placeholder}`
           }`}
         />
         {selected && !query && selected.ko !== selected.name ? (
-          <span lang="ko" className="shrink-0 text-[12px] font-semibold text-ink-muted">
+          <span lang="ko" className={`shrink-0 text-[12px] font-semibold ${tone.muted}`}>
             {selected.ko}
           </span>
         ) : null}
@@ -261,23 +304,25 @@ function TimeSelect({
   lang,
   value,
   options,
+  tone,
   onChange,
 }: {
   label: string;
   lang: GuideLocale;
   value: number;
   options: number[];
+  tone: Tone;
   onChange: (value: number) => void;
 }) {
   return (
     <label className="block min-w-0">
-      <span className={fieldLabel}>{label}</span>
+      <span className={`${fieldLabel} ${tone.label}`}>{label}</span>
       <span className="relative mt-1 block">
         <Clock size={16} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-honey-strong" />
         <select
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}
-          className="w-full appearance-none rounded-xl border border-line bg-surface py-2.5 pl-9 pr-3 text-[15px] font-bold text-ink outline-none focus:border-honey focus:ring-2 focus:ring-honey/20"
+          className={`w-full appearance-none rounded-xl border py-2.5 pl-9 pr-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-honey/20 ${tone.select}`}
         >
           {options.map((time) => (
             <option key={time} value={time}>
@@ -293,23 +338,35 @@ function TimeSelect({
 const toggleIn = <T,>(order: readonly T[], current: T[], item: T) =>
   current.includes(item) ? current.filter((value) => value !== item) : order.filter((value) => value === item || current.includes(value));
 
-/** Step 1: stations, day window, categories and quick tags; submitting opens the itinerary page. */
+/** Departure and arrival owned by a parent, e.g. the planner home where the map can set them. */
+export type StationPair = { from: string; to: string; onChange: (pair: { from: string; to: string }) => void };
+
+/** Step 1: stations, day window, categories and quick tags; submitting slides in the itinerary page. */
 export function PlannerForm({
   stations,
   initial,
   copy,
   lang,
+  tone: toneName = "light",
+  pair,
+  mapButton = true,
   onSubmitted,
 }: {
   stations: PlannerStationOption[];
   initial: PlannerQuery;
   copy: PlannerCopy;
   lang: GuideLocale;
+  tone?: FormTone;
+  pair?: StationPair;
+  /** Offer the full-screen map picker; off where the map is already on screen. */
+  mapButton?: boolean;
   onSubmitted?: () => void;
 }) {
   const router = useRouter();
-  const [from, setFrom] = useState(initial.from);
-  const [to, setTo] = useState(initial.to);
+  const tone = TONES[toneName];
+  const [own, setOwn] = useState({ from: initial.from, to: initial.to });
+  const { from, to } = pair ?? own;
+  const setPair = (next: { from: string; to: string }) => (pair ? pair.onChange(next) : setOwn(next));
   const [start, setStart] = useState(initial.start);
   const [end, setEnd] = useState(initial.end);
   const [categories, setCategories] = useState<PlannerCategory[]>(initial.categories);
@@ -325,7 +382,7 @@ export function PlannerForm({
     if (end - start < MIN_WINDOW) return setError(copy.errorWindow);
     setError(null);
     startTransition(() => {
-      router.push(plannerHref({ from, to, categories, tags, start, end }, lang));
+      router.push(plannerHref({ from, to, categories, tags, start, end }, lang), { transitionTypes: ["planner-forward"] });
       onSubmitted?.();
     });
   }
@@ -347,16 +404,15 @@ export function PlannerForm({
             empty={copy.searchEmpty}
             stations={stations}
             value={from}
-            onChange={setFrom}
+            pin={PIN_COLORS.from}
+            tone={tone}
+            onChange={(slug) => setPair({ from: slug, to })}
           />
           <button
             type="button"
             aria-label={copy.swap}
-            onClick={() => {
-              setFrom(to);
-              setTo(from);
-            }}
-            className="flex h-9 w-9 items-center justify-center justify-self-center rounded-full border border-line bg-surface text-ink-muted shadow-sm transition hover:border-honey/50 hover:text-honey-strong active:scale-95 sm:mb-1"
+            onClick={() => setPair({ from: to, to: from })}
+            className={`flex h-9 w-9 items-center justify-center justify-self-center rounded-full border shadow-sm transition hover:rotate-180 active:scale-95 sm:mb-1 ${tone.swap}`}
           >
             <ArrowDownUp size={16} aria-hidden className="sm:hidden" />
             <ArrowLeftRight size={16} aria-hidden className="hidden sm:block" />
@@ -367,36 +423,42 @@ export function PlannerForm({
             empty={copy.searchEmpty}
             stations={stations}
             value={to}
-            onChange={setTo}
+            pin={PIN_COLORS.to}
+            tone={tone}
+            onChange={(slug) => setPair({ from, to: slug })}
           />
         </div>
-        <button
-          type="button"
-          onClick={() => setPicking(true)}
-          className="inline-flex items-center gap-1.5 self-start rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-bold text-ink transition hover:border-honey/50 hover:text-honey-strong active:scale-95"
-        >
-          <MapIcon size={15} aria-hidden />
-          {copy.pickOnMap}
-        </button>
+        {mapButton ? (
+          <button
+            type="button"
+            onClick={() => setPicking(true)}
+            className={`inline-flex items-center gap-1.5 self-start rounded-full border px-3 py-1.5 text-[13px] font-bold transition active:scale-95 ${tone.secondary}`}
+          >
+            <MapIcon size={15} aria-hidden />
+            {copy.pickOnMap}
+          </button>
+        ) : null}
       </fieldset>
 
       <fieldset>
-        <legend className={fieldLabel}>{copy.schedule}</legend>
+        <legend className={`${fieldLabel} ${tone.label}`}>{copy.schedule}</legend>
         <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
           <TimeSelect
             label={copy.start}
             lang={lang}
             value={start}
+            tone={tone}
             options={TIMES.filter((time) => time <= LATEST - MIN_WINDOW)}
             onChange={setStart}
           />
-          <span aria-hidden className="pb-3 text-[15px] font-bold text-ink-muted">
+          <span aria-hidden className={`pb-3 text-[15px] font-bold ${tone.muted}`}>
             ~
           </span>
           <TimeSelect
             label={copy.return}
             lang={lang}
             value={end}
+            tone={tone}
             options={TIMES.filter((time) => time >= EARLIEST + MIN_WINDOW)}
             onChange={setEnd}
           />
@@ -404,8 +466,8 @@ export function PlannerForm({
       </fieldset>
 
       <fieldset>
-        <legend className={fieldLabel}>{copy.interests}</legend>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <legend className={`${fieldLabel} ${tone.label}`}>{copy.interests}</legend>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {PLANNER_CATEGORIES.map((category) => {
             const on = categories.includes(category);
             const CategoryIcon = CATEGORY_ICONS[category];
@@ -415,12 +477,12 @@ export function PlannerForm({
                 type="button"
                 aria-pressed={on}
                 onClick={() => setCategories((current) => toggleIn(PLANNER_CATEGORIES, current, category))}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-bold transition active:scale-95 ${
-                  on ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink hover:border-honey/50"
+                className={`flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[13px] font-bold transition duration-200 hover:-translate-y-0.5 active:scale-95 ${
+                  on ? tone.chipOn : tone.chipOff
                 }`}
               >
-                <CategoryIcon size={15} aria-hidden className={on ? "text-[#f5b800]" : "text-honey-strong"} />
-                {copy.categories[category].label}
+                <CategoryIcon size={16} aria-hidden className={`shrink-0 ${on ? tone.chipIconOn : "text-honey-strong"}`} />
+                <span className="min-w-0 truncate">{copy.categories[category].short}</span>
               </button>
             );
           })}
@@ -428,7 +490,7 @@ export function PlannerForm({
       </fieldset>
 
       <fieldset>
-        <legend className={fieldLabel}>{copy.quickTags}</legend>
+        <legend className={`${fieldLabel} ${tone.label}`}>{copy.quickTags}</legend>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {QUICK_TAGS.map((tag) => {
             const on = tags.includes(tag);
@@ -438,8 +500,8 @@ export function PlannerForm({
                 type="button"
                 aria-pressed={on}
                 onClick={() => setTags((current) => toggleIn(QUICK_TAGS, current, tag))}
-                className={`inline-flex items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-bold transition active:scale-95 ${
-                  on ? "bg-honey text-white shadow-[0_4px_12px_rgba(245,167,0,0.28)]" : "bg-surface-muted text-ink-muted hover:text-ink"
+                className={`inline-flex items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-bold transition duration-200 active:scale-95 ${
+                  on ? "bg-honey text-white shadow-[0_4px_12px_rgba(245,167,0,0.28)]" : tone.tagOff
                 }`}
               >
                 <Hash size={12} aria-hidden strokeWidth={2.5} />
@@ -459,10 +521,14 @@ export function PlannerForm({
       <button
         type="submit"
         disabled={pending}
-        className="group flex items-center justify-center gap-2 rounded-2xl bg-honey px-5 py-3.5 text-[16px] font-extrabold text-white shadow-[0_8px_20px_rgba(245,167,0,0.28)] transition active:scale-[0.98] disabled:opacity-70"
+        className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-honey px-5 py-4 text-[16px] font-extrabold text-white shadow-[0_10px_24px_rgba(245,167,0,0.32)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(245,167,0,0.4)] active:translate-y-0 active:scale-[0.98] disabled:opacity-80"
       >
+        <span
+          aria-hidden
+          className="absolute inset-y-0 -left-1/2 w-1/3 skew-x-[-20deg] bg-white/25 opacity-0 transition-all duration-700 group-hover:left-[120%] group-hover:opacity-100"
+        />
+        {pending ? <LoaderCircle size={19} aria-hidden className="animate-spin" /> : <Sparkles size={19} aria-hidden />}
         {pending ? copy.submitting : copy.submit}
-        <ArrowRight size={18} aria-hidden className="transition group-hover:translate-x-0.5" />
       </button>
 
       {picking ? (
@@ -472,7 +538,7 @@ export function PlannerForm({
           onClose={() => setPicking(false)}
           onPick={(field, slug) => {
             if (!known(slug)) return;
-            (field === "from" ? setFrom : setTo)(slug);
+            setPair(field === "from" ? { from: slug, to } : { from, to: slug });
             setPicking(false);
           }}
         />
@@ -488,12 +554,14 @@ export default function PlannerFormModal({
   copy,
   lang,
   label = copy.editTrip,
+  className = "inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-2 text-[13px] font-bold text-ink shadow-[0_2px_8px_rgba(15,23,42,0.05)] transition hover:border-honey/50 hover:text-honey-strong active:scale-95",
 }: {
   stations: PlannerStationOption[];
   initial: PlannerQuery;
   copy: PlannerCopy;
   lang: GuideLocale;
   label?: string;
+  className?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
@@ -507,7 +575,7 @@ export default function PlannerFormModal({
           setOpen(true);
           dialog.current?.showModal();
         }}
-        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-2 text-[13px] font-bold text-ink shadow-[0_2px_8px_rgba(15,23,42,0.05)] transition hover:border-honey/50 hover:text-honey-strong active:scale-95"
+        className={className}
       >
         <Pencil size={14} aria-hidden />
         {label}
@@ -519,7 +587,7 @@ export default function PlannerFormModal({
         onClick={(event) => {
           if (event.target === event.currentTarget) close();
         }}
-        className="m-auto max-h-[92dvh] w-[min(640px,calc(100%-24px))] overflow-visible rounded-3xl bg-transparent p-0 backdrop:bg-black/50"
+        className="planner-dialog m-auto max-h-[92dvh] w-[min(640px,calc(100%-24px))] overflow-visible rounded-3xl bg-transparent p-0 backdrop:bg-black/50"
       >
         <div className="max-h-[92dvh] overflow-y-auto rounded-3xl bg-app p-5 text-ink">
           <div className="mb-4 flex items-center justify-between gap-3">

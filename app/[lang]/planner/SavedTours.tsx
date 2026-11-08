@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Bookmark, BookmarkCheck, Check, Link2, Trash2 } from "lucide-react";
+import { ArrowRight, BookmarkCheck, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { GUIDE_LANGUAGES, type GuideLocale } from "../../_lib/guideLocale";
@@ -75,8 +75,8 @@ async function copyText(text: string) {
   }
 }
 
-/** "Save Tour" (kept in this browser, with the share link copied) and "Copy link". */
-export function SaveTourActions({ href, title, copy }: { href: string; title: string; copy: PlannerCopy }) {
+/** "Save Tour" (kept in this browser, with the share link copied) and "Share itinerary" (share sheet, else copy the link). */
+export function useTourActions(href: string, title: string, copy: PlannerCopy) {
   const tours = useSavedTours();
   const saved = tours.some((tour) => tour.href === href);
   const [status, setStatus] = useState<string | null>(null);
@@ -85,7 +85,7 @@ export function SaveTourActions({ href, title, copy }: { href: string; title: st
   function flash(message: string) {
     setStatus(message);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setStatus(null), 2200);
+    timer.current = setTimeout(() => setStatus(null), 2400);
   }
 
   async function toggleSave() {
@@ -98,39 +98,20 @@ export function SaveTourActions({ href, title, copy }: { href: string; title: st
     flash((await copyText(`${location.origin}${href}`)) ? copy.savedCopied : copy.savedLocal);
   }
 
-  async function copyLink() {
-    flash((await copyText(`${location.origin}${href}`)) ? copy.linkCopied : copy.copyFailed);
+  async function share() {
+    const url = `${location.origin}${href}`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+    flash((await copyText(url)) ? copy.linkCopied : copy.copyFailed);
   }
 
-  const button =
-    "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-bold transition active:scale-95";
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          aria-pressed={saved}
-          onClick={toggleSave}
-          className={`${button} ${saved ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink hover:border-honey/50 hover:text-honey-strong"}`}
-        >
-          {saved ? <BookmarkCheck size={15} aria-hidden className="text-[#f5b800]" /> : <Bookmark size={15} aria-hidden />}
-          {saved ? copy.saved : copy.saveTour}
-        </button>
-        <button type="button" onClick={copyLink} className={`${button} border-line bg-surface text-ink hover:border-honey/50 hover:text-honey-strong`}>
-          <Link2 size={15} aria-hidden />
-          {copy.copyLink}
-        </button>
-      </div>
-      <p role="status" aria-live="polite" className="min-h-[16px] text-[11.5px] font-semibold text-ink-muted">
-        {status ? (
-          <span className="inline-flex items-center gap-1">
-            <Check size={12} aria-hidden className="text-honey-strong" />
-            {status}
-          </span>
-        ) : null}
-      </p>
-    </div>
-  );
+  return { saved, status, toggleSave, share };
 }
 
 /** Tours saved in this browser, for the planner home. */
@@ -147,7 +128,7 @@ export function SavedTourList({ copy, lang }: { copy: PlannerCopy; lang: GuideLo
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
         {tours.map((tour) => (
           <li key={tour.href} className="flex items-center gap-2 rounded-2xl border border-line bg-surface py-1 pl-4 pr-1.5">
-            <Link href={tour.href} className="group flex min-w-0 flex-1 items-center gap-2 py-2">
+            <Link href={tour.href} transitionTypes={["planner-forward"]} className="group flex min-w-0 flex-1 items-center gap-2 py-2">
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14.5px] font-extrabold text-ink">{tour.title}</span>
                 <span className="block text-[12px] text-ink-muted">

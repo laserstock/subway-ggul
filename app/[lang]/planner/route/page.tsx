@@ -1,19 +1,19 @@
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, ViewTransition, type ReactNode } from "react";
 import { BRAND, gt, tc } from "../../../_lib/guideCopy";
 import { GUIDE_LANGUAGES, isGuideLocale, type GuideLocale } from "../../../_lib/guideLocale";
-import { buildPlanner, plannerStations, routeSummary, type Plan, type PlanSpot } from "../../../_lib/planner";
+import { buildPlanner, plannerStations, routeSummary, type Plan, type PlanSpot, type PlanStation } from "../../../_lib/planner";
 import { clockLabel, parsePlannerQuery, plannerHref, type PlannerQuery } from "../../../_lib/plannerParams";
-import { categoryText, plannerCopy, pt } from "../../../_lib/plannerText";
+import { categoryText, plannerCopy, pt, type PlannerCopy } from "../../../_lib/plannerText";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
 import { AppPromo, JsonLd } from "../../_guide/parts";
-import { CATEGORY_ICONS } from "../plannerIcons";
+import { CATEGORY_ICONS, LineBadge, PIN_COLORS } from "../plannerIcons";
 import PlannerFormModal, { PlannerForm } from "../PlannerFormModal";
 import PlannerResultView from "../PlannerResultView";
-import { StepHeader, StepTracker } from "../PlannerSteps";
+import { StepTracker } from "../PlannerSteps";
 
 /** The route part of the URL, without the language: only the stations make a distinct page. */
 function routePath(query: PlannerQuery) {
@@ -21,6 +21,8 @@ function routePath(query: PlannerQuery) {
 }
 
 const brand = (lang: GuideLocale) => (lang === "en" ? "K-SUB" : gt(BRAND, lang));
+
+const SLIDE = { "planner-forward": "planner-forward", "planner-back": "planner-back", default: "none" };
 
 function describe(summary: NonNullable<ReturnType<typeof routeSummary>>, lang: GuideLocale) {
   return pt("routeDescription", lang, {
@@ -64,12 +66,82 @@ function planPlaces(plan: Plan) {
 
 function Loading() {
   return (
-    <div className="mt-6 space-y-3" aria-busy="true">
-      <div className="h-8 w-2/3 animate-pulse rounded-xl bg-surface-muted" />
-      <div className="h-14 animate-pulse rounded-2xl bg-surface-muted" />
-      <div className="h-32 animate-pulse rounded-3xl bg-surface-muted" />
-      <div className="h-48 animate-pulse rounded-3xl bg-surface-muted" />
+    <div
+      aria-busy="true"
+      className="relative ml-[calc(50%-min(640px,calc(50vw-16px)))] w-[min(1280px,calc(100vw-32px))]"
+    >
+      <div className="h-4 w-40 animate-pulse rounded-lg bg-surface-muted" />
+      <div className="mt-4 h-9 w-2/3 max-w-[520px] animate-pulse rounded-xl bg-surface-muted" />
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
+        <div className="h-56 animate-pulse rounded-[26px] bg-[#111827]/90 lg:order-2 lg:h-[420px]" />
+        <div className="space-y-4">
+          <div className="h-16 animate-pulse rounded-2xl bg-surface-muted" />
+          <div className="h-36 animate-pulse rounded-3xl bg-surface-muted" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((index) => (
+              <div key={index} className="aspect-[4/5] animate-pulse rounded-2xl bg-surface-muted" />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function StationLine({ station, color, label }: { station: PlanStation; color: string; label: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span aria-hidden className="mt-1 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-white/10" style={{ backgroundColor: color }} />
+      <div className="min-w-0">
+        <p className="text-[10.5px] font-bold uppercase tracking-wide text-white/50">{label}</p>
+        <p className="flex flex-wrap items-center gap-1.5 break-words text-[17px] font-extrabold leading-tight">
+          {station.name}
+          <span className="flex gap-0.5">
+            {station.lines.map((line) => (
+              <LineBadge key={line.name} short={line.short} color={line.color} />
+            ))}
+          </span>
+        </p>
+        {station.ko !== station.name ? (
+          <p lang="ko" className="text-[12px] font-semibold text-white/50">
+            {station.ko}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function TripSummary({ query, from, to, copy, lang, edit }: { query: PlannerQuery; from: PlanStation; to: PlanStation; copy: PlannerCopy; lang: GuideLocale; edit: ReactNode }) {
+  return (
+    <>
+      <div className="mt-3 space-y-1">
+        <StationLine station={from} color={PIN_COLORS.from} label={copy.departure} />
+        <span aria-hidden className="ml-[6px] block h-4 border-l-2 border-dashed border-white/20" />
+        <StationLine station={to} color={PIN_COLORS.to} label={copy.arrival} />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-bold">
+          <Clock size={14} aria-hidden className="text-[#f5b800]" />
+          {clockLabel(query.start, lang)} – {clockLabel(query.end, lang)}
+        </span>
+        {query.categories.map((category) => {
+          const CategoryIcon = CATEGORY_ICONS[category];
+          return (
+            <span key={category} className="inline-flex items-center gap-1 rounded-full bg-[#f5b800]/15 px-3 py-1.5 text-[12.5px] font-bold text-[#f5b800]">
+              <CategoryIcon size={13} aria-hidden />
+              {copy.categories[category].short}
+            </span>
+          );
+        })}
+        {query.tags.map((tag) => (
+          <span key={tag} className="rounded-lg bg-white/[0.07] px-2.5 py-1.5 text-[12.5px] font-bold text-white/70">
+            {copy.tags[tag]}
+          </span>
+        ))}
+      </div>
+      <div className="mt-4">{edit}</div>
+    </>
   );
 }
 
@@ -84,15 +156,23 @@ async function Itinerary({ params, searchParams }: PageProps<"/[lang]/planner/ro
   if (!result.ok) {
     const message = { station: copy.errorStation, same: copy.errorSameStation, route: copy.errorRoute }[result.reason];
     return (
-      <>
-        <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink">{copy.planYourTour}</h1>
+      <div>
+        <Link
+          href={`/${lang}/planner`}
+          transitionTypes={["planner-back"]}
+          className="inline-flex items-center gap-1 text-[13px] font-bold text-ink-muted transition hover:text-honey-strong"
+        >
+          <ArrowLeft size={15} aria-hidden />
+          {copy.backToPlanner}
+        </Link>
+        <h1 className="mt-3 text-[26px] font-extrabold leading-tight tracking-tight text-ink">{copy.planYourTour}</h1>
         <p role="alert" className="mt-3 rounded-2xl bg-[#fff1f0] px-4 py-3 text-[14px] font-semibold text-[#b42318]">
           {message}
         </p>
-        <section aria-label={copy.setupDialog} className="mt-5 rounded-3xl border border-line bg-surface p-4 sm:p-5">
-          <PlannerForm stations={stations} initial={query} copy={copy} lang={lang} />
+        <section aria-label={copy.setupDialog} className="mt-5 rounded-3xl bg-[#111827] p-5 sm:p-6">
+          <PlannerForm stations={stations} initial={query} copy={copy} lang={lang} tone="dark" />
         </section>
-      </>
+      </div>
     );
   }
 
@@ -103,7 +183,7 @@ async function Itinerary({ params, searchParams }: PageProps<"/[lang]/planner/ro
   const names = { from: from.name, to: to.name };
 
   return (
-    <>
+    <div>
       <JsonLd
         data={[
           {
@@ -131,68 +211,6 @@ async function Itinerary({ params, searchParams }: PageProps<"/[lang]/planner/ro
           },
         ]}
       />
-      <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted">
-        <ol className="flex flex-wrap items-center gap-1">
-          <li>
-            <Link href={`/${lang}`}>{gt(BRAND, lang)}</Link>
-          </li>
-          <li aria-hidden>›</li>
-          <li>
-            <Link href={`/${lang}/planner`}>{copy.travelPlanner}</Link>
-          </li>
-          <li aria-hidden>›</li>
-          <li aria-current="page" className="text-ink">
-            {pt("routeBreadcrumb", lang, names)}
-          </li>
-        </ol>
-      </nav>
-
-      <header className="mt-3">
-        <h1 className="break-words text-[27px] font-extrabold leading-tight tracking-tight text-ink">{pt("routeHeading", lang, names)}</h1>
-        {description ? <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">{description}</p> : null}
-      </header>
-
-      <div className="mt-5">
-        <StepTracker copy={copy} done={[1]} current={[2, 3]} links />
-      </div>
-
-      <section id="step-1" aria-labelledby="step-1-title" className="mt-8 scroll-mt-20">
-        <StepHeader
-          copy={copy}
-          step={1}
-          id="step-1-title"
-          title={copy.stepSetup}
-          action={<PlannerFormModal stations={stations} initial={query} copy={copy} lang={lang} />}
-        />
-        <div className="mt-3 rounded-2xl border border-line bg-surface p-4">
-          <p className="flex flex-wrap items-center gap-2 text-[15px] font-extrabold text-ink">
-            {from.name}
-            <ArrowRight size={16} aria-hidden className="text-ink-muted" />
-            {to.name}
-          </p>
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1.5 text-[12.5px] font-bold text-ink">
-              <Clock size={14} aria-hidden className="text-honey-strong" />
-              {clockLabel(query.start, lang)} – {clockLabel(query.end, lang)}
-            </span>
-            {query.categories.map((category) => {
-              const CategoryIcon = CATEGORY_ICONS[category];
-              return (
-                <span key={category} className="inline-flex items-center gap-1 rounded-full bg-honey-soft px-3 py-1.5 text-[12.5px] font-bold text-honey-strong">
-                  <CategoryIcon size={13} aria-hidden />
-                  {copy.categories[category].short}
-                </span>
-              );
-            })}
-            {query.tags.map((tag) => (
-              <span key={tag} className="rounded-lg bg-surface-muted px-2.5 py-1.5 text-[12.5px] font-bold text-ink-muted">
-                {copy.tags[tag]}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <PlannerResultView
         plans={plans}
         from={from}
@@ -200,39 +218,112 @@ async function Itinerary({ params, searchParams }: PageProps<"/[lang]/planner/ro
         tour={{ href: plannerHref(query, lang), title: `${from.name} → ${to.name}` }}
         copy={copy}
         lang={lang}
+        intro={
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted">
+                <ol className="flex flex-wrap items-center gap-1">
+                  <li>
+                    <Link href={`/${lang}`}>{gt(BRAND, lang)}</Link>
+                  </li>
+                  <li aria-hidden>›</li>
+                  <li>
+                    <Link href={`/${lang}/planner`} transitionTypes={["planner-back"]}>
+                      {copy.travelPlanner}
+                    </Link>
+                  </li>
+                  <li aria-hidden>›</li>
+                  <li aria-current="page" className="text-ink">
+                    {pt("routeBreadcrumb", lang, names)}
+                  </li>
+                </ol>
+              </nav>
+              <Link
+                href={`/${lang}/planner`}
+                transitionTypes={["planner-back"]}
+                className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-[12.5px] font-bold text-ink transition hover:border-honey/50 hover:text-honey-strong active:scale-95"
+              >
+                <ArrowLeft size={14} aria-hidden />
+                {copy.backToPlanner}
+              </Link>
+            </div>
+            <header className="mt-3 max-w-[820px]">
+              <h1 className="break-words text-[27px] font-extrabold leading-tight tracking-tight text-ink sm:text-[32px]">{pt("routeHeading", lang, names)}</h1>
+              {description ? <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">{description}</p> : null}
+            </header>
+            <div className="mt-5 max-w-[820px]">
+              <StepTracker copy={copy} done={[1]} current={[2, 3]} links />
+            </div>
+          </>
+        }
+        summary={
+          <TripSummary
+            query={query}
+            from={from}
+            to={to}
+            copy={copy}
+            lang={lang}
+            edit={
+              <PlannerFormModal
+                stations={stations}
+                initial={query}
+                copy={copy}
+                lang={lang}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-2.5 text-[13px] font-bold text-white transition hover:border-[#f5b800]/60 hover:text-[#f5b800] active:scale-95"
+              />
+            }
+          />
+        }
+        aside={
+          <section aria-labelledby="planner-guides" className="mt-8 lg:mt-0">
+            <h2 id="planner-guides" className="text-[15px] font-extrabold text-ink">
+              {copy.stationGuides}
+            </h2>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {[from, to].map((station) => (
+                <Link
+                  key={station.slug}
+                  href={`/${lang}/stations/${station.slug}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-2 text-[13px] font-bold text-ink transition hover:border-honey/50 hover:text-honey-strong"
+                >
+                  {pt("stationGuideLink", lang, { station: station.title })}
+                  <ArrowRight size={14} aria-hidden />
+                </Link>
+              ))}
+            </div>
+          </section>
+        }
+        footer={
+          <>
+            <div className="mt-8">
+              <AppPromo locale={lang} />
+            </div>
+            <p className="mt-6 text-[11px] leading-relaxed text-ink-muted">
+              {copy.routeNote} {copy.photoNote}
+            </p>
+          </>
+        }
       />
-
-      <section aria-labelledby="planner-guides" className="mt-4">
-        <h2 id="planner-guides" className="text-[17px] font-extrabold text-ink">
-          {copy.stationGuides}
-        </h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {[from, to].map((station) => (
-            <Link
-              key={station.slug}
-              href={`/${lang}/stations/${station.slug}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-2 text-[13px] font-bold text-ink transition hover:border-honey/50 hover:text-honey-strong"
-            >
-              {pt("stationGuideLink", lang, { station: station.title })}
-              <ArrowRight size={14} aria-hidden />
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <div className="mt-8">
-        <AppPromo locale={lang} />
-      </div>
-
-      <p className="mt-6 text-[11px] leading-relaxed text-ink-muted">{copy.routeNote}</p>
-    </>
+    </div>
   );
 }
 
 export default function PlannerRoute({ params, searchParams }: PageProps<"/[lang]/planner/route">) {
   return (
-    <Suspense fallback={<Loading />}>
-      <Itinerary params={params} searchParams={searchParams} />
-    </Suspense>
+    <ViewTransition enter={SLIDE} exit={SLIDE} default="none">
+      <div>
+        <Suspense
+          fallback={
+            <ViewTransition exit="planner-skeleton">
+              <Loading />
+            </ViewTransition>
+          }
+        >
+          <ViewTransition enter="planner-reveal" default="none">
+            <Itinerary params={params} searchParams={searchParams} />
+          </ViewTransition>
+        </Suspense>
+      </div>
+    </ViewTransition>
   );
 }

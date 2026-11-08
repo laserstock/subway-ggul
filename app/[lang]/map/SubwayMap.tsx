@@ -36,6 +36,9 @@ export type MapLineData = { ko: string; name: string; color: string; d: string }
 /** Buttons that replace the station panel's links when the map is used to pick a station. */
 export type MapPickAction = { label: string; icon: IconName; onPick: (slug: string) => void };
 
+/** A pin drawn over a station, e.g. the planner's departure and arrival. */
+export type MapMark = { slug: string; color: string; label: string };
+
 export type MapCopy = Record<
   | "label"
   | "search"
@@ -88,6 +91,11 @@ const STYLE = `
 .ksub-map .st:hover .dot,.ksub-map .st:hover .hub,.ksub-map .st:focus-visible .dot,.ksub-map .st:focus-visible .hub{stroke-width:3.4px}
 .ksub-map .dim{opacity:.18;pointer-events:none}
 .ksub-map .ring{fill:rgba(245,167,0,.2);stroke:#f5a700;stroke-width:2.5px}
+.ksub-map .pin{pointer-events:none;animation:ksub-pin .45s cubic-bezier(.2,.9,.3,1.3) both}
+.ksub-map .pulse{animation:ksub-pulse 1.8s ease-out infinite}
+@keyframes ksub-pin{from{opacity:0;transform:translateY(-10px) scale(.6)}to{opacity:1;transform:none}}
+@keyframes ksub-pulse{from{opacity:.55;transform:scale(.6)}to{opacity:0;transform:scale(2.2)}}
+@media (prefers-reduced-motion:reduce){.ksub-map .pin,.ksub-map .pulse{animation:none}}
 `;
 
 function fitBox(box: Box, size: Size, pad = 0.06): View {
@@ -287,12 +295,15 @@ function StationPanel({
         />
       </dl>
       {actions ? (
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="sticky -bottom-4 -mx-4 -mb-4 mt-3 grid grid-cols-2 gap-2 border-t border-line bg-surface px-4 py-3">
           {actions.map((action, index) => (
             <button
               key={action.label}
               type="button"
-              onClick={() => action.onPick(station.slug)}
+              onClick={() => {
+                action.onPick(station.slug);
+                onClose();
+              }}
               className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[14px] font-bold transition active:scale-[0.98] ${
                 index === 0 ? "bg-honey text-white" : "border border-line text-ink hover:bg-surface-muted"
               }`}
@@ -341,6 +352,7 @@ export default function SubwayMap({
   stations,
   copy,
   actions,
+  marks,
 }: {
   lang: string;
   appLang: string;
@@ -354,6 +366,7 @@ export default function SubwayMap({
   copy: MapCopy;
   /** Picker mode: the map fills its container, has no full-screen toggle, and the panel offers these buttons. */
   actions?: MapPickAction[];
+  marks?: MapMark[];
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const sizeRef = useRef<Size>(SERVER_SIZE);
@@ -504,6 +517,20 @@ export default function SubwayMap({
     const y = Math.min(...ys);
     flyTo(fitBox({ x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }, sizeRef.current, 0.1));
   }
+
+  const markKey = marks?.map((mark) => mark.slug).join(",") ?? "";
+  useEffect(() => {
+    const marked = markKey ? stations.filter((station) => markKey.split(",").includes(station.slug)) : [];
+    if (!marked.length) return;
+    const xs = marked.map((station) => station.x);
+    const ys = marked.map((station) => station.y);
+    const box = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+    const size = sizeRef.current;
+    const view = fitBox(box, size, 0.3);
+    const w = Math.max(view.w, size.cw / (levels[6] ?? 3.8));
+    const aspect = size.ch / size.cw;
+    flyTo({ w, x: box.x + box.w / 2 - w / 2, y: box.y + box.h / 2 - (w * aspect) / 2 });
+  }, [markKey, stations, levels, flyTo]);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -709,6 +736,26 @@ export default function SubwayMap({
             activeLine={activeLine}
             onPick={pick}
           />
+          {marks?.map((mark) => {
+            const station = stations.find((item) => item.slug === mark.slug);
+            if (!station) return null;
+            return (
+              <g key={`${mark.label}-${mark.slug}`} transform={`translate(${station.x} ${station.y})`} aria-hidden>
+                <g className="sc">
+                  <g className="pin">
+                    <circle className="pulse" r={10} fill={mark.color} />
+                    <path
+                      d="M0 -2 C -2 -8 -12 -12 -12 -22 A 12 12 0 1 1 12 -22 C 12 -12 2 -8 0 -2 Z"
+                      fill={mark.color}
+                      stroke="#fff"
+                      strokeWidth={2.5}
+                    />
+                    <circle cy={-22} r={4.5} fill="#fff" />
+                  </g>
+                </g>
+              </g>
+            );
+          })}
         </svg>
 
         <div className="absolute left-2 right-2 top-2 z-20 sm:right-auto sm:w-[300px]">

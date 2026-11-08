@@ -2,6 +2,7 @@ import { GUIDE_STATIONS, guideByKo, guideDetail, guideStation, stationLineColor,
 import { floorLabel, gt, lineLabel, stationTitle } from "./guideCopy";
 import type { GuideLocale } from "./guideLocale";
 import type { Localized } from "./i18n";
+import { spotImage, type PlannerImage } from "./plannerImages";
 import { DEFAULT_END, DEFAULT_START, plannerHref, type PlannerQuery } from "./plannerParams";
 import { PLANNER_PAIRS, PLANNER_SPOTS, type PlannerSpot } from "./plannerSpots";
 import { pt } from "./plannerText";
@@ -32,6 +33,7 @@ export type PlanSpot = {
   exit: string | null;
   walk: number;
   maps: string;
+  image: PlannerImage;
 };
 
 /** A Google Maps search standing in for spots we haven't hand-picked. */
@@ -258,6 +260,7 @@ function planSpot(spot: PlannerSpot, station: GuideStation, detail: GuideDetail,
     exit: spot.exit ?? nearest?.label ?? null,
     walk: spot.walk ?? Math.max(1, Math.round((meters(from, spot) * DETOUR) / WALK_METERS_PER_MINUTE)),
     maps: mapsSearch(locale === "ko" ? spot.name.ko : `${spot.name.en}, Seoul`),
+    image: spotImage(spot),
   };
 }
 
@@ -652,11 +655,16 @@ export function plannerPairs(locale: GuideLocale) {
     const to = guideByKo(toKo);
     const summary = from && to ? routeSummary(from.slug, to.slug, locale) : null;
     if (!from || !to || !summary) return [];
+    const highlight = stationSpots(to)
+      .map((spot, index) => ({ spot, index, score: spotScore(spot, categories, [], tags) }))
+      .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.spot;
     return [
       {
         from: from.slug,
         to: to.slug,
         tags,
+        image: highlight ? spotImage(highlight) : ("station" as PlannerImage),
+        highlight: highlight ? gt(highlight.name, locale) : null,
         href: plannerHref({ from: from.slug, to: to.slug, categories, tags, start: DEFAULT_START, end: DEFAULT_END }, locale),
         summary,
       },

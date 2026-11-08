@@ -5,10 +5,7 @@ import {
   ArrowLeftRight,
   Car,
   Clock,
-  ExternalLink,
-  Footprints,
   Luggage,
-  MapPin,
   Route as RouteIcon,
   ShoppingBag,
   Toilet,
@@ -20,11 +17,12 @@ import Link from "next/link";
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 import type { GuideLocale } from "../../_lib/guideLocale";
 import type { Plan, PlanFacility, PlanLine, PlanLink, PlanSpot, PlanStation, PlanStep } from "../../_lib/planner";
-import { clockLabel, durationText, exitWalkText, fillCopy, stopsText } from "../../_lib/plannerParams";
+import { clockLabel, durationText, fillCopy, stopsText } from "../../_lib/plannerParams";
 import type { PlannerCopy } from "../../_lib/plannerText";
 import type { RouteMode } from "../../_lib/routeFinder";
 import styles from "./planner.module.css";
-import { CATEGORY_ICONS, LineBadge, TAG_ICONS } from "./plannerIcons";
+import { CardRail, ExampleBadge, Photo, railItem, SearchPhotoCard, SpotPhotoCard } from "./PlannerCards";
+import { LineBadge } from "./plannerIcons";
 
 /** Fills `{key}` slots with nodes, so parts of a translated sentence can be bold. */
 function rich(template: string, values: Record<string, ReactNode>) {
@@ -43,110 +41,31 @@ function LinePill({ line }: { line: PlanLine }) {
   );
 }
 
-function MapsButton({ href, label, copy }: { href: string; label: string; copy: PlannerCopy }) {
+/** Spots, then Google Maps searches, as one row of photo cards. */
+function Cards({ spots, links, seed, copy, numbered = false }: { spots: PlanSpot[]; links: PlanLink[]; seed: string; copy: PlannerCopy; numbered?: boolean }) {
+  if (!spots.length && !links.length) return null;
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener"
-      aria-label={label}
-      className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-surface-muted px-2.5 py-1.5 text-[12px] font-bold text-ink transition hover:text-honey-strong active:scale-95"
-    >
-      <MapPin size={13} aria-hidden />
-      {copy.googleMaps}
-    </a>
-  );
-}
-
-function SpotCard({ spot, number, copy }: { spot: PlanSpot; number?: number; copy: PlannerCopy }) {
-  return (
-    <div className="rounded-2xl border border-line bg-surface p-3.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-2.5">
-          {number ? (
-            <span aria-hidden className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[12px] font-black text-white">
-              {number}
-            </span>
-          ) : null}
-          <div className="min-w-0">
-            <p className="break-words text-[15px] font-extrabold leading-snug text-ink">{spot.name}</p>
-            <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">{spot.blurb}</p>
-          </div>
-        </div>
-        <MapsButton href={spot.maps} label={fillCopy(copy.onGoogleMaps, { name: spot.name })} copy={copy} />
-      </div>
-      <p className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[12px] font-bold">
-        <span className="inline-flex items-center gap-1 rounded-lg bg-[#f5b800] px-2 py-0.5 text-neutral-900">
-          <Footprints size={12} aria-hidden />
-          {exitWalkText(copy, spot.exit, spot.walk)}
-        </span>
-        {spot.categories.map((category) => {
-          const CategoryIcon = CATEGORY_ICONS[category];
-          return (
-            <span key={category} className="inline-flex items-center gap-1 rounded-lg bg-surface-muted px-2 py-0.5 text-ink-muted">
-              <CategoryIcon size={12} aria-hidden />
-              {copy.categories[category].short}
-            </span>
-          );
-        })}
-        {spot.tags.map((tag) => (
-          <span key={tag} className="rounded-lg bg-honey-soft px-2 py-0.5 text-honey-strong">
-            {copy.tags[tag]}
-          </span>
-        ))}
-      </p>
-    </div>
-  );
-}
-
-function SpotList({ spots, copy, numbered = false }: { spots: PlanSpot[]; copy: PlannerCopy; numbered?: boolean }) {
-  if (!spots.length) return null;
-  return (
-    <ol className={`mt-2 grid gap-2 ${numbered ? "" : "sm:grid-cols-2"}`}>
+    <CardRail>
       {spots.map((spot, index) => (
-        <li key={spot.name}>
-          <SpotCard spot={spot} copy={copy} number={numbered ? index + 1 : undefined} />
+        <li key={spot.name} className={railItem}>
+          <SpotPhotoCard spot={spot} copy={copy} number={numbered ? index + 1 : undefined} />
         </li>
       ))}
-    </ol>
-  );
-}
-
-function SearchLinks({ links, copy }: { links: PlanLink[]; copy: PlannerCopy }) {
-  if (!links.length) return null;
-  return (
-    <ul className="mt-2 flex flex-col gap-1.5">
-      {links.map((link) => {
-        const LinkIcon: LucideIcon = link.tag ? TAG_ICONS[link.tag] : link.category ? CATEGORY_ICONS[link.category] : MapPin;
-        return (
-          <li key={link.maps}>
-            <a
-              href={link.maps}
-              target="_blank"
-              rel="noopener"
-              className="flex items-center gap-2.5 rounded-xl border border-dashed border-line px-3 py-2.5 text-[13px] font-bold text-ink transition hover:border-honey/50 hover:text-honey-strong"
-            >
-              <LinkIcon size={16} aria-hidden className="shrink-0 text-honey-strong" />
-              <span className="min-w-0 flex-1">
-                {link.tag ? <span className="mr-1.5 text-honey-strong">{copy.tags[link.tag]}</span> : null}
-                {link.label}
-              </span>
-              <span className="hidden shrink-0 items-center gap-1 text-[12px] text-ink-muted sm:inline-flex">
-                {copy.googleMaps}
-                <ExternalLink size={12} aria-hidden />
-              </span>
-            </a>
-          </li>
-        );
-      })}
-    </ul>
+      {links.map((link) => (
+        <li key={link.maps} className={railItem}>
+          <SearchPhotoCard link={link} seed={seed} copy={copy} />
+        </li>
+      ))}
+    </CardRail>
   );
 }
 
 function SubHeading({ icon: HeadingIcon, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
-    <h4 className="mt-4 flex items-center gap-1.5 text-[12.5px] font-extrabold uppercase tracking-wide text-ink-muted">
-      <HeadingIcon size={15} aria-hidden className="text-honey-strong" />
+    <h4 className="mt-5 flex items-center gap-1.5 text-[12.5px] font-extrabold uppercase tracking-wide text-ink-muted">
+      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-honey-soft text-honey-strong">
+        <HeadingIcon size={14} aria-hidden />
+      </span>
       {children}
     </h4>
   );
@@ -183,6 +102,40 @@ function FacilityList({ items, empty, extra, copy }: { items: PlanFacility[]; em
   );
 }
 
+/** Lockers, restrooms and the elevator at the departure station, beside a locker photo. */
+function Essentials({ step, copy }: { step: Extract<PlanStep, { kind: "depart" }>; copy: PlannerCopy }) {
+  return (
+    <div className="mt-4 grid overflow-hidden rounded-2xl border border-line bg-surface-muted sm:grid-cols-[200px_1fr]">
+      <div className="group relative max-sm:[&>span]:aspect-[16/7] sm:[&>span]:aspect-auto sm:[&>span]:h-full sm:[&>span]:min-h-[180px]">
+        <Photo image="locker" alt={`${copy.lockersTitle} (${copy.examplePhoto})`} sizes="(min-width: 640px) 200px, 100vw">
+          <ExampleBadge copy={copy} />
+          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-lg bg-white/95 px-2 py-1 text-[11.5px] font-extrabold text-neutral-900">
+            <Luggage size={13} aria-hidden />
+            {copy.lockersTitle}
+          </span>
+        </Photo>
+      </div>
+      <div className="grid gap-x-5 p-3.5 pt-0 sm:grid-cols-2 sm:pt-0">
+        <div>
+          <SubHeading icon={Luggage}>{copy.lockersTitle}</SubHeading>
+          <FacilityList
+            items={step.lockers}
+            extra={step.luggageDesk ? fillCopy(copy.luggageDesk, { where: step.luggageDesk }) : null}
+            empty={copy.noLockers}
+            copy={copy}
+          />
+        </div>
+        <div>
+          <SubHeading icon={Toilet}>{copy.restrooms}</SubHeading>
+          <FacilityList items={step.restrooms} empty={copy.noRestrooms} copy={copy} />
+          <SubHeading icon={Accessibility}>{copy.elevatorTitle}</SubHeading>
+          <p className="mt-1.5 text-[12.5px] font-semibold leading-relaxed text-ink">{step.elevator ?? copy.noElevator}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StationHeader({
   label,
   station,
@@ -200,29 +153,29 @@ function StationHeader({
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-honey-strong">{label}</p>
-        <h3 className="mt-0.5 break-words text-[20px] font-extrabold leading-tight tracking-tight text-ink">
+        <h3 className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-[21px] font-extrabold leading-tight tracking-tight text-ink">
           <Link href={`/${lang}/stations/${station.slug}`} className="hover:text-honey-strong">
             {station.title}
           </Link>
+          <span className="flex gap-1">
+            {station.lines.map((line) => (
+              <LineBadge key={line.name} short={line.short} color={line.color} size="md" />
+            ))}
+          </span>
         </h3>
-        <p className="mt-1 flex flex-wrap items-center gap-1">
-          {station.ko !== station.title ? (
-            <span lang="ko" className="mr-0.5 text-[13px] font-semibold text-ink-muted">
-              {station.ko}
-            </span>
-          ) : null}
-          {station.lines.map((line) => (
-            <LineBadge key={line.name} short={line.short} color={line.color} size="md" />
-          ))}
-        </p>
+        {station.ko !== station.title ? (
+          <p lang="ko" className="mt-0.5 text-[13px] font-semibold text-ink-muted">
+            {station.ko}
+          </p>
+        ) : null}
       </div>
       {onShowLocal ? (
         <button
           type="button"
           onClick={onShowLocal}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-surface-muted px-2.5 py-1.5 text-[12px] font-bold text-ink transition hover:text-honey-strong active:scale-95"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#111827] px-2.5 py-1.5 text-[12px] font-bold text-white transition hover:bg-black active:scale-95"
         >
-          <span lang="ko" className="font-black">
+          <span lang="ko" className="font-black text-[#f5b800]">
             한글
           </span>
           {copy.showKorean}
@@ -252,8 +205,11 @@ function Row({
   children: ReactNode;
 }) {
   return (
-    <li className={`relative grid grid-cols-[62px_1fr] gap-2 sm:grid-cols-[84px_1fr] sm:gap-3 ${styles.rise}`} style={{ animationDelay: `${Math.min(index, 8) * 55}ms` } as CSSProperties}>
-      <span className={`pt-2.5 text-right ${strong ? "" : "pt-2"}`}>
+    <li
+      className={`relative grid grid-cols-[58px_1fr] gap-2 sm:grid-cols-[84px_1fr] sm:gap-3 ${styles.rise}`}
+      style={{ animationDelay: `${Math.min(index, 8) * 60}ms` } as CSSProperties}
+    >
+      <span className="pt-2.5 text-right">
         <span
           className={`inline-block whitespace-nowrap rounded-full px-2 py-1 text-[10.5px] font-extrabold tabular-nums sm:text-[11.5px] ${
             strong ? "bg-ink text-white" : "text-ink-muted"
@@ -262,7 +218,7 @@ function Row({
           {time}
         </span>
       </span>
-      <div className="relative pb-5 pl-7">
+      <div className="relative min-w-0 pb-6 pl-7">
         {last ? null : rail ? (
           <span aria-hidden className="absolute bottom-0 left-[6px] top-3 w-[4px] rounded-full" style={{ backgroundColor: rail }} />
         ) : (
@@ -278,7 +234,7 @@ function Row({
 }
 
 const stationDot = (color = "border-honey") => <span className={`block h-4 w-4 rounded-full border-[3px] bg-surface ${color}`} />;
-const card = "rounded-3xl border border-line bg-surface p-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)]";
+const card = "rounded-3xl border border-line bg-surface p-4 shadow-[0_4px_18px_rgba(15,23,42,0.06)] sm:p-5";
 
 function StepView({
   step,
@@ -304,27 +260,9 @@ function StepView({
         <Row index={index} last={last} time={clock(step.time)} strong dot={stationDot()} rail={null}>
           <section className={card}>
             <StationHeader label={copy.depart} station={step.station} copy={copy} lang={lang} />
-            <div className="grid gap-x-5 sm:grid-cols-2">
-              <div>
-                <SubHeading icon={Luggage}>{copy.lockersTitle}</SubHeading>
-                <FacilityList
-                  items={step.lockers}
-                  extra={step.luggageDesk ? fillCopy(copy.luggageDesk, { where: step.luggageDesk }) : null}
-                  empty={copy.noLockers}
-                  copy={copy}
-                />
-              </div>
-              <div>
-                <SubHeading icon={Toilet}>{copy.restrooms}</SubHeading>
-                <FacilityList items={step.restrooms} empty={copy.noRestrooms} copy={copy} />
-              </div>
-            </div>
-            <SubHeading icon={Accessibility}>{copy.elevatorTitle}</SubHeading>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-ink">{step.elevator ?? copy.noElevator}</p>
-            <SearchLinks links={step.links} copy={copy} />
+            <Essentials step={step} copy={copy} />
             <SubHeading icon={Utensils}>{step.meal.lunch ? copy.lunch : copy.bite}</SubHeading>
-            <SpotList spots={step.meal.spots} copy={copy} />
-            <SearchLinks links={step.meal.links} copy={copy} />
+            <Cards spots={step.meal.spots} links={[...step.meal.links, ...step.links]} seed={step.station.slug} copy={copy} />
             {step.meal.lunch ? <p className="mt-2 text-[12px] text-ink-muted">{copy.lunchNote}</p> : null}
           </section>
         </Row>
@@ -343,7 +281,10 @@ function StepView({
             </span>
           }
         >
-          <div className="rounded-2xl px-3.5 py-2.5" style={{ backgroundColor: `color-mix(in srgb, ${step.line.color} 9%, transparent)` }}>
+          <div
+            className="rounded-2xl border-l-4 px-3.5 py-2.5"
+            style={{ backgroundColor: `color-mix(in srgb, ${step.line.color} 9%, transparent)`, borderColor: step.line.color }}
+          >
             <p className="flex flex-wrap items-center gap-2 text-[14px] font-bold text-ink">
               <TrainFront size={16} aria-hidden />
               <LinePill line={step.line} />
@@ -375,7 +316,7 @@ function StepView({
             </span>
           }
         >
-          <p className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[13px] font-semibold text-ink">
+          <p className="flex flex-wrap items-center gap-1.5 rounded-2xl bg-surface-muted px-3.5 py-2.5 text-[13px] font-semibold text-ink">
             {rich(copy.transferAt, {
               station: (
                 <>
@@ -400,13 +341,8 @@ function StepView({
               lang={lang}
               onShowLocal={() => onShowLocal(step.station)}
             />
-            {step.spots.length ? (
-              <>
-                <SubHeading icon={ShoppingBag}>{copy.hotSpots}</SubHeading>
-                <SpotList spots={step.spots} copy={copy} />
-              </>
-            ) : null}
-            <SearchLinks links={step.links} copy={copy} />
+            {step.spots.length || step.links.length ? <SubHeading icon={ShoppingBag}>{copy.hotSpots}</SubHeading> : null}
+            <Cards spots={step.spots} links={step.links} seed={step.station.slug} copy={copy} />
             {step.lockers.length ? (
               <>
                 <SubHeading icon={Luggage}>{copy.lockersHere}</SubHeading>
@@ -421,14 +357,9 @@ function StepView({
       return (
         <Row index={index} last time={clock(step.time)} strong dot={stationDot()} rail={null}>
           <section className={card}>
-            <StationHeader label={copy.destination} station={step.station} copy={copy} lang={lang} />
-            {step.spots.length ? (
-              <>
-                <SubHeading icon={RouteIcon}>{copy.suggestedWalk}</SubHeading>
-                <SpotList spots={step.spots} copy={copy} numbered />
-              </>
-            ) : null}
-            <SearchLinks links={step.links} copy={copy} />
+            <StationHeader label={copy.destination} station={step.station} copy={copy} lang={lang} onShowLocal={() => onShowLocal(step.station)} />
+            {step.spots.length || step.links.length ? <SubHeading icon={RouteIcon}>{copy.suggestedWalk}</SubHeading> : null}
+            <Cards spots={step.spots} links={step.links} seed={step.station.slug} copy={copy} numbered />
             {step.lockers.length ? (
               <>
                 <SubHeading icon={Luggage}>{copy.lockersHere}</SubHeading>
@@ -444,7 +375,7 @@ function StepView({
             <button
               type="button"
               onClick={() => onShowLocal(step.station)}
-              className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#111827] px-4 py-4 text-[15.5px] font-extrabold text-white shadow-[0_8px_20px_rgba(17,24,39,0.22)] ring-2 ring-[#f5b800] transition active:scale-[0.98]"
+              className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#111827] px-4 py-4 text-[15.5px] font-extrabold text-white shadow-[0_8px_20px_rgba(17,24,39,0.22)] ring-2 ring-[#f5b800] transition hover:-translate-y-0.5 active:scale-[0.98]"
             >
               <Car size={21} aria-hidden className="text-[#f5b800]" />
               <span className="min-w-0 break-words">{copy.showToLocalTaxi}</span>
