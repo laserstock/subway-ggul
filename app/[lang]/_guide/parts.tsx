@@ -69,7 +69,7 @@ export function AppPromo({ locale }: { locale: GuideLocale }) {
           href={PLAY_STORE_URL}
           target="_blank"
           rel="noopener"
-          className="inline-flex items-center gap-2.5 rounded-xl bg-[#111827] px-4 py-2.5 text-white transition hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_8px_18px_rgba(15,23,42,0.25)] active:scale-[0.98] lg:duration-200"
+          className="inline-flex min-h-11 items-center gap-2.5 rounded-xl bg-[#111827] px-4 py-2.5 text-white transition hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_8px_18px_rgba(15,23,42,0.25)] active:scale-[0.98] lg:duration-200"
         >
           <PlayLogo />
           <span className="text-left leading-tight">
@@ -81,7 +81,7 @@ export function AppPromo({ locale }: { locale: GuideLocale }) {
         </a>
         <a
           href={`/?lang=${contentLocale(locale)}`}
-          className="inline-flex items-center rounded-xl bg-honey px-4 py-2.5 text-[14px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_8px_18px_rgba(245,167,0,0.35)] active:scale-[0.98] lg:px-5 lg:text-[15px] lg:duration-200"
+          className="inline-flex min-h-11 items-center rounded-xl bg-honey px-4 py-2.5 text-[14px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_8px_18px_rgba(245,167,0,0.35)] active:scale-[0.98] lg:px-5 lg:text-[15px] lg:duration-200"
         >
           {tc("openWebApp", locale)} →
         </a>
@@ -105,11 +105,14 @@ export function LineChip({ line, locale }: { line: string; locale: GuideLocale }
 }
 
 /** A line chip that opens the line's station list. */
-export function LineLink({ line, locale }: { line: string; locale: GuideLocale }) {
+/** `large` gives a 44px touch target, for pages where a chip is a main way forward. */
+export function LineLink({ line, locale, large = false }: { line: string; locale: GuideLocale; large?: boolean }) {
   return (
     <Link
       href={`/${locale}/lines/${lineSlug(line)}`}
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold text-white transition hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(15,23,42,0.18)] hover:brightness-110 active:scale-95 lg:px-3 lg:py-1.5 lg:text-[13px] lg:duration-200"
+      className={`inline-flex items-center gap-1 rounded-full font-bold text-white transition hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(15,23,42,0.18)] hover:brightness-110 active:scale-95 lg:duration-200 ${
+        large ? "min-h-11 px-4 text-[14px]" : "px-2.5 py-1 text-[12px] lg:px-3 lg:py-1.5 lg:text-[13px]"
+      }`}
       style={{ backgroundColor: stationLineColor(line) }}
     >
       {lineLabel(line, locale)}
@@ -134,11 +137,22 @@ export function searchItems(locale: GuideLocale): GuideSearchItem[] {
   });
 }
 
-export function StationLink({ station, locale }: { station: GuideStation; locale: GuideLocale }) {
+export function StationLink({
+  station,
+  locale,
+  large = false,
+}: {
+  station: GuideStation;
+  locale: GuideLocale;
+  /** 44px touch target, as on LineLink. */
+  large?: boolean;
+}) {
   return (
     <Link
       href={`/${locale}/stations/${station.slug}`}
-      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-ink hover:-translate-y-0.5 hover:border-honey/50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)] active:bg-surface-muted lg:px-3.5 lg:py-2 lg:text-[14px] lg:transition-all lg:duration-200"
+      className={`inline-flex items-center gap-1.5 rounded-full border border-line bg-surface font-semibold text-ink hover:-translate-y-0.5 hover:border-honey/50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)] active:bg-surface-muted lg:transition-all lg:duration-200 ${
+        large ? "min-h-11 px-4 text-[14px]" : "px-3 py-1.5 text-[13px] lg:px-3.5 lg:py-2 lg:text-[14px]"
+      }`}
     >
       <span
         className="h-2 w-2 shrink-0 rounded-full"

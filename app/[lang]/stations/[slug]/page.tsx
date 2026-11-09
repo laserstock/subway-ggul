@@ -28,6 +28,7 @@ import {
   stationOgDescription,
   stationOgTitle,
   stationSummary,
+  stationTips,
   stationTitle,
   tc,
   walkMinutesLabel,
@@ -112,8 +113,8 @@ function UtilityChip({ href, icon, label, value, external }: {
     <>
       <IconTile name={icon} size="sm" />
       <span className="min-w-0">
-        <span className="block break-words text-[13px] font-bold leading-snug text-ink lg:text-[15px]">{label}</span>
-        <span className="mt-0.5 block break-words text-[12px] font-semibold text-honey-strong lg:mt-1 lg:text-[13px]">
+        <span className="block break-words text-[14px] font-bold leading-snug text-ink lg:text-[15px]">{label}</span>
+        <span className="mt-0.5 block break-words text-[13px] font-semibold text-honey-strong lg:mt-1">
           {value}
         </span>
       </span>
@@ -189,7 +190,7 @@ function ExitCard({ exit, detail, locale }: { exit: GuideExit; detail: GuideDeta
         <span className="text-[14px] font-bold text-ink lg:text-[15px]">{tc("exitLabel", locale, { n: exit.label })}</span>
       </div>
       {restroom || elevator ? (
-        <p className="mt-2 flex flex-wrap gap-1 text-[11px] font-bold">
+        <p className="mt-2 flex flex-wrap gap-1 text-[12px] font-bold">
           {restroom ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-[#e7f8ee] px-2 py-0.5 text-[#15803d]">
               <Icon name="restroom" size={13} />
@@ -204,13 +205,13 @@ function ExitCard({ exit, detail, locale }: { exit: GuideExit; detail: GuideDeta
           ) : null}
         </p>
       ) : null}
-      <div className="mt-auto flex gap-1.5 pt-2.5 text-[12px] font-bold lg:gap-2 lg:pt-3 lg:text-[13px]">
+      <div className="mt-auto flex gap-1.5 pt-2.5 text-[13px] font-bold lg:gap-2 lg:pt-3">
         <a
           href={googleMapsHref(exit.lat, exit.lng)}
           target="_blank"
           rel="noopener"
           aria-label={`${tc("exitLabel", locale, { n: exit.label })} · ${tc("exitMap", locale)}`}
-          className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-surface-muted px-2 py-1.5 text-center text-ink hover:bg-line active:scale-95 lg:py-2 lg:transition-colors lg:duration-200"
+          className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg bg-surface-muted px-2 py-1.5 text-center text-ink hover:bg-line active:scale-95 lg:transition-colors lg:duration-200"
         >
           <Icon name="pin" size={14} />
           {tc("exitMap", locale)}
@@ -220,7 +221,7 @@ function ExitCard({ exit, detail, locale }: { exit: GuideExit; detail: GuideDeta
           target="_blank"
           rel="noopener"
           aria-label={`${tc("exitLabel", locale, { n: exit.label })} · ${tc("exitNearby", locale)}`}
-          className="flex-1 rounded-lg bg-honey-soft px-2 py-1.5 text-center text-honey-strong hover:bg-honey hover:text-white active:scale-95 lg:py-2 lg:transition-colors lg:duration-200"
+          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-honey-soft px-2 py-1.5 text-center text-honey-strong hover:bg-honey hover:text-white active:scale-95 lg:transition-colors lg:duration-200"
         >
           {tc("exitNearby", locale)}
         </a>
@@ -235,14 +236,14 @@ function Section({ id, title, hint, children }: { id: string; title: string; hin
       <h2 id={id} className="text-[18px] font-extrabold tracking-tight text-ink lg:text-[24px]">
         {title}
       </h2>
-      {hint ? <p className="mt-1 text-[13px] leading-relaxed text-ink-muted lg:mt-2 lg:max-w-3xl lg:text-[16px]">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-[14px] leading-relaxed text-ink-muted lg:mt-2 lg:max-w-3xl lg:text-[16px]">{hint}</p> : null}
       <div className="mt-3 lg:mt-5">{children}</div>
     </section>
   );
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-2xl bg-surface-muted px-4 py-3 text-[13px] text-ink-muted lg:px-5 lg:py-4 lg:text-[15px]">{children}</p>;
+  return <p className="rounded-2xl bg-surface-muted px-4 py-3 text-[14px] text-ink-muted lg:px-5 lg:py-4 lg:text-[15px]">{children}</p>;
 }
 
 function towardName(station: GuideStation | null, fallback: string, locale: GuideLocale) {
@@ -253,7 +254,7 @@ function TransferRow({ row, locale }: { row: GuideTransfer; locale: GuideLocale 
   const [car, door = ""] = row.alight.split("-");
   return (
     <li className="rounded-2xl border border-line bg-surface px-4 py-3 lg:px-5 lg:py-4">
-      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] font-semibold text-ink lg:text-[15px]">
+      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] font-semibold text-ink lg:text-[15px]">
         <span className="break-words">
           {tc("transferFrom", locale, {
             line: lineLabel(row.fromLine, locale),
@@ -275,7 +276,7 @@ function TransferRow({ row, locale }: { row: GuideTransfer; locale: GuideLocale 
           {tc("carDoor", locale, { car, door })}
         </span>
         {row.seconds !== null ? (
-          <span className="text-[12px] text-ink-muted lg:text-[14px]">{walkMinutesLabel(row.seconds, locale)}</span>
+          <span className="text-[13px] text-ink-muted lg:text-[14px]">{walkMinutesLabel(row.seconds, locale)}</span>
         ) : null}
       </p>
     </li>
@@ -290,21 +291,28 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
   const title = stationTitle(station, lang);
   const url = `${SITE_URL}/${lang}/stations/${station.slug}`;
   const faq = stationFaq(station, detail, lang);
+  const tips = stationTips(station, detail, lang);
 
   return (
     <DesktopWide>
       <StationSeoSchema station={station} detail={detail} lang={lang} faq={faq} />
 
-      <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted lg:text-[14px]">
+      <nav aria-label="Breadcrumb" className="text-[13px] font-semibold text-ink-muted lg:text-[14px]">
         <ol className="flex flex-wrap items-center gap-1 lg:gap-1.5">
           <li>
-            <Link href={`/${lang}`} className="hover:text-ink lg:transition-colors lg:duration-200">
+            <Link
+              href={`/${lang}`}
+              className="inline-flex min-h-11 items-center hover:text-ink lg:min-h-0 lg:transition-colors lg:duration-200"
+            >
               {gt(BRAND, lang)}
             </Link>
           </li>
           <li aria-hidden>›</li>
           <li>
-            <Link href={`/${lang}/stations`} className="hover:text-ink lg:transition-colors lg:duration-200">
+            <Link
+              href={`/${lang}/stations`}
+              className="inline-flex min-h-11 items-center hover:text-ink lg:min-h-0 lg:transition-colors lg:duration-200"
+            >
               {tc("breadcrumbStations", lang)}
             </Link>
           </li>
@@ -315,7 +323,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         </ol>
       </nav>
 
-      <header className="mt-3 lg:mt-5">
+      <header className="mt-1 lg:mt-5">
         <h1 className="break-words text-[28px] font-extrabold leading-tight tracking-tight text-ink lg:text-[42px] lg:leading-[1.15]">
           {title}
         </h1>
@@ -331,6 +339,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
               exits={detail.exits.map((exit) => exit.label)}
               copy={{
                 button: tc("showKorean", lang),
+                lead: tc("showKoreanLead", lang, { station: title }),
                 hint: tc("showKoreanHint", lang),
                 pickExit: tc("pickExit", lang),
                 close: tc("close", lang),
@@ -344,12 +353,12 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
           </div>
         ) : null}
         <UtilityChips station={station} detail={detail} locale={lang} />
-        <div className="mt-4 flex flex-wrap gap-1.5 lg:mt-6 lg:gap-2">
+        <div className="mt-4 flex flex-wrap gap-2 lg:mt-6">
           {station.lines.map((line) => (
-            <LineLink key={line} line={line} locale={lang} />
+            <LineLink key={line} line={line} locale={lang} large />
           ))}
         </div>
-        <div className="mt-4 space-y-1.5 text-[15px] leading-relaxed text-ink lg:mt-6 lg:max-w-3xl lg:space-y-3 lg:text-lg lg:leading-relaxed">
+        <div className="mt-4 space-y-1.5 text-[16px] leading-relaxed text-ink lg:mt-6 lg:max-w-3xl lg:space-y-3 lg:text-lg lg:leading-relaxed">
           {stationSummary(station, detail, lang).map((sentence) => (
             <p key={sentence}>{sentence}</p>
           ))}
@@ -369,7 +378,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
           </a>
         </div>
         {detail.address ? (
-          <p className="mt-4 rounded-2xl bg-surface-muted px-4 py-3 text-[13px] text-ink-muted lg:mt-6 lg:max-w-3xl lg:px-5 lg:py-4 lg:text-[14px]">
+          <p className="mt-4 rounded-2xl bg-surface-muted px-4 py-3 text-[14px] text-ink-muted lg:mt-6 lg:max-w-3xl lg:px-5 lg:py-4">
             {tc("address", lang)}
             <span lang="ko" className="mt-0.5 block select-all break-words text-[15px] font-bold text-ink lg:mt-1 lg:text-[17px]">
               {detail.address}
@@ -379,6 +388,17 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
       </header>
 
       <AdSense slot={AD_SLOTS.top} layout="in-article" label={tc("advertisement", lang)} className="mt-6" />
+
+      <Section id="tips" title={tc("tipsTitle", lang, { station: title })}>
+        <ul className="space-y-3 rounded-2xl bg-honey-soft px-4 py-4 text-[16px] leading-relaxed text-ink lg:max-w-3xl lg:space-y-4 lg:px-6 lg:py-5 lg:text-lg">
+          {tips.map((tip) => (
+            <li key={tip} className="flex items-start gap-2.5">
+              <Icon name="sparkle" size={18} className="mt-1 text-honey-strong" />
+              <span className="min-w-0">{tip}</span>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
       <Section id="exits" title={tc("exits", lang)} hint={detail.exits.length ? tc("exitsHint", lang) : undefined}>
         {detail.exits.length ? (
@@ -416,9 +436,9 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
                   </span>
                 </p>
                 {row.exit ? (
-                  <p className="mt-1 text-[13px] text-ink-muted lg:mt-2 lg:text-[15px] lg:leading-relaxed">{tc("nearExit", lang, { n: row.exit })}</p>
+                  <p className="mt-1 text-[14px] text-ink-muted lg:mt-2 lg:text-[15px] lg:leading-relaxed">{tc("nearExit", lang, { n: row.exit })}</p>
                 ) : null}
-                {lang === "ko" && row.detail ? <p className="mt-1 text-[13px] text-ink-muted lg:mt-2 lg:text-[15px] lg:leading-relaxed">{row.detail}</p> : null}
+                {lang === "ko" && row.detail ? <p className="mt-1 text-[14px] text-ink-muted lg:mt-2 lg:text-[15px] lg:leading-relaxed">{row.detail}</p> : null}
               </li>
             ))}
           </ul>
@@ -439,10 +459,10 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
                     {tc(row.insideGate ? "insideGate" : "outsideGate", lang)}
                   </span>
                   {row.slots ? (
-                    <span className="text-[13px] font-semibold text-ink-muted">{tc("slots", lang, { n: row.slots })}</span>
+                    <span className="text-[14px] font-semibold text-ink-muted">{tc("slots", lang, { n: row.slots })}</span>
                   ) : null}
                 </p>
-                {lang === "ko" && row.detail ? <p className="mt-1 text-[13px] text-ink-muted lg:mt-2 lg:text-[15px] lg:leading-relaxed">{row.detail}</p> : null}
+                {lang === "ko" && row.detail ? <p className="mt-1 text-[14px] text-ink-muted lg:mt-2 lg:text-[15px] lg:leading-relaxed">{row.detail}</p> : null}
               </li>
             ))}
           </ul>
@@ -450,7 +470,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
           <Empty>{tc("noLockers", lang)}</Empty>
         )}
         {detail.luggageDesk ? (
-          <p className="mt-2 flex items-start gap-2 rounded-2xl bg-honey-soft px-4 py-3 text-[13px] font-semibold text-ink lg:mt-4 lg:px-5 lg:py-4 lg:text-[15px]">
+          <p className="mt-2 flex items-start gap-2 rounded-2xl bg-honey-soft px-4 py-3 text-[14px] font-semibold text-ink lg:mt-4 lg:px-5 lg:py-4 lg:text-[15px]">
             <Icon name="luggage" size={17} className="text-honey-strong" />
             <span>
               {tc("utilLuggageDesk", lang)}: <span className="font-bold">{gt(detail.luggageDesk, lang)}</span>
@@ -472,7 +492,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
                   </span>
                 </p>
                 {row.notes.length ? (
-                  <ul className="mt-1.5 space-y-0.5 text-[13px] leading-relaxed text-ink-muted lg:mt-2 lg:space-y-1 lg:text-[15px]">
+                  <ul className="mt-1.5 space-y-0.5 text-[14px] leading-relaxed text-ink-muted lg:mt-2 lg:space-y-1 lg:text-[15px]">
                     {row.notes.slice(0, 3).map((note, index) => (
                       <li key={index}>· {gt(note, lang)}</li>
                     ))}
@@ -501,7 +521,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
               <div key={line} className="flex flex-wrap items-center gap-2">
                 <LineChip line={line} locale={lang} />
                 {stations.map((next) => (
-                  <StationLink key={next.slug} station={next} locale={lang} />
+                  <StationLink key={next.slug} station={next} locale={lang} large />
                 ))}
               </div>
             ))}
@@ -511,14 +531,24 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
 
       {faq.length ? (
         <Section id="faq" title={tc("faq", lang)}>
-          <div className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-4">
-            {faq.map((item) => (
-              <div key={item.question} className="rounded-2xl border border-line bg-surface px-4 py-3 lg:px-5 lg:py-4">
-                <h3 className="text-[14px] font-bold text-ink lg:text-[17px]">{item.question}</h3>
-                <p className="mt-1 text-[13px] leading-relaxed text-ink-muted lg:mt-2 lg:text-[16px] lg:leading-relaxed">
-                  {item.answer}
-                </p>
-              </div>
+          <div className="flex flex-col gap-2 lg:max-w-3xl lg:gap-3">
+            {faq.map((item, index) => (
+              <details
+                key={item.question}
+                open={index === 0}
+                className="group rounded-2xl border border-line bg-surface open:border-honey/40 lg:transition-colors lg:duration-200"
+              >
+                <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 py-3 hover:text-honey-strong lg:px-5 lg:py-4 [&::-webkit-details-marker]:hidden">
+                  <h3 className="min-w-0 flex-1 text-[15px] font-bold leading-snug text-ink lg:text-[17px]">{item.question}</h3>
+                  <span
+                    aria-hidden
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-muted text-ink-muted transition-transform duration-200 group-open:rotate-45 group-open:bg-honey-soft group-open:text-honey-strong"
+                  >
+                    <Icon name="plus" size={16} />
+                  </span>
+                </summary>
+                <p className="px-4 pb-4 text-[15px] leading-relaxed text-ink-muted lg:px-5 lg:pb-5 lg:text-[16px]">{item.answer}</p>
+              </details>
             ))}
           </div>
         </Section>
@@ -554,7 +584,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         <AppPromo locale={lang} />
       </div>
 
-      <p className="mt-6 text-[11px] leading-relaxed text-ink-muted lg:text-[13px]">{tc("dataNote", lang)}</p>
+      <p className="mt-6 text-[12px] leading-relaxed text-ink-muted lg:text-[13px]">{tc("dataNote", lang)}</p>
     </DesktopWide>
   );
 }

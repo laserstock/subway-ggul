@@ -7,7 +7,7 @@ type Props = {
   /** Korean station name with 역, e.g. "강남역". */
   name: string;
   exits: string[];
-  copy: { button: string; hint: string; pickExit: string; close: string };
+  copy: { button: string; lead: string; hint: string; pickExit: string; close: string };
   /** What the Korean sentence means in the reader's language; `exit` has an {exit} placeholder. */
   meaning: { lang: string; station: string; exit: string };
 };
@@ -26,7 +26,8 @@ export default function ShowKorean({ name, exits, copy, meaning }: Props) {
       <button
         type="button"
         onClick={() => dialog.current?.showModal()}
-        className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#111827] px-4 py-4 text-[16px] font-extrabold text-white shadow-[0_8px_20px_rgba(17,24,39,0.22)] ring-2 ring-[#f5b800] transition active:scale-[0.98]"
+        aria-describedby="show-korean-lead"
+        className="flex min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-[#111827] px-4 py-4 text-[16px] font-extrabold text-white shadow-[0_8px_20px_rgba(17,24,39,0.22)] ring-2 ring-[#f5b800] transition active:scale-[0.98]"
       >
         <Icon name="car" size={22} className="text-[#f5b800]" />
         <span className="min-w-0 break-words">{copy.button}</span>
@@ -34,6 +35,9 @@ export default function ShowKorean({ name, exits, copy, meaning }: Props) {
           {name}
         </span>
       </button>
+      <p id="show-korean-lead" className="mt-2 text-[14px] leading-relaxed text-ink-muted lg:text-[15px]">
+        {copy.lead}
+      </p>
       <dialog
         ref={dialog}
         aria-label={copy.button}
@@ -44,11 +48,11 @@ export default function ShowKorean({ name, exits, copy, meaning }: Props) {
       >
         <div className="mx-auto flex h-full max-w-[760px] flex-col px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]">
           <div className="flex items-start justify-between gap-3">
-            <p className="pt-2 text-[14px] font-semibold text-neutral-500">{copy.hint}</p>
+            <p className="pt-2 text-[15px] font-semibold leading-snug text-neutral-600">{copy.hint}</p>
             <button
               type="button"
               onClick={close}
-              className="shrink-0 rounded-full bg-neutral-100 px-4 py-2 text-[14px] font-bold text-neutral-800 active:scale-95"
+              className="min-h-11 shrink-0 rounded-full bg-neutral-100 px-5 py-2 text-[15px] font-bold text-neutral-800 active:scale-95"
             >
               {copy.close}
             </button>
@@ -69,7 +73,7 @@ export default function ShowKorean({ name, exits, copy, meaning }: Props) {
 
           {exits.length ? (
             <div className="shrink-0 border-t border-neutral-200 pt-3">
-              <p className="text-[13px] font-bold text-neutral-500">{copy.pickExit}</p>
+              <p className="text-[14px] font-bold text-neutral-600">{copy.pickExit}</p>
               <div className="mt-2 flex max-h-[24vh] flex-wrap gap-2 overflow-y-auto">
                 {exits.map((label) => {
                   const active = label === exit;
