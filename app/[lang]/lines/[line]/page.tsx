@@ -107,14 +107,18 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
         ]}
       />
 
-      <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted">
-        <ol className="flex flex-wrap items-center gap-1">
+      <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted lg:pt-4 lg:text-[14px]">
+        <ol className="flex flex-wrap items-center gap-1 lg:gap-1.5">
           <li>
-            <Link href={`/${lang}`}>{gt(BRAND, lang)}</Link>
+            <Link href={`/${lang}`} className="hover:text-ink lg:transition-colors lg:duration-200">
+              {gt(BRAND, lang)}
+            </Link>
           </li>
           <li aria-hidden>›</li>
           <li>
-            <Link href={`/${lang}/stations`}>{tc("breadcrumbStations", lang)}</Link>
+            <Link href={`/${lang}/stations`} className="hover:text-ink lg:transition-colors lg:duration-200">
+              {tc("breadcrumbStations", lang)}
+            </Link>
           </li>
           <li aria-hidden>›</li>
           <li aria-current="page" className="text-ink">
@@ -123,27 +127,27 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
         </ol>
       </nav>
 
-      <header className="mt-3">
-        <h1 className="break-words text-[26px] font-extrabold leading-tight tracking-tight text-ink">
+      <header className="mt-3 lg:mt-5">
+        <h1 className="break-words text-[26px] font-extrabold leading-tight tracking-tight text-ink lg:text-[38px] lg:leading-[1.2]">
           {tc("lineHeading", lang, { line: name })}
         </h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">
+        <p className="mt-2 text-[15px] leading-relaxed text-ink-muted lg:mt-4 lg:text-lg lg:leading-relaxed">
           {tc("lineDescription", lang, { line: name, n: rows.length })}
         </p>
-        <ul className="mt-4 flex flex-wrap gap-1.5 text-[12px] font-bold">
+        <ul className="mt-4 flex flex-wrap gap-1.5 text-[12px] font-bold lg:mt-6 lg:gap-2 lg:text-[14px]">
           {facts.map((fact) => (
-            <li key={fact} className="rounded-full bg-surface-muted px-3 py-1 text-ink">
+            <li key={fact} className="rounded-full bg-surface-muted px-3 py-1 text-ink lg:px-4 lg:py-1.5">
               {fact}
             </li>
           ))}
         </ul>
       </header>
 
-      <section aria-labelledby="line-stations" className="mt-7">
-        <h2 id="line-stations" className="text-[18px] font-extrabold tracking-tight text-ink">
+      <section aria-labelledby="line-stations" className="mt-7 lg:mt-12">
+        <h2 id="line-stations" className="text-[18px] font-extrabold tracking-tight text-ink lg:text-[24px]">
           {tc("lineStations", lang)}
         </h2>
-        <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">{tc("lineStationsHint", lang)}</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-ink-muted lg:mt-2 lg:text-[16px]">{tc("lineStationsHint", lang)}</p>
         <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-semibold text-ink-muted">
           <span className="inline-flex items-center gap-1">
             <Icon name="luggage" size={15} className="text-honey-strong" />
@@ -156,7 +160,7 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
         </p>
         <ol className="mt-3 border-l-4 pl-0" style={{ borderColor: color }}>
           {rows.map((row) => (
-            <li key={row.station.slug} className="relative -ml-[10px] flex items-start gap-3 py-1.5">
+            <li key={row.station.slug} className="relative -ml-[10px] flex items-start gap-3 py-1.5 lg:gap-4 lg:py-2.5">
               <span
                 className="mt-1.5 h-4 w-4 shrink-0 rounded-full border-[3px] bg-surface"
                 style={{ borderColor: color }}
@@ -166,7 +170,7 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
                 <p className="flex flex-wrap items-baseline gap-x-2">
                   <Link
                     href={`/${lang}/stations/${row.station.slug}`}
-                    className="break-words text-[15px] font-bold text-ink underline-offset-2 hover:underline"
+                    className="break-words text-[15px] font-bold text-ink underline-offset-2 hover:text-honey-strong hover:underline lg:text-[17px] lg:transition-colors lg:duration-200"
                   >
                     {row.title}
                   </Link>
@@ -205,8 +209,8 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
         className="mt-9"
       />
 
-      <section aria-labelledby="other-lines" className="mt-8">
-        <h2 id="other-lines" className="text-[17px] font-extrabold text-ink">
+      <section aria-labelledby="other-lines" className="mt-8 lg:mt-14">
+        <h2 id="other-lines" className="text-[17px] font-extrabold text-ink lg:text-[22px]">
           {tc("otherLines", lang)}
         </h2>
         <div className="mt-3 flex flex-wrap gap-1.5">

@@ -12,8 +12,11 @@ import { normalizeQuery } from "./searchKeys";
 export function GuideHeader({ locale }: { locale: GuideLocale }) {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-app/90 pt-[env(safe-area-inset-top)] backdrop-blur">
-      <div className="mx-auto flex w-full max-w-[760px] items-center justify-between gap-3 px-4 py-2.5">
-        <Link href={`/${locale}`} className="flex min-w-0 items-center gap-2.5">
+      <div className="mx-auto flex w-full max-w-[760px] items-center justify-between gap-3 px-4 py-2.5 lg:max-w-[min(1024px,calc(100vw-64px))] lg:px-0 lg:py-3">
+        <Link
+          href={`/${locale}`}
+          className="flex min-w-0 items-center gap-2.5 rounded-xl hover:opacity-80 lg:-mx-2 lg:px-2 lg:py-1 lg:transition-all lg:duration-200"
+        >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-honey-soft text-honey">
             <TrainMark size={24} />
           </span>
@@ -46,25 +49,27 @@ export function AppPromo({ locale }: { locale: GuideLocale }) {
   return (
     <section
       aria-labelledby="get-app"
-      className="rounded-3xl bg-gradient-to-br from-[#fff8e1] to-[#fffdf6] p-5 ring-1 ring-[#f6e3a8]"
+      className="rounded-3xl bg-gradient-to-br from-[#fff8e1] to-[#fffdf6] p-5 ring-1 ring-[#f6e3a8] lg:p-8"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 lg:gap-4">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-honey text-white">
           <TrainMark size={30} />
         </span>
         <div className="min-w-0">
-          <h2 id="get-app" className="text-[18px] font-extrabold tracking-tight text-ink">
+          <h2 id="get-app" className="text-[18px] font-extrabold tracking-tight text-ink lg:text-[22px]">
             {tc("appTitle", locale)}
           </h2>
-          <p className="mt-1 text-[14px] leading-relaxed text-ink-muted">{tc("appBody", locale)}</p>
+          <p className="mt-1 text-[14px] leading-relaxed text-ink-muted lg:mt-2 lg:max-w-2xl lg:text-[16px]">
+            {tc("appBody", locale)}
+          </p>
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2 lg:mt-6 lg:gap-3 lg:pl-16">
         <a
           href={PLAY_STORE_URL}
           target="_blank"
           rel="noopener"
-          className="inline-flex items-center gap-2.5 rounded-xl bg-[#111827] px-4 py-2.5 text-white transition active:scale-[0.98]"
+          className="inline-flex items-center gap-2.5 rounded-xl bg-[#111827] px-4 py-2.5 text-white transition hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_8px_18px_rgba(15,23,42,0.25)] active:scale-[0.98] lg:duration-200"
         >
           <PlayLogo />
           <span className="text-left leading-tight">
@@ -76,12 +81,14 @@ export function AppPromo({ locale }: { locale: GuideLocale }) {
         </a>
         <a
           href={`/?lang=${contentLocale(locale)}`}
-          className="inline-flex items-center rounded-xl bg-honey px-4 py-2.5 text-[14px] font-bold text-white transition active:scale-[0.98]"
+          className="inline-flex items-center rounded-xl bg-honey px-4 py-2.5 text-[14px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_8px_18px_rgba(245,167,0,0.35)] active:scale-[0.98] lg:px-5 lg:text-[15px] lg:duration-200"
         >
           {tc("openWebApp", locale)} →
         </a>
       </div>
-      {APP_RELEASED ? null : <p className="mt-2.5 text-[12px] text-ink-muted">{tc("appSoonNote", locale)}</p>}
+      {APP_RELEASED ? null : (
+        <p className="mt-2.5 text-[12px] text-ink-muted lg:pl-16 lg:text-[13px]">{tc("appSoonNote", locale)}</p>
+      )}
     </section>
   );
 }
@@ -102,7 +109,7 @@ export function LineLink({ line, locale }: { line: string; locale: GuideLocale }
   return (
     <Link
       href={`/${locale}/lines/${lineSlug(line)}`}
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold text-white transition active:scale-95"
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold text-white transition hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(15,23,42,0.18)] hover:brightness-110 active:scale-95 lg:px-3 lg:py-1.5 lg:text-[13px] lg:duration-200"
       style={{ backgroundColor: stationLineColor(line) }}
     >
       {lineLabel(line, locale)}
@@ -131,7 +138,7 @@ export function StationLink({ station, locale }: { station: GuideStation; locale
   return (
     <Link
       href={`/${locale}/stations/${station.slug}`}
-      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-ink active:bg-surface-muted"
+      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-ink hover:-translate-y-0.5 hover:border-honey/50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)] active:bg-surface-muted lg:px-3.5 lg:py-2 lg:text-[14px] lg:transition-all lg:duration-200"
     >
       <span
         className="h-2 w-2 shrink-0 rounded-full"

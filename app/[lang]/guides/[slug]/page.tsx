@@ -151,27 +151,35 @@ export default async function GuideArticlePage({ params }: PageProps<"/[lang]/gu
         ]}
       />
 
-      <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted">
-        <ol className="flex flex-wrap items-center gap-1">
+      <nav aria-label="Breadcrumb" className="text-[12px] font-semibold text-ink-muted lg:pt-4 lg:text-[14px]">
+        <ol className="flex flex-wrap items-center gap-1 lg:gap-1.5">
           <li>
-            <Link href={`/${lang}`}>{gt(BRAND, lang)}</Link>
+            <Link href={`/${lang}`} className="hover:text-ink lg:transition-colors lg:duration-200">
+              {gt(BRAND, lang)}
+            </Link>
           </li>
           <li aria-hidden>›</li>
           <li>
-            <Link href={`/${lang}/guides`}>{tc("guidesHeading", lang)}</Link>
+            <Link href={`/${lang}/guides`} className="hover:text-ink lg:transition-colors lg:duration-200">
+              {tc("guidesHeading", lang)}
+            </Link>
           </li>
         </ol>
       </nav>
 
-      <article className="mt-3">
+      <article className="mt-3 lg:mt-8">
         <IconTile name={article.icon} size="lg" />
-        <h1 className="mt-3 break-words text-[26px] font-extrabold leading-tight tracking-tight text-ink">{title}</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-ink-muted">{gt(article.description, lang)}</p>
+        <h1 className="mt-3 break-words text-[26px] font-extrabold leading-tight tracking-tight text-ink lg:mt-5 lg:text-[38px] lg:leading-[1.2]">
+          {title}
+        </h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-ink-muted lg:mt-4 lg:text-[19px] lg:leading-relaxed">
+          {gt(article.description, lang)}
+        </p>
 
         {article.sections.map((section) => (
-          <section key={section.heading.en} className="mt-7">
-            <h2 className="text-[18px] font-extrabold tracking-tight text-ink">{gt(section.heading, lang)}</h2>
-            <div className="mt-2 space-y-3 text-[15px] leading-relaxed text-ink">
+          <section key={section.heading.en} className="mt-7 lg:mt-12">
+            <h2 className="text-[18px] font-extrabold tracking-tight text-ink lg:text-[24px]">{gt(section.heading, lang)}</h2>
+            <div className="mt-2 space-y-3 text-[15px] leading-relaxed text-ink lg:mt-4 lg:space-y-5 lg:text-lg lg:leading-8">
               {section.paragraphs.map((paragraph) => (
                 <p key={paragraph.en}>{gt(paragraph, lang)}</p>
               ))}
@@ -183,8 +191,8 @@ export default async function GuideArticlePage({ params }: PageProps<"/[lang]/gu
       </article>
 
       {stations.length ? (
-        <section aria-labelledby="guide-stations" className="mt-8">
-          <h2 id="guide-stations" className="text-[17px] font-extrabold text-ink">
+        <section aria-labelledby="guide-stations" className="mt-8 lg:mt-14">
+          <h2 id="guide-stations" className="text-[17px] font-extrabold text-ink lg:text-[22px]">
             {tc("guideStations", lang)}
           </h2>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -195,7 +203,7 @@ export default async function GuideArticlePage({ params }: PageProps<"/[lang]/gu
         </section>
       ) : null}
 
-      <section aria-labelledby="guide-sources" className="mt-8 rounded-2xl bg-surface-muted px-4 py-3">
+      <section aria-labelledby="guide-sources" className="mt-8 rounded-2xl bg-surface-muted px-4 py-3 lg:mt-12 lg:px-6 lg:py-5">
         <h2 id="guide-sources" className="text-[14px] font-extrabold text-ink">
           {tc("guideSources", lang)}
         </h2>
@@ -211,16 +219,16 @@ export default async function GuideArticlePage({ params }: PageProps<"/[lang]/gu
         <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{tc("guideChecked", lang, { date: checked })}</p>
       </section>
 
-      <section aria-labelledby="more-guides" className="mt-8">
-        <h2 id="more-guides" className="text-[17px] font-extrabold text-ink">
+      <section aria-labelledby="more-guides" className="mt-8 lg:mt-14">
+        <h2 id="more-guides" className="text-[17px] font-extrabold text-ink lg:text-[22px]">
           {tc("guidesMore", lang)}
         </h2>
-        <ul className="mt-3 flex flex-col gap-2">
+        <ul className="mt-3 flex flex-col gap-2 lg:mt-4 lg:grid lg:grid-cols-2 lg:gap-3">
           {others.map((other) => (
             <li key={other.slug}>
               <Link
                 href={`/${lang}/guides/${other.slug}`}
-                className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 text-[14px] font-bold text-ink"
+                className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 text-[14px] font-bold text-ink hover:-translate-y-0.5 hover:border-honey/40 hover:shadow-[0_8px_20px_rgba(15,23,42,0.07)] lg:h-full lg:px-4 lg:py-3.5 lg:text-[15px] lg:transition-all lg:duration-200"
               >
                 <IconTile name={other.icon} size="sm" />
                 <span className="min-w-0 break-words">{gt(other.title, lang)}</span>
@@ -230,7 +238,7 @@ export default async function GuideArticlePage({ params }: PageProps<"/[lang]/gu
           <li>
             <Link
               href={`/${lang}/map`}
-              className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 text-[14px] font-bold text-ink"
+              className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 text-[14px] font-bold text-ink hover:-translate-y-0.5 hover:border-honey/40 hover:shadow-[0_8px_20px_rgba(15,23,42,0.07)] lg:h-full lg:px-4 lg:py-3.5 lg:text-[15px] lg:transition-all lg:duration-200"
             >
               <IconTile name="map" size="sm" />
               <span>{tc("navMap", lang)}</span>
@@ -239,7 +247,7 @@ export default async function GuideArticlePage({ params }: PageProps<"/[lang]/gu
         </ul>
       </section>
 
-      <div className="mt-8">
+      <div className="mt-8 lg:mt-14">
         <AppPromo locale={lang} />
       </div>
     </>
