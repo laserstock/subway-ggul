@@ -54,10 +54,10 @@ export const DELETION_SECTIONS: LegalSection[] = [
     title: { ko: "대상 앱", en: "App", zh: "适用应用", ja: "対象アプリ" },
     body: [
       {
-        ko: "지하철꿀정보 (K-Sub: Seoul Subway Guide) · Android 앱(com.subwayggul.app)과 웹(www.k-sub.com). 이 페이지는 운영자가 직접 관리해요.",
-        en: "지하철꿀정보 (K-Sub: Seoul Subway Guide) · Android app (com.subwayggul.app) and web (www.k-sub.com). This page is maintained by the developer.",
-        zh: "지하철꿀정보（K-Sub 首尔地铁指南）· Android 应用（com.subwayggul.app）及网页版（www.k-sub.com）。本页面由开发者维护。",
-        ja: "지하철꿀정보（K-Sub ソウル地下鉄ガイド）· Android アプリ（com.subwayggul.app）と Web 版（www.k-sub.com）。このページは開発者が管理しています。",
+        ko: "지하철꿀정보 (K-Sub: Seoul Subway Guide) · Android 앱(com.ksub.app)과 웹(www.k-sub.com). 이 페이지는 운영자가 직접 관리해요.",
+        en: "지하철꿀정보 (K-Sub: Seoul Subway Guide) · Android app (com.ksub.app) and web (www.k-sub.com). This page is maintained by the developer.",
+        zh: "지하철꿀정보（K-Sub 首尔地铁指南）· Android 应用（com.ksub.app）及网页版（www.k-sub.com）。本页面由开发者维护。",
+        ja: "지하철꿀정보（K-Sub ソウル地下鉄ガイド）· Android アプリ（com.ksub.app）と Web 版（www.k-sub.com）。このページは開発者が管理しています。",
       },
     ],
   },

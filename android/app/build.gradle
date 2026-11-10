@@ -11,11 +11,11 @@ android {
     namespace = "com.subwayggul"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.subwayggul.app"
+        applicationId "com.ksub.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Bump versionCode for every Play upload; keep versionName in sync with APP_VERSION in SideDrawer.tsx.
-        versionCode 2
+        versionCode 3
         versionName "1.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

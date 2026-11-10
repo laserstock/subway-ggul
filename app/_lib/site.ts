@@ -8,7 +8,7 @@ export const SITE_URL = "https://www.k-sub.com";
 export const ADSENSE_CLIENT_ID = "ca-pub-5995977562355838";
 export const ADSENSE_SCRIPT_URL = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`;
 
-export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.subwayggul.app";
+export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.ksub.app";
 /** Flip to true once the Play Store listing is live; until then download buttons say "coming soon". */
 export const APP_RELEASED = false;
 
