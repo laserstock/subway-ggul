@@ -299,10 +299,10 @@ export const COPY = {
   pickExit: { ko: "출구 선택", en: "Pick an exit", zh: "选择出口", ja: "出口を選ぶ" },
   close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
   ogGuide: {
-    ko: "출구 & 물품보관함 가이드",
-    en: "Exit & Locker Guide",
-    zh: "出口 & 储物柜指南",
-    ja: "出口 & ロッカーガイド",
+    ko: "출구 지도 · 물품보관함 · 화장실",
+    en: "Exit Map · Lockers · Restrooms",
+    zh: "出口地图 · 储物柜 · 洗手间",
+    ja: "出口マップ · ロッカー · トイレ",
   },
   shareTitle: {
     ko: "이 역 정보 친구에게 공유하기",
@@ -841,117 +841,129 @@ function travelerFaq(station: GuideStation, detail: GuideDetail, locale: Locale)
   if (locale === "en")
     return [
       {
-        question: `Where is the T-Locker in ${title}?`,
+        question: `Where are the coin lockers at ${title}?`,
         answer: banks
-          ? `${title} has ${banks === 1 ? "1 T-Locker bank" : `${banks} T-Locker banks`}${slots ? ` (about ${slots} lockers)` : ""}: ${spots.join("; ")}.` +
+          ? `${title} has ${banks === 1 ? "1 coin locker bank" : `${banks} coin locker banks`} (T-Locker${slots ? `, about ${slots} lockers` : ""}): ${spots.join("; ")}.` +
             (moreBanks ? " The Coin lockers section on this page lists the rest." : "") +
             (desk ? ` A staffed T-Luggage desk is also available: ${desk}.` : "")
           : desk
-            ? `${title} has no T-Locker banks, but a staffed T-Luggage desk is available: ${desk}.`
-            : `No T-Locker banks are listed at ${title}. K-Sub's line pages mark every station with lockers, so you can usually store bags a stop or two away.`,
+            ? `${title} has no coin lockers, but a staffed T-Luggage desk is available: ${desk}.`
+            : `No coin lockers (T-Locker) are listed at ${title}. K-Sub's line pages mark every station with lockers, so you can usually store bags a stop or two away.`,
       },
       {
-        question: `Which exit is best for elevators or heavy luggage at ${title}?`,
+        question: `Which exit at ${title} has elevators for luggage?`,
         answer: elevatorExits
           ? `Use ${elevatorExits}: an elevator route runs all the way between the street and the platform, the easiest way with heavy bags or a stroller.`
           : `K-Sub has no verified street-to-platform elevator route for ${title} yet. Look for the elevator symbol on the exit signs inside the station, or ask station staff near the ticket gates.`,
       },
       {
-        question: `Are there restrooms inside or outside the ticket gate at ${title}?`,
+        question: `Are restrooms available inside the ticket gate at ${title}?`,
         answer: toilets
-          ? (toilets === 1
+          ? (inside ? "Yes. " : "No. ") +
+            (toilets === 1
               ? `The station's only restroom is ${gate} the ticket gates.`
               : gate === "both"
-                ? `Both: ${inside} of the ${toilets} restrooms are inside the ticket gates and ${outside} ${outside === 1 ? "is" : "are"} outside.`
+                ? `${inside} of the ${toilets} restrooms ${inside === 1 ? "is" : "are"} inside the ticket gates and ${outside} ${outside === 1 ? "is" : "are"} outside.`
                 : `${toilets === 2 ? "Both" : `All ${toilets}`} restrooms are ${gate} the ticket gates.`) +
             (toiletExits ? ` ${toilets === 1 ? "It's" : "They're"} near ${toiletExits}.` : "") +
-            (inside ? " A restroom inside the gates can be used without leaving the paid area." : "")
+            (inside
+              ? " A restroom inside the gates can be used without leaving the paid area."
+              : ` Use ${toilets === 1 ? "it" : "them"} before you tap in.`)
           : `K-Sub has no restroom data for ${title} yet. Signs near the ticket gates show whether a restroom is inside or outside the fare gates.`,
       },
     ];
   if (locale === "zh")
     return [
       {
-        question: `${title}的T-Locker（储物柜）在哪里？`,
+        question: `${title}的投币储物柜（T-Locker）在哪里？`,
         answer: banks
-          ? `${title}设有${banks}处T-Locker${slots ? `（共约${slots}格）` : ""}：${spots.join("；")}。` +
+          ? `${title}设有${banks}处投币储物柜（T-Locker${slots ? `，共约${slots}格` : ""}）：${spots.join("；")}。` +
             (moreBanks ? "其余位置见本页储物柜列表。" : "") +
             (desk ? `另有人工T-Luggage柜台：${desk}。` : "")
           : desk
-            ? `${title}没有T-Locker，但设有人工T-Luggage柜台：${desk}。`
-            : `${title}没有登记的T-Locker。K-Sub的线路页面标出了所有设有储物柜的车站，通常在前后一两站就能寄存行李。`,
+            ? `${title}没有投币储物柜，但设有人工T-Luggage柜台：${desk}。`
+            : `${title}没有登记的投币储物柜（T-Locker）。K-Sub的线路页面标出了所有设有储物柜的车站，通常在前后一两站就能寄存行李。`,
       },
       {
-        question: `在${title}，哪个出口有电梯、最适合携带大件行李？`,
+        question: `${title}哪个出口有电梯，方便携带行李？`,
         answer: elevatorExits
           ? `请走${elevatorExits}：从地面到站台全程都有电梯，携带大件行李或婴儿车最方便。`
           : `K-Sub暂未收录${title}从地面到站台的电梯路线。可留意站内出口指示牌上的电梯标志，或向检票口附近的站务员询问。`,
       },
       {
-        question: `${title}的洗手间在检票口内还是检票口外？`,
+        question: `${title}检票口内有洗手间吗？`,
         answer: toilets
-          ? (toilets === 1
+          ? (inside ? "有。" : "没有。") +
+            (toilets === 1
               ? `站内有1处洗手间，位于检票口${gate === "inside" ? "内" : "外"}。`
               : `共有${toilets}处洗手间，${
                   gate === "both" ? `检票口内${inside}处、检票口外${outside}处` : `均位于检票口${gate === "inside" ? "内" : "外"}`
-                }。`) + (toiletExits ? `就在${toiletExits}附近。` : "")
+                }。`) +
+            (toiletExits ? `就在${toiletExits}附近。` : "") +
+            (inside ? "" : "请在进站刷卡前使用。")
           : `K-Sub暂未收录${title}的洗手间信息。检票口附近的指示牌会标明洗手间位于检票口内还是检票口外。`,
       },
     ];
   if (locale === "ja")
     return [
       {
-        question: `${title}のT-Locker（コインロッカー）はどこにありますか？`,
+        question: `${title}のコインロッカー（T-Locker）はどこにありますか？`,
         answer: banks
-          ? `${title}にはT-Lockerが${banks}か所${slots ? `（計約${slots}個）` : ""}あります：${spots.join("、")}。` +
+          ? `${title}にはコインロッカー（T-Locker）が${banks}か所${slots ? `（計約${slots}個）` : ""}あります：${spots.join("、")}。` +
             (moreBanks ? "ほかの場所はこのページのロッカー一覧をご覧ください。" : "") +
             (desk ? `有人のT-Luggageカウンターもあります：${desk}。` : "")
           : desk
-            ? `${title}にT-Lockerはありませんが、有人のT-Luggageカウンターがあります：${desk}。`
-            : `${title}には登録されたT-Lockerがありません。K-Subの路線ページでロッカーのある駅を確認でき、1〜2駅先で預けられることが多いです。`,
+            ? `${title}にコインロッカーはありませんが、有人のT-Luggageカウンターがあります：${desk}。`
+            : `${title}には登録されたコインロッカー（T-Locker）がありません。K-Subの路線ページでロッカーのある駅を確認でき、1〜2駅先で預けられることが多いです。`,
       },
       {
-        question: `${title}でエレベーターや大きな荷物に便利な出口はどこですか？`,
+        question: `${title}で荷物が多いときにエレベーターを使える出口はどこですか？`,
         answer: elevatorExits
           ? `${elevatorExits}をご利用ください。地上とホームの間をエレベーターだけで移動でき、大きな荷物やベビーカーでも安心です。`
           : `${title}の地上〜ホームのエレベーター経路はまだ確認できていません。駅構内の出口案内板のエレベーター表示を確認するか、改札近くの駅員に尋ねてください。`,
       },
       {
-        question: `${title}のトイレは改札内ですか、改札外ですか？`,
+        question: `${title}の改札内にトイレはありますか？`,
         answer: toilets
-          ? (toilets === 1
+          ? (inside ? "はい。" : "いいえ。") +
+            (toilets === 1
               ? `トイレは改札${gate === "inside" ? "内" : "外"}に1か所あります。`
               : `トイレは${toilets}か所で、${
                   gate === "both" ? `改札内に${inside}か所、改札外に${outside}か所` : `すべて改札${gate === "inside" ? "内" : "外"}`
-                }にあります。`) + (toiletExits ? `${toiletExits}の近くです。` : "")
+                }にあります。`) +
+            (toiletExits ? `${toiletExits}の近くです。` : "") +
+            (inside ? "" : "改札に入る前に済ませておきましょう。")
           : `${title}のトイレ情報はまだありません。改札付近の案内板で、トイレが改札内か改札外かを確認できます。`,
       },
     ];
   return [
     {
-      question: `${title} T-Locker(물품보관함)는 어디에 있나요?`,
+      question: `${title} 물품보관함(코인락커)은 어디에 있나요?`,
       answer: banks
-        ? `${title}에는 T-Locker가 ${banks}곳${slots ? `(약 ${slots}칸)` : ""} 있어요: ${spots.join(", ")}.` +
+        ? `${title}에는 물품보관함(T-Locker)이 ${banks}곳${slots ? `(약 ${slots}칸)` : ""} 있어요: ${spots.join(", ")}.` +
           (moreBanks ? " 나머지 위치는 이 페이지의 물품보관함 목록에서 볼 수 있어요." : "") +
           (desk ? ` 유인 T-Luggage 데스크도 있어요: ${desk}.` : "")
         : desk
-          ? `${title}에는 T-Locker는 없지만 유인 T-Luggage 데스크가 있어요: ${desk}.`
-          : `${title}에는 등록된 T-Locker가 없어요. 노선 페이지에 물품보관함이 있는 역이 표시돼 있으니 한두 정거장 옆 역을 이용해 보세요.`,
+          ? `${title}에는 물품보관함은 없지만 유인 T-Luggage 데스크가 있어요: ${desk}.`
+          : `${title}에는 등록된 물품보관함(T-Locker)이 없어요. 노선 페이지에 물품보관함이 있는 역이 표시돼 있으니 한두 정거장 옆 역을 이용해 보세요.`,
     },
     {
-      question: `${title}에서 엘리베이터나 무거운 짐이 있을 때 가장 좋은 출구는 어디인가요?`,
+      question: `${title}에서 짐이 많을 때 엘리베이터를 탈 수 있는 출구는 어디인가요?`,
       answer: elevatorExits
         ? `추천 출구: ${elevatorExits}. 지상과 승강장 사이를 엘리베이터로만 이동할 수 있어 무거운 짐이나 유모차가 있을 때 가장 편해요.`
         : `${title}의 지상~승강장 엘리베이터 경로 정보는 아직 없어요. 역 안 출구 안내판의 엘리베이터 표시를 확인하거나 개찰구 근처 역무원에게 물어보세요.`,
     },
     {
-      question: `${title} 화장실은 개찰구 안에 있나요, 밖에 있나요?`,
+      question: `${title} 개찰구 안에 화장실이 있나요?`,
       answer: toilets
-        ? (toilets === 1
+        ? (inside ? "네. " : "아니요. ") +
+          (toilets === 1
             ? `화장실은 개찰구 ${gate === "inside" ? "안" : "밖"}에 1곳 있어요.`
             : `화장실은 ${toilets}곳이고, ${
                 gate === "both" ? `개찰구 안에 ${inside}곳, 밖에 ${outside}곳` : `모두 개찰구 ${gate === "inside" ? "안" : "밖"}에`
-              } 있어요.`) + (toiletExits ? ` 위치는 ${toiletExits} 근처예요.` : "")
+              } 있어요.`) +
+          (toiletExits ? ` 위치는 ${toiletExits} 근처예요.` : "") +
+          (inside ? "" : " 개찰구에 들어가기 전에 이용하세요.")
         : `${title}의 화장실 정보는 아직 없어요. 개찰구 근처 안내판에서 화장실이 개찰구 안인지 밖인지 확인할 수 있어요.`,
     },
   ];
@@ -1079,34 +1091,52 @@ function stationName(station: GuideStation, locale: Locale) {
   return suffix && !name.endsWith(suffix) ? `${name}${suffix}` : name;
 }
 
+/** Year shown in station titles and share cards; bump it when the station data is re-checked for a new year. */
+export const GUIDE_YEAR = 2026;
+
+/** "[2026 Guide]" tag that leads station titles in search results and share cards. */
+export function guideYearTag(locale: GuideLocale) {
+  return inScript(
+    locale,
+    {
+      en: `[${GUIDE_YEAR} Guide]`,
+      ja: `【${GUIDE_YEAR}年版】`,
+      zh: `【${GUIDE_YEAR}指南】`,
+      ko: `[${GUIDE_YEAR} 가이드]`,
+    }[contentLocale(locale)],
+  );
+}
+
 /** Search-phrase titles; claims a station can't back (gated restrooms, transfers) are dropped for that station. */
 export function stationMetaTitle(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
   const base = contentLocale(locale);
   const name = stationName(station, base);
+  const tag = guideYearTag(locale);
   const insideRestroom = detail.toilets.some((row) => row.gate === "inside");
   const transfers = detail.transfers.length > 0;
   return inScript(
     locale,
     {
-      en: `${name} Exit Map, Luggage Storage & Restrooms | K-SUB`,
-      ja: `${name} コインロッカー・出口マップ・トイレ位置ガイド | K-SUB`,
-      zh: `${name}出口地图、储物柜及洗手间位置指南 | K-SUB`,
-      ko: `${name} ${insideRestroom ? "개찰구 안 " : ""}화장실 위치, 물품보관함 & ${transfers ? "빠른환승 " : ""}출구 꿀팁 | 지하철꿀정보`,
+      en: `${tag} ${name}: Exit Map, Lockers & Restrooms | K-SUB`,
+      ja: `${tag}${name} 出口マップ・コインロッカー・トイレ | K-SUB`,
+      zh: `${tag}${name}出口地图、储物柜及洗手间 | K-SUB`,
+      ko: `${tag} ${name} ${insideRestroom ? "개찰구 안 " : ""}화장실·물품보관함·${transfers ? "빠른환승·" : ""}출구 지도 | 지하철꿀정보`,
     }[base],
   );
 }
 
-/** Shorter title for link previews (KakaoTalk, WhatsApp, Reddit). */
+/** Link-preview title (KakaoTalk, WhatsApp, Reddit, X); the site name is sent separately as og:site_name. */
 export function stationOgTitle(station: GuideStation, locale: GuideLocale) {
   const base = contentLocale(locale);
   const name = stationName(station, base);
+  const tag = guideYearTag(locale);
   return inScript(
     locale,
     {
-      en: `${name} Exit & Locker Guide - K-SUB`,
-      ja: `${name}ガイド & 出口マップ - K-SUB`,
-      zh: `${name}指南 & 出口地图 - K-SUB`,
-      ko: `${name} 정보 & 출구 지도 - 지하철꿀정보`,
+      en: `${tag} ${name}: Exit Map, Lockers & Restrooms`,
+      ja: `${tag}${name} 出口マップ・コインロッカー・トイレ`,
+      zh: `${tag}${name}出口地图、储物柜及洗手间`,
+      ko: `${tag} ${name} 출구 지도·물품보관함·화장실`,
     }[base],
   );
 }
@@ -1118,7 +1148,7 @@ export function stationMetaDescription(station: GuideStation, detail: GuideDetai
 
 function metaDescriptionText(station: GuideStation, detail: GuideDetail, locale: Locale) {
   if (locale === "en")
-    return `Looking for T-Lockers, elevator exits, or inside-gate restrooms at ${englishName(station)} station? Check real-time exit maps & travel guide.`;
+    return `Find the fastest exit doors, elevator locations, T-Lockers, and nearby hot spots at ${englishName(station)} Station in plain English.`;
   if (locale === "ja") {
     const transfers = detail.transfers.length > 0;
     return `${stationName(station, locale)}のコインロッカー位置、改札内外のトイレ、エレベーター出口情報を分かりやすく案内。${transfers ? "最速乗り換えドアも掲載。" : ""}`;
@@ -1134,7 +1164,7 @@ function englishName(station: GuideStation) {
 /** Link-preview description; English pitches the exit, locker and elevator details. */
 export function stationOgDescription(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
   if (locale !== "en") return stationMetaDescription(station, detail, locale);
-  return `Find exact exit maps, T-Locker spots, and elevator routes at ${englishName(station)} station.`;
+  return `Exact exit maps, T-Locker spots, elevator routes and restrooms at ${englishName(station)} Station, in plain English.`;
 }
 
 /** The phrases English-speaking travelers search for; other languages don't set keywords. */

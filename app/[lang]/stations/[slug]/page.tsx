@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
 import AdSense from "../../../_components/AdSense";
 import ShareButtons from "../../../_components/ShareButtons";
+import StationFaqSchema from "../../../_components/StationFaqSchema";
 import {
   appStationHref,
   GUIDE_STATIONS,
@@ -19,6 +20,8 @@ import {
 import {
   BRAND,
   floorLabel,
+  GUIDE_YEAR,
+  guideYearTag,
   gt,
   lineLabel,
   stationFaq,
@@ -45,8 +48,10 @@ export function generateStaticParams() {
   return GUIDE_STATIONS.map((station) => ({ slug: station.slug }));
 }
 
-function ogImagePath(station: GuideStation, lang: GuideLocale) {
-  return `/api/og/station/${station.slug}${lang === "en" ? "" : `?lang=${lang}`}`;
+/** `v` changes whenever the card design changes, so KakaoTalk, Facebook and X re-fetch instead of reusing their cache. */
+function ogImageUrl(station: GuideStation, lang: GuideLocale) {
+  const query = new URLSearchParams({ ...(lang === "en" ? {} : { lang }), v: String(GUIDE_YEAR) });
+  return `${SITE_URL}/api/og/station/${station.slug}?${query}`;
 }
 
 async function resolve(params: PageProps<"/[lang]/stations/[slug]">["params"]) {
@@ -66,10 +71,11 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/stations/[
   const ogTitle = stationOgTitle(station, lang);
   const ogDescription = stationOgDescription(station, detail, lang);
   const image = {
-    url: ogImagePath(station, lang),
+    url: ogImageUrl(station, lang),
     width: 1200,
     height: 630,
-    alt: `${stationTitle(station, lang)} ${tc("ogGuide", lang)} | K-SUB`,
+    type: "image/png",
+    alt: `${guideYearTag(lang)} ${stationTitle(station, lang)}: ${tc("ogGuide", lang)} | K-SUB`,
   };
   return {
     title,
@@ -295,7 +301,8 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
 
   return (
     <DesktopWide>
-      <StationSeoSchema station={station} detail={detail} lang={lang} faq={faq} />
+      <StationSeoSchema station={station} detail={detail} lang={lang} />
+      <StationFaqSchema url={url} lang={lang} faq={faq} />
 
       <nav aria-label="Breadcrumb" className="text-[13px] font-semibold text-ink-muted lg:text-[14px]">
         <ol className="flex flex-wrap items-center gap-1 lg:gap-1.5">
@@ -571,7 +578,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
                   label: tc("shareKakao", lang),
                   button: tc("shareKakaoButton", lang),
                   description: stationSummary(station, detail, lang).slice(1, 3).join(" "),
-                  imageUrl: `${SITE_URL}${ogImagePath(station, lang)}`,
+                  imageUrl: ogImageUrl(station, lang),
                 }
               : undefined
           }

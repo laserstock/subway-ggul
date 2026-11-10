@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { guideDetail, guideStation, stationLineColor } from "../../../../_lib/guide";
-import { lineLabel, stationTitle, tc } from "../../../../_lib/guideCopy";
+import { GUIDE_YEAR, lineLabel, stationTitle, tc } from "../../../../_lib/guideCopy";
 import { contentLocale, isGuideLocale, type GuideLocale } from "../../../../_lib/guideLocale";
 import { inScript } from "../../../../_lib/hant";
 import type { Locale } from "../../../../_lib/i18n";
@@ -66,7 +66,7 @@ async function googleFont(family: string, weight: number, text: string): Promise
   }
 }
 
-/** 1200×630 share card for a station guide: "<Station> Exit & Locker Guide | K-SUB" in the page's language (?lang=). */
+/** 1200×630 share card for a station guide: "<Station> / Exit Map · Lockers · Restrooms" in the page's language (?lang=). */
 export async function GET(request: Request, ctx: RouteContext<"/api/og/station/[slug]">) {
   const { slug } = await ctx.params;
   const station = guideStation(slug);
@@ -83,7 +83,13 @@ export async function GET(request: Request, ctx: RouteContext<"/api/og/station/[
       detail.lockers.length,
       detail.elevators.length > 0,
     ).map((fact) => inScript(locale, fact));
-    return { title, lines, facts, guide: `${tc("ogGuide", locale)} | K-SUB` };
+    const badge = inScript(
+      locale,
+      { en: `${GUIDE_YEAR} GUIDE`, ko: `${GUIDE_YEAR} 가이드`, zh: `${GUIDE_YEAR} 指南`, ja: `${GUIDE_YEAR}年版` }[
+        contentLocale(locale)
+      ],
+    );
+    return { title, lines, facts, badge, guide: tc("ogGuide", locale) };
   };
 
   let locale: GuideLocale = isGuideLocale(requested) ? requested : "en";
@@ -91,7 +97,14 @@ export async function GET(request: Request, ctx: RouteContext<"/api/og/station/[
   let fonts: { name: string; data: ArrayBuffer; weight: 700 | 900; style: "normal" }[] | undefined;
   if (locale !== "en") {
     const family = FONT_FAMILY[locale];
-    const text = ["K-SUB · Seoul Subway Guide", content.title, content.guide, ...content.facts, ...content.lines.map((l) => l.name)].join("");
+    const text = [
+      "K-SUB · Seoul Subway Guide k-sub.com",
+      content.title,
+      content.badge,
+      content.guide,
+      ...content.facts,
+      ...content.lines.map((l) => l.name),
+    ].join("");
     const [bold, black] = await Promise.all([googleFont(family, 700, text), googleFont(family, 900, text)]);
     if (bold && black) {
       fonts = [
@@ -119,8 +132,22 @@ export async function GET(request: Request, ctx: RouteContext<"/api/og/station/[
           ...(fonts ? { fontFamily: fonts[0].name } : {}),
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", fontSize: 32, fontWeight: 700, color: "#b77900" }}>
-          K-SUB · Seoul Subway Guide
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", fontSize: 32, fontWeight: 700, color: "#b77900" }}>K-SUB · Seoul Subway Guide</div>
+          <div
+            style={{
+              display: "flex",
+              padding: "10px 26px",
+              borderRadius: 999,
+              background: "#2b1d05",
+              color: "#ffd24d",
+              fontSize: 30,
+              fontWeight: 900,
+              letterSpacing: 1,
+            }}
+          >
+            {content.badge}
+          </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 92, fontWeight: 900, lineHeight: 1.05, letterSpacing: -2 }}>{content.title}</div>
@@ -146,15 +173,18 @@ export async function GET(request: Request, ctx: RouteContext<"/api/og/station/[
             ))}
           </div>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 30, fontWeight: 700 }}>
-          {content.facts.map((fact) => (
-            <div
-              key={fact}
-              style={{ display: "flex", padding: "10px 24px", borderRadius: 18, background: "rgba(255,255,255,0.8)" }}
-            >
-              {fact}
-            </div>
-          ))}
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24 }}>
+          <div style={{ display: "flex", flex: 1, minWidth: 0, flexWrap: "wrap", gap: 14, fontSize: 30, fontWeight: 700 }}>
+            {content.facts.map((fact) => (
+              <div
+                key={fact}
+                style={{ display: "flex", padding: "10px 24px", borderRadius: 18, background: "rgba(255,255,255,0.8)" }}
+              >
+                {fact}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexShrink: 0, fontSize: 30, fontWeight: 700, color: "#8a5a00" }}>k-sub.com</div>
         </div>
       </div>
     ),

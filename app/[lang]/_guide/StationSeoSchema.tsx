@@ -1,23 +1,18 @@
 import type { GuideDetail, GuideStation } from "../../_lib/guide";
-import { stationTitle, tc, type FaqItem } from "../../_lib/guideCopy";
+import { stationTitle, tc } from "../../_lib/guideCopy";
 import type { GuideLocale } from "../../_lib/guideLocale";
 import { SITE_URL } from "../../_lib/site";
 import { JsonLd } from "./parts";
 
-/**
- * TrainStation, BreadcrumbList and FAQPage structured data for a station guide. The FAQ must be the same
- * questions and answers the page shows, or Google treats the markup as spam.
- */
+/** TrainStation and BreadcrumbList structured data for a station guide; the FAQPage is `StationFaqSchema`. */
 export default function StationSeoSchema({
   station,
   detail,
   lang,
-  faq,
 }: {
   station: GuideStation;
   detail: GuideDetail;
   lang: GuideLocale;
-  faq: FaqItem[];
 }) {
   const title = stationTitle(station, lang);
   const url = `${SITE_URL}/${lang}/stations/${station.slug}`;
@@ -46,19 +41,6 @@ export default function StationSeoSchema({
             { "@type": "ListItem", position: 3, name: title, item: url },
           ],
         },
-        ...(faq.length
-          ? [
-              {
-                "@context": "https://schema.org",
-                "@type": "FAQPage",
-                mainEntity: faq.map((item) => ({
-                  "@type": "Question",
-                  name: item.question,
-                  acceptedAnswer: { "@type": "Answer", text: item.answer },
-                })),
-              },
-            ]
-          : []),
       ]}
     />
   );
