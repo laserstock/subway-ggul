@@ -59,7 +59,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: ADSENSE_LOADER }} />
       </head>
-      <GoogleTagManager gtmId="GTM-TCWMHTMV" />
+      <GoogleTagManager gtmId="GTM-5RW9WQZH" />
       <body className={`${notoSansKr.className} min-h-full flex flex-col`}>
         <PreloadResources />
         {children}
