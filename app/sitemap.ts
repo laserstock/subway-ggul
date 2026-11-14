@@ -43,7 +43,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: GUIDE_UPDATED,
       changeFrequency: "weekly",
       priority: 1,
-      alternates: { languages: absolute(guideLanguages("")) },
     },
     ...guideEntries("", 0.9),
     ...guideEntries("/map", 0.9),

@@ -26,11 +26,14 @@ export function localePath(code: GuideLocale, path: string) {
   return code === "ko" && !path ? "/" : `/${code}${path}`;
 }
 
-/** hreflang links between the same guide page in every language; English is the fallback. */
+/**
+ * hreflang links between the same guide page in every language; English is the fallback. Korean points at
+ * /ko, not the `/` app home: every page in the set must list itself, or Google drops the whole set.
+ */
 export function guideLanguages(path: string) {
   return {
     ...Object.fromEntries(
-      GUIDE_LOCALES.flatMap((code) => GUIDE_HREFLANGS[code].map((hreflang) => [hreflang, localePath(code, path)])),
+      GUIDE_LOCALES.flatMap((code) => GUIDE_HREFLANGS[code].map((hreflang) => [hreflang, `/${code}${path}`])),
     ),
     "x-default": `/en${path}`,
   };
