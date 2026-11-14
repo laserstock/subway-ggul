@@ -31,17 +31,18 @@ import {
   stationOgDescription,
   stationOgTitle,
   stationSummary,
-  stationTips,
   stationTitle,
   tc,
   walkMinutesLabel,
 } from "../../../_lib/guideCopy";
 import { GUIDE_LANGUAGES, isGuideLocale, contentLocale, type GuideLocale } from "../../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
+import { stationOverview } from "../../../_lib/stationOverview";
 import { Icon, IconTile, type IconName } from "../../_guide/icons";
 import { DesktopWide } from "../../_guide/desktop";
 import { AppPromo, LineChip, LineLink, StationLink } from "../../_guide/parts";
 import ShowKorean from "../../_guide/ShowKorean";
+import { OverviewLead, TravelerTips } from "../../_guide/StationOverview";
 import StationSeoSchema from "../../_guide/StationSeoSchema";
 
 export function generateStaticParams() {
@@ -297,7 +298,14 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
   const title = stationTitle(station, lang);
   const url = `${SITE_URL}/${lang}/stations/${station.slug}`;
   const faq = stationFaq(station, detail, lang);
-  const tips = stationTips(station, detail, lang);
+  const overview = stationOverview(station, detail, lang);
+  const checked = overview.checked
+    ? tc("localChecked", lang, {
+        date: new Intl.DateTimeFormat(GUIDE_LANGUAGES[lang].htmlLang, { dateStyle: "long" }).format(
+          new Date(`${overview.checked}T00:00:00+09:00`),
+        ),
+      })
+    : null;
 
   return (
     <DesktopWide>
@@ -365,11 +373,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
             <LineLink key={line} line={line} locale={lang} large />
           ))}
         </div>
-        <div className="mt-4 space-y-1.5 text-[16px] leading-relaxed text-ink lg:mt-6 lg:max-w-3xl lg:space-y-3 lg:text-lg lg:leading-relaxed">
-          {stationSummary(station, detail, lang).map((sentence) => (
-            <p key={sentence}>{sentence}</p>
-          ))}
-        </div>
+        <OverviewLead paragraphs={overview.overview} />
         <div className="mt-4 flex flex-wrap gap-2 lg:mt-6 lg:gap-3">
           <a
             href={appStationHref(station, contentLocale(lang))}
@@ -396,16 +400,11 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
 
       <AdSense slot={AD_SLOTS.top} layout="in-article" label={tc("advertisement", lang)} className="mt-6" />
 
-      <Section id="tips" title={tc("tipsTitle", lang, { station: title })}>
-        <ul className="space-y-3 rounded-2xl bg-honey-soft px-4 py-4 text-[16px] leading-relaxed text-ink lg:max-w-3xl lg:space-y-4 lg:px-6 lg:py-5 lg:text-lg">
-          {tips.map((tip) => (
-            <li key={tip} className="flex items-start gap-2.5">
-              <Icon name="sparkle" size={18} className="mt-1 text-honey-strong" />
-              <span className="min-w-0">{tip}</span>
-            </li>
-          ))}
-        </ul>
-      </Section>
+      {overview.tips.length || overview.notes.length ? (
+        <Section id="tips" title={tc("tipsTitle", lang, { station: title })}>
+          <TravelerTips overview={overview} notesTitle={tc("localNotes", lang)} checked={checked} />
+        </Section>
+      ) : null}
 
       <Section id="exits" title={tc("exits", lang)} hint={detail.exits.length ? tc("exitsHint", lang) : undefined}>
         {detail.exits.length ? (

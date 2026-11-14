@@ -284,6 +284,18 @@ export const COPY = {
     zh: "{station}旅客实用贴士",
     ja: "{station}の旅行者向けヒント",
   },
+  localNotes: {
+    ko: "현지 동선 팁",
+    en: "Local know-how",
+    zh: "本地出行贴士",
+    ja: "現地の歩き方メモ",
+  },
+  localChecked: {
+    ko: "{date} 기준으로 확인한 내용이에요. 운영 시간과 요금은 바뀔 수 있어요.",
+    en: "Checked {date}. Opening days and fares can change.",
+    zh: "信息核实于{date}，开放时间和票价可能调整。",
+    ja: "{date}時点で確認した内容です。開館日や料金は変わることがあります。",
+  },
   showKoreanMeaning: {
     ko: "뜻: “{station}으로 가 주세요”",
     en: "Meaning: “Please take me to {station}.”",
@@ -547,7 +559,7 @@ export function stationTitle(station: GuideStation, locale: GuideLocale) {
   return /station$/i.test(name) ? name : `${name} Station`;
 }
 
-function floorText(floor: string, locale: Locale) {
+export function floorText(floor: string, locale: Locale) {
   const below = /^B(\d+)$/.exec(floor);
   if (below) {
     const n = below[1];
@@ -566,7 +578,7 @@ export function floorLabel(floor: string, locale: GuideLocale) {
   return inScript(locale, floorText(floor, contentLocale(locale)));
 }
 
-function listJoin(items: string[], locale: Locale) {
+export function listJoin(items: string[], locale: Locale) {
   if (locale === "en") {
     if (items.length <= 1) return items.join("");
     return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
@@ -574,12 +586,12 @@ function listJoin(items: string[], locale: Locale) {
   return items.join(locale === "ko" ? ", " : "、");
 }
 
-function minutes(seconds: number) {
+export function minutes(seconds: number) {
   return Math.max(1, Math.round(seconds / 60));
 }
 
 /** "Line 2 and the Shinbundang Line" */
-function linesPhrase(lines: readonly string[], locale: Locale) {
+export function linesPhrase(lines: readonly string[], locale: Locale) {
   return listJoin(
     lines.map((line) => {
       const name = localLine(line, locale);
@@ -778,13 +790,13 @@ function faqText(station: GuideStation, detail: GuideDetail, locale: Locale): Fa
   return out;
 }
 
-function quickestTransfer(detail: GuideDetail) {
+export function quickestTransfer(detail: GuideDetail) {
   const walks = detail.transfers.filter((row) => row.seconds !== null);
   return walks.length ? walks.reduce((best, row) => (row.seconds! < best.seconds! ? row : best)) : null;
 }
 
 /** English exit names that aren't "Exit 6" (e.g. "Street lift exit") read as a noun phrase mid-sentence. */
-function exitName(name: string, locale: Locale) {
+export function exitName(name: string, locale: Locale) {
   return locale === "en" && !/^Exit\b/.test(name) ? `the ${name.charAt(0).toLowerCase()}${name.slice(1)}` : name;
 }
 
@@ -794,7 +806,7 @@ function lockerExit(note: string) {
 }
 
 /** "Line 4, B1, outside the ticket gates near Exit 7" in the guide language; Korean keeps the source note. */
-function lockerSpot(row: StationLocker, locale: Locale) {
+export function lockerSpot(row: StationLocker, locale: Locale) {
   const line = localLine(row.line, locale);
   const floor = row.floor ? floorText(row.floor, locale) : null;
   const exit = lockerExit(row.detail);
@@ -967,107 +979,6 @@ function travelerFaq(station: GuideStation, detail: GuideDetail, locale: Locale)
         : `${title}의 화장실 정보는 아직 없어요. 개찰구 근처 안내판에서 화장실이 개찰구 안인지 밖인지 확인할 수 있어요.`,
     },
   ];
-}
-
-/** 3–4 data-driven tips that put the station's tables into plain sentences, with general riding tips as filler. */
-export function stationTips(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
-  const base = contentLocale(locale);
-  return tipsText(station, detail, base, locale !== "ko").map((sentence) => inScript(locale, sentence));
-}
-
-function tipsText(station: GuideStation, detail: GuideDetail, locale: Locale, showKoreanTip: boolean): string[] {
-  const title = stationTitle(station, locale);
-  const elevator = detail.elevators[0];
-  const elevatorExit = elevator ? exitName(t(elevator.exit, locale), locale) : "";
-  const elevatorLine = elevator && station.lines.length > 1 ? localLine(elevator.line, locale) : "";
-  const bank = [...detail.lockers].sort((a, b) => (b.slots ?? 0) - (a.slots ?? 0))[0];
-  const spot = bank ? lockerSpot(bank, locale) : "";
-  const desk = detail.luggageDesk ? t(detail.luggageDesk, locale) : "";
-  const insideToilet = detail.toilets.find((row) => row.gate === "inside");
-  const outsideToilet = insideToilet ? undefined : detail.toilets[0];
-  const toiletFloor = insideToilet ? floorText(insideToilet.floor, locale) : "";
-  const toiletExit = (insideToilet ?? outsideToilet)?.exit ?? "";
-  const quickest = quickestTransfer(detail);
-  const [car, door = ""] = quickest?.alight.split("-") ?? [];
-  const quickFrom = quickest ? linesPhrase([quickest.fromLine], locale) : "";
-  const quickTo = quickest ? linesPhrase([quickest.toLine], locale) : "";
-  const toward = quickest ? (quickest.fromToward ? t(quickest.fromToward.name, locale) : quickest.fromTowardKo) : "";
-  const walk = quickest ? minutes(quickest.seconds!) : 0;
-  const exits = detail.exits.length;
-  const showKorean = tc("showKorean", locale);
-  const tips: (string | false)[] = [];
-
-  if (locale === "en") {
-    tips.push(
-      !!elevator &&
-        `For step-free access, use ${elevatorExit}${elevatorLine ? ` (${elevatorLine})` : ""}: an elevator runs all the way between the street and the platform.`,
-      bank
-        ? `Need to drop your bags? ${bank.slots ? "The largest" : "A"} T-Locker bank is on ${spot}.` +
-            (desk ? ` There is also a staffed T-Luggage desk: ${desk}.` : "")
-        : !!desk && `Need to drop your bags? A staffed T-Luggage desk is here: ${desk}.`,
-      insideToilet
-        ? `A restroom is inside the fare gates (${toiletFloor}${toiletExit ? `, near Exit ${toiletExit}` : ""}), so you can use it without leaving the paid area.`
-        : !!outsideToilet &&
-            `Restrooms here are outside the fare gates${toiletExit ? ` near Exit ${toiletExit}` : ""}, so use them before you tap in.`,
-      !!quickest &&
-        `Changing to ${quickTo}? From ${quickFrom} (toward ${toward}), ride in car ${car}, door ${door} for the shortest walk, about ${walk} min.`,
-      exits > 1 &&
-        `${title} has ${exits} numbered exits, so check the exit number before heading up; the exit cards below open each one in Google Maps.`,
-      "Tap your T-money card at the gate when you enter and again when you leave; the fare is calculated by distance.",
-      showKoreanTip &&
-        `If you get lost, the "${showKorean}" button shows the station name in large Korean text for a local or taxi driver.`,
-    );
-  } else if (locale === "zh") {
-    tips.push(
-      !!elevator && `如需无障碍通行，请走${elevatorExit}${elevatorLine ? `（${elevatorLine}）` : ""}：从地面到站台全程有电梯。`,
-      bank
-        ? `需要寄存行李？${spot}设有T-Locker${bank.slots ? `（约${bank.slots}格）` : ""}。` + (desk ? `另有人工T-Luggage柜台：${desk}。` : "")
-        : !!desk && `需要寄存行李？本站设有人工T-Luggage柜台：${desk}。`,
-      insideToilet
-        ? `检票口内有洗手间（${toiletFloor}${toiletExit ? `，${toiletExit}号出口方向` : ""}），无需出站即可使用。`
-        : !!outsideToilet && `本站洗手间位于检票口外${toiletExit ? `（${toiletExit}号出口方向）` : ""}，建议进站前先去。`,
-      !!quickest && `换乘${quickTo}时，从${quickFrom}（开往${toward}方向）在${car}号车厢${door}号门下车步行最短，约${walk}分钟。`,
-      exits > 1 && `${title}共有${exits}个出口，上地面前请先确认出口编号。点击下方出口卡片可在Google地图中查看位置。`,
-      "进站和出站时都要在闸机上刷T-money卡，车费按距离计算。",
-      showKoreanTip && `迷路时，可点击“${showKorean}”按钮，把站名以大号韩文显示给当地人或出租车司机看。`,
-    );
-  } else if (locale === "ja") {
-    tips.push(
-      !!elevator &&
-        `階段を使わずに移動するなら${elevatorExit}${elevatorLine ? `（${elevatorLine}）` : ""}のエレベーターが便利です。地上からホームまでエレベーターだけで行けます。`,
-      bank
-        ? `荷物を預けるなら、${spot}のT-Locker${bank.slots ? `（約${bank.slots}個）` : ""}が使えます。` +
-            (desk ? `有人のT-Luggageカウンターもあります：${desk}。` : "")
-        : !!desk && `荷物を預けるなら、有人のT-Luggageカウンターが使えます：${desk}。`,
-      insideToilet
-        ? `改札内にトイレ（${toiletFloor}${toiletExit ? `・${toiletExit}番出口側` : ""}）があるので、改札を出ずに利用できます。`
-        : !!outsideToilet &&
-            `トイレは改札外${toiletExit ? `（${toiletExit}番出口側）` : ""}にあるので、改札に入る前に済ませておきましょう。`,
-      !!quickest &&
-        `${quickTo}に乗り換えるなら、${quickFrom}（${toward}方面）の${car}号車${door}番ドアが最短で、徒歩約${walk}分です。`,
-      exits > 1 && `${title}は出口が${exits}か所あるので、地上に出る前に出口番号を確認しましょう。下の出口カードからGoogleマップで位置を確認できます。`,
-      "改札では入るときと出るときの両方でT-moneyカードをタッチします。運賃は距離に応じて計算されます。",
-      showKoreanTip && `道に迷ったら「${showKorean}」ボタンで駅名を大きな韓国語で表示し、地元の人やタクシー運転手に見せましょう。`,
-    );
-  } else {
-    tips.push(
-      !!elevator &&
-        `계단 없이 이동하려면 ${elevatorExit}${elevatorLine ? `(${elevatorLine})` : ""} 엘리베이터를 이용하세요. 지상에서 승강장까지 엘리베이터로만 갈 수 있어요.`,
-      bank
-        ? `짐을 맡기려면 ${spot} T-Locker${bank.slots ? `(약 ${bank.slots}칸)` : ""}를 이용하세요.` +
-            (desk ? ` 유인 T-Luggage 데스크도 있어요: ${desk}.` : "")
-        : !!desk && `짐을 맡기려면 유인 T-Luggage 데스크를 이용하세요: ${desk}.`,
-      insideToilet
-        ? `개찰구 안에 화장실(${toiletFloor}${toiletExit ? `, ${toiletExit}번 출구 쪽` : ""})이 있어 개찰구를 나가지 않고 이용할 수 있어요.`
-        : !!outsideToilet &&
-            `화장실은 개찰구 밖${toiletExit ? ` ${toiletExit}번 출구 쪽` : ""}에 있으니 개찰구에 들어가기 전에 들르세요.`,
-      !!quickest &&
-        `${quickTo}${toParticle(quickTo)} 갈아탄다면 ${quickFrom}(${toward} 방면) ${car}-${door} 칸에서 내리면 도보 약 ${walk}분으로 가장 빨라요.`,
-      exits > 1 && `${title} 출구는 ${exits}개라 올라가기 전에 출구 번호를 꼭 확인하세요. 아래 출구 카드에서 Google 지도로 위치를 볼 수 있어요.`,
-      "개찰구를 들어갈 때와 나올 때 모두 교통카드를 찍어야 하고, 요금은 거리에 따라 계산돼요.",
-    );
-  }
-  return tips.filter((tip): tip is string => !!tip).slice(0, 4);
 }
 
 /** "Line 2 · Shinbundang": short line names, optionally capped with "+n". */

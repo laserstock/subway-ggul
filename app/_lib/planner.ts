@@ -264,6 +264,11 @@ function planSpot(spot: PlannerSpot, station: GuideStation, detail: GuideDetail,
   };
 }
 
+/** The hand-picked spots around a station, each with the exit to use and the walk from it. */
+export function stationSpotsFor(station: GuideStation, detail: GuideDetail, locale: GuideLocale): PlanSpot[] {
+  return stationSpots(station).map((spot) => planSpot(spot, station, detail, locale));
+}
+
 /** How well a spot fits: each wanted category counts, the visitor's own picks double and each picked tag counts twice. */
 function spotScore(spot: PlannerSpot, wanted: PlannerCategory[], preferred: PlannerCategory[], tags: QuickTag[]) {
   const byCategory = spot.categories.reduce(

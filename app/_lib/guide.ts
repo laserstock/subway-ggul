@@ -104,7 +104,7 @@ export function guideStation(slug: string) {
   return BY_SLUG.get(slug) ?? null;
 }
 
-function distanceMeters(aLat: number, aLng: number, bLat: number, bLng: number) {
+export function distanceMeters(aLat: number, aLng: number, bLat: number, bLng: number) {
   const rad = Math.PI / 180;
   const x = (bLng - aLng) * rad * Math.cos(((aLat + bLat) / 2) * rad);
   const y = (bLat - aLat) * rad;
