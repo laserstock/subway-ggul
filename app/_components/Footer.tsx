@@ -7,9 +7,13 @@ const TERMS: Localized = { ko: "이용약관", en: "Terms of Service", zh: "服�
 const STATIONS: Localized = { ko: "전체 역 목록", en: "Station Directory", zh: "车站目录", ja: "駅一覧" };
 const MAP: Localized = { ko: "지하철 노선도", en: "Subway Map", zh: "地铁线路图", ja: "地下鉄路線図" };
 const GUIDES: Localized = { ko: "이용 가이드", en: "Travel Guides", zh: "乘车指南", ja: "乗り方ガイド" };
+const ABOUT: Localized = { ko: "K-SUB 소개", en: "About Us", zh: "关于我们", ja: "K-SUBについて" };
+const EDITORIAL: Localized = { ko: "데이터·편집 정책", en: "Data & Editorial Policy", zh: "数据与编辑方针", ja: "データ・編集方針" };
 
 /** Traditional Chinese labels, written out because this footer also renders in client screens. */
 const HANT = {
+  about: "關於我們",
+  editorial: "資料與編輯方針",
   privacy: "隱私權政策",
   terms: "服務條款",
   contact: "聯絡我們",
@@ -22,6 +26,8 @@ const HANT = {
 export default function Footer({ locale, className = "" }: { locale: GuideLocale; className?: string }) {
   const app = contentLocale(locale);
   const links: [string, Localized, string][] = [
+    [`/${locale}/about`, ABOUT, HANT.about],
+    [`/${locale}/editorial-policy`, EDITORIAL, HANT.editorial],
     [`/privacy?lang=${app}`, PRIVACY_TITLE, HANT.privacy],
     [`/terms?lang=${app}`, TERMS, HANT.terms],
     [`/contact?lang=${app}`, CONTACT_TITLE, HANT.contact],

@@ -5,6 +5,7 @@ import { GUIDE_LOCALES } from "./_lib/guideLocale";
 import { LEGAL_UPDATED } from "./_lib/legal";
 import { plannerPairs } from "./_lib/planner";
 import { GUIDE_UPDATED, guideLanguages, SITE_URL } from "./_lib/site";
+import { TRUST_UPDATED } from "./_lib/trustPages";
 
 function absolute(languages: Record<string, string>) {
   return Object.fromEntries(Object.entries(languages).map(([lang, path]) => [lang, `${SITE_URL}${path}`]));
@@ -53,6 +54,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...GUIDE_STATIONS.flatMap((station) => guideEntries(`/stations/${station.slug}`, 0.7)),
     ...guideEntries("/planner", 0.8),
     ...plannerPairs("en").flatMap((pair) => plannerRouteEntries(`/planner/route?from=${pair.from}&to=${pair.to}`)),
+    ...["/about", "/editorial-policy"].flatMap((path) =>
+      guideEntries(path, 0.5).map((entry) => ({ ...entry, lastModified: TRUST_UPDATED, changeFrequency: "yearly" as const })),
+    ),
     ...["/privacy", "/terms", "/contact"].map((path) => ({
       url: `${SITE_URL}${path}`,
       lastModified: LEGAL_UPDATED,
