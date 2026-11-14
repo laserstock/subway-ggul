@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AppHeader from "../_components/AppHeader";
+import { APP_SCREEN_ROBOTS } from "../_lib/site";
 import { stationFromParams } from "../_lib/stations";
 import { isTransferTab, TRANSFER_TITLE, TransferIcon } from "./header";
 import TransferScreen from "./TransferScreen";
 
 export const metadata: Metadata = {
   title: "빠른환승 & 편한길 · 지하철꿀정보",
+  robots: APP_SCREEN_ROBOTS,
 };
 
 type SearchParams = PageProps<"/transfer">["searchParams"];

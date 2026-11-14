@@ -12,6 +12,13 @@ export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com
 /** Flip to true once the Play Store listing is live; until then download buttons say "coming soon". */
 export const APP_RELEASED = false;
 
+/**
+ * App screens (/station, /route, …) take their station from the query string, so every guide link spawns another
+ * URL with the same title. Keep them out of the index but let crawlers follow their links; don't block them in
+ * robots.txt, or Google can't read this tag.
+ */
+export const APP_SCREEN_ROBOTS: Metadata["robots"] = { index: false, follow: true };
+
 /** Bump when the guide pages' data or copy change, for the sitemap's lastmod. */
 export const GUIDE_UPDATED = "2026-11-04";
 

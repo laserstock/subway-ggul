@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AppHeader from "../_components/AppHeader";
+import { APP_SCREEN_ROBOTS } from "../_lib/site";
 import { stationFromParams } from "../_lib/stations";
 import { URGENT_TITLE, UrgentIcon } from "./header";
 import UrgentScreen from "./UrgentScreen";
 
 export const metadata: Metadata = {
   title: "긴급 화장실 · 약국 · 병원 · 지하철꿀정보",
+  robots: APP_SCREEN_ROBOTS,
 };
 
 type SearchParams = PageProps<"/urgent">["searchParams"];

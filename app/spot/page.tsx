@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AppHeader from "../_components/AppHeader";
+import { APP_SCREEN_ROBOTS } from "../_lib/site";
 import { SPOT_TITLE, SpotIcon } from "./header";
 import SpotScreen, { SpotSkeleton } from "./SpotScreen";
 
 export const metadata: Metadata = {
   title: "꿀스팟 · 호선별 광장 · 지하철꿀정보",
+  robots: APP_SCREEN_ROBOTS,
 };
 
 type SearchParams = PageProps<"/spot">["searchParams"];

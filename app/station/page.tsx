@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AppHeader from "../_components/AppHeader";
+import { APP_SCREEN_ROBOTS } from "../_lib/site";
 import { stationFromParams } from "../_lib/stations";
 import { DASHBOARD_TITLE } from "./header";
 import StationDashboard from "./StationDashboard";
 
 export const metadata: Metadata = {
   title: "역 꿀정보 · 지하철꿀정보",
+  robots: APP_SCREEN_ROBOTS,
 };
 
 type SearchParams = PageProps<"/station">["searchParams"];

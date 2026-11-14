@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AppHeader from "../_components/AppHeader";
+import { APP_SCREEN_ROBOTS } from "../_lib/site";
 import { isRouteMode, ROUTE_TITLE, RouteHeaderIcon } from "./header";
 import { routeStation } from "./params";
 import RouteScreen from "./RouteScreen";
 
 export const metadata: Metadata = {
   title: "최적경로 찾기 · 지하철꿀정보",
+  robots: APP_SCREEN_ROBOTS,
 };
 
 type SearchParams = PageProps<"/route">["searchParams"];

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AppHeader from "../_components/AppHeader";
+import { APP_SCREEN_ROBOTS } from "../_lib/site";
 import { stationFromParams } from "../_lib/stations";
 import ShopsScreen, { type ShopCategoryId } from "./ShopsScreen";
 
 export const metadata: Metadata = {
   title: "출구 매장 & 픽업 · 지하철꿀정보",
+  robots: APP_SCREEN_ROBOTS,
 };
 
 const CATEGORY_IDS: ShopCategoryId[] = ["oliveyoung", "daiso", "cafe", "convenience"];

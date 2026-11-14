@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AppHeader from "../_components/AppHeader";
+import { APP_SCREEN_ROBOTS } from "../_lib/site";
 import { stationFromParams } from "../_lib/stations";
 import { LUGGAGE_TITLE, LuggageIcon } from "./header";
 import LuggageScreen from "./LuggageScreen";
 
 export const metadata: Metadata = {
   title: "짐보관 · 또타라커 · 러기지 · 스토리지 · 지하철꿀정보",
+  robots: APP_SCREEN_ROBOTS,
 };
 
 type SearchParams = PageProps<"/luggage">["searchParams"];
