@@ -12,6 +12,7 @@ import { deleteReport, formatRelativeTime, useMyReports, useNow } from "../_lib/
 import { clearSelectedStation, setDestinationStation } from "../_lib/selectedStation";
 import { HomeIcon, TrainLogo } from "./icons";
 import ThemePicker from "./ThemePicker";
+import { WebGuideMenuLink } from "./WebGuideEntry";
 
 export const APP_VERSION = "1.0.1";
 
@@ -307,11 +308,12 @@ export default function SideDrawer({
                 </li>
               ))}
             </ul>
+            <WebGuideMenuLink onNavigate={onClose} />
             <div className="mx-2 mt-3 rounded-2xl bg-surface-muted p-3">
               <p className="mb-2 text-[12px] font-bold text-ink-muted">{m.drawer.theme}</p>
               <ThemePicker />
             </div>
-            <p className="mt-4 flex items-center justify-center gap-2 text-[12px] font-semibold text-neutral-400">
+            <p className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[12px] font-semibold text-neutral-400">
               <Link href="/privacy" onClick={onClose} className="px-1 py-1.5 underline-offset-2 active:underline">
                 {t(PRIVACY_TITLE, locale)}
               </Link>

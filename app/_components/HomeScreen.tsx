@@ -16,6 +16,7 @@ import ReportSheet from "./ReportSheet";
 import SearchOverlay from "./SearchOverlay";
 import { Toast, useToast } from "./Toast";
 import UtilityTiles from "./UtilityTiles";
+import { WebGuideBanner } from "./WebGuideEntry";
 import { armArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { useHomeResetToken } from "../_lib/homeReset";
 import { useLastStation } from "../_lib/lastStation";
@@ -183,12 +184,13 @@ export default function HomeScreen() {
         <AppHeader />
 
         <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-5">
+          <WebGuideBanner />
           <button
             type="button"
             onClick={() => openSearch("dashboard")}
             aria-haspopup="dialog"
             aria-expanded={searchOpen}
-            className="flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-muted px-3.5 py-3 text-left transition active:scale-[0.99]"
+            className="mt-3 flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-muted px-3.5 py-3 text-left transition active:scale-[0.99]"
           >
             <SearchIcon />
             <span className="min-w-0 flex-1 break-words text-[13px] leading-snug text-neutral-400">{t(COPY.search, locale)}</span>
