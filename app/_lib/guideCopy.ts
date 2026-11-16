@@ -1052,19 +1052,67 @@ export function stationOgTitle(station: GuideStation, locale: GuideLocale) {
   );
 }
 
-/** English and Japanese follow travelers' search phrases; Korean and Chinese lead with the station's own numbers. */
+/** Unique per-station descriptions built from exits, lockers, elevators and transfers — not a shared template. */
 export function stationMetaDescription(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
   return inScript(locale, metaDescriptionText(station, detail, contentLocale(locale)));
 }
 
 function metaDescriptionText(station: GuideStation, detail: GuideDetail, locale: Locale) {
-  if (locale === "en")
-    return `Find the fastest exit doors, elevator locations, T-Lockers, and nearby hot spots at ${englishName(station)} Station in plain English.`;
-  if (locale === "ja") {
-    const transfers = detail.transfers.length > 0;
-    return `${stationName(station, locale)}のコインロッカー位置、改札内外のトイレ、エレベーター出口情報を分かりやすく案内。${transfers ? "最速乗り換えドアも掲載。" : ""}`;
-  }
+  if (locale === "en") return englishFactsDescription(station, detail);
+  if (locale === "ja") return japaneseFactsDescription(station, detail);
   return stationFactsDescription(station, detail, locale);
+}
+
+/** English meta that names this station's own counts so neighbouring pages don't share one description. */
+function englishFactsDescription(station: GuideStation, detail: GuideDetail) {
+  const name = englishName(station);
+  const lines = shortLines(station.lines, "en", " · ");
+  const exits = detail.exits.length;
+  const toilets = detail.toilets.length;
+  const inside = detail.toilets.filter((row) => row.gate === "inside").length;
+  const slots = detail.lockers.reduce((sum, row) => sum + (row.slots ?? 0), 0);
+  const banks = detail.lockers.length;
+  const elevator =
+    detail.elevators.map((row) => t(row.exit, "en")).find((exit) => /\d/.test(exit)) ?? null;
+  const facts: string[] = [];
+  if (exits) facts.push(`map of ${exits} exit${exits === 1 ? "" : "s"}`);
+  if (toilets)
+    facts.push(
+      `${toilets} restroom${toilets === 1 ? "" : "s"}${allInsideLabel(inside, toilets, "en")}`,
+    );
+  if (slots) facts.push(`about ${slots} T-Locker slots`);
+  else if (banks) facts.push(`${banks} T-Locker bank${banks === 1 ? "" : "s"}`);
+  if (elevator) facts.push(`elevator via ${elevator}`);
+  if (detail.transfers.length) facts.push("fastest transfer doors");
+  const body = facts.length ? listJoin(facts, "en") : "exits, restrooms, T-Lockers and transfer tips";
+  return `${name} Station (${lines}): ${body} on one page, in plain English.`;
+}
+
+function japaneseFactsDescription(station: GuideStation, detail: GuideDetail) {
+  const title = stationName(station, "ja");
+  const lines = shortLines(station.lines, "ja", "・");
+  const exits = detail.exits.length;
+  const toilets = detail.toilets.length;
+  const inside = detail.toilets.filter((row) => row.gate === "inside").length;
+  const slots = detail.lockers.reduce((sum, row) => sum + (row.slots ?? 0), 0);
+  const banks = detail.lockers.length;
+  const elevator =
+    detail.elevators.map((row) => t(row.exit, "ja")).find((exit) => /\d/.test(exit)) ?? null;
+  const facts: string[] = [];
+  if (exits) facts.push(`出口マップ${exits}か所`);
+  if (toilets) facts.push(`トイレ${toilets}か所${allInsideLabel(inside, toilets, "ja")}`);
+  if (slots) facts.push(`コインロッカー約${slots}個`);
+  else if (banks) facts.push(`コインロッカー${banks}か所`);
+  if (elevator) facts.push(`${elevator}のエレベーター`);
+  if (detail.transfers.length) facts.push("最速乗り換えドア");
+  return `${title}（${lines}）：${facts.length ? facts.join("、") : "出口・トイレ・ロッカー・乗り換え"}を駅ごとに案内。`;
+}
+
+function allInsideLabel(inside: number, toilets: number, locale: Locale) {
+  if (!toilets) return "";
+  if (inside === toilets) return locale === "en" ? " (inside gates)" : locale === "ja" ? "（改札内）" : "";
+  if (inside) return locale === "en" ? ` (${inside} inside gates)` : locale === "ja" ? `（改札内${inside}）` : "";
+  return "";
 }
 
 /** English name without its "Station" word, for "{name} station" search phrases. */
@@ -1072,10 +1120,9 @@ function englishName(station: GuideStation) {
   return station.name.en.replace(/\s+station$/i, "");
 }
 
-/** Link-preview description; English pitches the exit, locker and elevator details. */
+/** Link-preview description; same unique facts as the meta description so OG shares aren't a shared template. */
 export function stationOgDescription(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
-  if (locale !== "en") return stationMetaDescription(station, detail, locale);
-  return `Exact exit maps, T-Locker spots, elevator routes and restrooms at ${englishName(station)} Station, in plain English.`;
+  return stationMetaDescription(station, detail, locale);
 }
 
 /** The phrases English-speaking travelers search for; other languages don't set keywords. */

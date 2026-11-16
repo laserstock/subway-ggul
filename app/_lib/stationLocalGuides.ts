@@ -13,7 +13,7 @@ export type StationLocalGuide = {
 };
 
 /** When the notes below were last reviewed against official operator and venue information. */
-export const LOCAL_GUIDES_CHECKED = "2026-11-14";
+export const LOCAL_GUIDES_CHECKED = "2026-11-16";
 
 const AREX_TICKETS: LocalNote = {
   kind: "route",
@@ -56,6 +56,15 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
           ja: "空港鉄道ソウル駅構内の都心空港ターミナルでは、一部の航空会社に限り事前チェックインと手荷物預けができます。利用前に航空会社をご確認ください。",
         },
       },
+      {
+        kind: "timing",
+        text: {
+          ko: "KTX·공항철도·시내 지하철이 한곳에 모여 출퇴근·연휴에 매우 붐벼요. 환승·개찰 시간에 여유를 두세요.",
+          en: "KTX, AREX and the city subway meet here, so rush hours and holidays get crowded — leave time for transfers and gates.",
+          zh: "KTX、机场铁路和市内地铁汇集于此，高峰和节假日很拥挤，请预留换乘和过闸时间。",
+          ja: "KTX・空港鉄道・市内地下鉄が集まるため、ラッシュや連休は混雑します。乗り換えと改札に余裕を見てください。",
+        },
+      },
     ],
   },
   명동역: {
@@ -82,6 +91,15 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
           en: "The walk to the Namsan cable car is uphill all the way. Seoul Station is two stops away on Line 4, an easy link to AREX.",
           zh: "去南山缆车站一路都是上坡。乘4号线两站即到首尔站，方便换乘机场铁路。",
           ja: "南山ケーブルカー乗り場までは上り坂が続きます。ソウル駅は4号線で2駅なので、空港鉄道への乗り継ぎも簡単です。",
+        },
+      },
+      {
+        kind: "luggage",
+        text: {
+          ko: "쇼핑 전에 역 안 T-Locker에 큰 짐을 맡기면, 명동 골목을 가볍게 다닐 수 있어요.",
+          en: "Leave big bags in the station T-Lockers before you shop so you can move lightly through Myeongdong's alleys.",
+          zh: "购物前把大件行李寄存在站内T-Locker，逛明洞小巷会轻松很多。",
+          ja: "買い物前に駅のT-Lockerへ大きな荷物を預けると、明洞の路地を身軽に回れます。",
         },
       },
     ],
@@ -112,6 +130,15 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
           ja: "路上ライブは週末の夕方がいちばん盛り上がり、買い物なら人の少ない平日の午後がおすすめです。",
         },
       },
+      {
+        kind: "access",
+        text: {
+          ko: "2호선·공항철도·경의중앙선 환승 통로가 길어서, 캐리어가 있으면 환승에 여유 시간을 두세요.",
+          en: "Transfers among Line 2, AREX and the Gyeongui–Jungang Line are long corridors — allow extra time with a suitcase.",
+          zh: "2号线、机场铁路、京义·中央线换乘通道较长，带行李箱请预留时间。",
+          ja: "2号線・空港鉄道・京義・中央線の乗り換え通路は長いので、スーツケースがある場合は余裕を見てください。",
+        },
+      },
     ],
   },
   강남역: {
@@ -140,6 +167,15 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
           ja: "新盆唐線は通常の地下鉄運賃に少額の別料金が加算されます。",
         },
       },
+      {
+        kind: "timing",
+        text: {
+          ko: "출퇴근 시간대에는 2호선·신분당선 환승 통로와 개찰구가 매우 붐벼요. 여유 있게 움직이세요.",
+          en: "Rush hour packs the Line 2–Shinbundang transfer corridors and fare gates — leave extra time.",
+          zh: "高峰时段2号线与新盆唐线换乘通道和闸机非常拥挤，请预留时间。",
+          ja: "ラッシュ時は2号線・新盆唐線の乗り換え通路と改札が非常に混みます。余裕をもって移動しましょう。",
+        },
+      },
     ],
   },
   성수역: {
@@ -166,6 +202,15 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
           en: "Seoul Forest is about a 15–20 minute walk away; if you start at the park, Seoul Forest Station on the Suin–Bundang Line is closer.",
           zh: "步行到首尔林约15～20分钟；如果从公园出发，水仁·盆唐线的首尔林站更近。",
           ja: "ソウルの森までは徒歩15～20分ほど。公園から回るなら水仁・盆唐線のソウルの森駅のほうが近いです。",
+        },
+      },
+      {
+        kind: "luggage",
+        text: {
+          ko: "카페·팝업을 여러 곳 돌 계획이면 역 보관함에 짐을 맡기고 가벼운 가방만 들고 다니세요.",
+          en: "If you are hopping between cafés and pop-ups, leave luggage in the station lockers and carry only a light bag.",
+          zh: "如果要连逛多家咖啡馆和快闪店，建议把行李寄存在站内储物柜，只带轻便包。",
+          ja: "カフェやポップアップをはしごするなら、駅のロッカーに荷物を預けて軽いバッグだけで回りましょう。",
         },
       },
     ],
@@ -213,6 +258,15 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
           en: "Parts of Bukchon are residential and limit tourist visits to 10:00–17:00; keep your voice down in the alleys.",
           zh: "北村部分区域是居民区，游客参观时间限于10:00～17:00，在小巷里请保持安静。",
           ja: "北村の一部は住宅地のため、観光客の訪問は10時～17時に制限されています。路地では静かに歩きましょう。",
+        },
+      },
+      {
+        kind: "luggage",
+        text: {
+          ko: "한옥 골목은 캐리어를 끌기 불편하니, 역 보관함에 큰 짐을 맡기고 가벼운 가방만 챙기세요.",
+          en: "Hanok alleys are awkward with a rolling suitcase — leave big bags in station lockers and carry a light bag.",
+          zh: "韩屋巷不方便拖行李箱，建议把大件寄存在车站储物柜，只带轻便包。",
+          ja: "韓屋の路地はスーツケースを引きづらいので、大きな荷物は駅のロッカーへ預けて軽いバッグだけで回りましょう。",
         },
       },
       {
@@ -309,6 +363,15 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
           ja: "週末や学校の休み期間はモールやテーマパーク周辺がとても混むので、早めの到着がおすすめです。",
         },
       },
+      {
+        kind: "luggage",
+        text: {
+          ko: "테마파크·몰을 오래 돌아볼 계획이면 역이나 몰 안 보관함에 짐을 맡기고 들어가세요.",
+          en: "For a long mall or theme-park visit, leave bags in station or mall lockers before you go in.",
+          zh: "如果要在主题乐园或购物中心待很久，进场前先把行李寄存在车站或商场储物柜。",
+          ja: "テーマパークやモールを長く回るなら、入場前に駅やモール内のロッカーへ荷物を預けましょう。",
+        },
+      },
     ],
   },
   이태원역: {
@@ -335,6 +398,15 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
           en: "Hangangjin Station, one stop away on Line 6, is closer to Hannam-dong's boutiques and the Leeum Museum of Art.",
           zh: "乘6号线一站的汉江镇站离汉南洞的精品店和Leeum美术馆更近。",
           ja: "6号線で1駅の漢江鎮駅のほうが、漢南洞のブティックやリウム美術館に近いです。",
+        },
+      },
+      {
+        kind: "timing",
+        text: {
+          ko: "주말 저녁 이태원로는 사람이 많고 골목 바도 붐벼요. 일찍 식사 자리를 잡는 편이 편합니다.",
+          en: "Weekend evenings pack Itaewon-ro and the side-street bars — book or arrive early for dinner.",
+          zh: "周末晚上梨泰院路和巷子里的酒吧都很挤，晚餐建议早点订位或到场。",
+          ja: "週末の夜は梨泰院路も路地のバーも混みます。夕食は早めに席を確保するのが安心です。",
         },
       },
     ],
@@ -463,6 +535,43 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
       },
     ],
   },
+  동대문역: {
+    intro: {
+      ko: "동대문역은 흥인지문(동대문)과 낙산공원 성곽길, 창신동 봉제 골목으로 가는 1·4호선 환승역이에요.",
+      en: "Dongdaemun Station is the Line 1–4 transfer for Heunginjimun (Dongdaemun Gate), the Naksan fortress trail and the Changsin sewing alleys.",
+      zh: "东大门站是1号线与4号线的换乘站，前往兴仁之门（东大门）、骆山公园城郭路和昌信洞缝纫巷。",
+      ja: "東大門駅は興仁之門（東大門）や駱山公園の城郭道、昌信洞の縫製路地への1・4号線乗り換え駅です。",
+    },
+    notes: [
+      {
+        kind: "route",
+        text: {
+          ko: "성곽길을 걸으려면 낙산공원 방면 출구를 보고 나가세요. DDP·동대문 패션몰은 4호선으로 한 정거장인 동대문역사문화공원역이 더 가깝습니다.",
+          en: "Leave toward Naksan Park for the fortress walk. For DDP and the fashion malls, Dongdaemun History & Culture Park Station — one stop on Line 4 — is closer.",
+          zh: "要走城郭路请往骆山公园方向出站。去DDP和时装商场，乘4号线一站的东大门历史文化公园站更近。",
+          ja: "城郭道を歩くなら駱山公園方面の出口へ。DDPやファッションビルへは、4号線で1駅の東大門歴史文化公園駅のほうが近いです。",
+        },
+      },
+      {
+        kind: "timing",
+        text: {
+          ko: "흥인지문 일대는 낮에 걷기 좋고, 야간에는 성곽 조명이 켜져 사진 찍기에도 좋아요.",
+          en: "The Heunginjimun area is pleasant to walk by day, and the fortress lights make it a good photo stop after dark.",
+          zh: "兴仁之门一带白天适合散步，夜里城郭亮灯也很适合拍照。",
+          ja: "興仁之門周辺は昼間の散策に向いていて、夜は城郭のライトアップで写真にもおすすめです。",
+        },
+      },
+      {
+        kind: "luggage",
+        text: {
+          ko: "출구 주변에 T-Locker가 여러 곳 있어, 성곽길·시장을 돌기 전에 짐을 맡기기 편해요.",
+          en: "Several T-Locker banks sit near the exits, so you can stash bags before walking the wall or markets.",
+          zh: "出口附近有多处T-Locker，走城郭或逛市场前方便寄存行李。",
+          ja: "出口周辺にT-Lockerが複数あるので、城郭道や市場を回る前に荷物を預けやすいです。",
+        },
+      },
+    ],
+  },
   동대문역사문화공원역: {
     intro: {
       ko: "동대문역사문화공원역은 동대문디자인플라자(DDP)와 늦게까지 문을 여는 동대문 패션몰 상권으로 가는 역이에요.",
@@ -487,6 +596,52 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
           en: "For Heunginjimun Gate and the Naksan city-wall trail, Dongdaemun Station, one stop away on Line 4, is closer.",
           zh: "去兴仁之门和骆山城郭路，乘4号线一站的东大门站更近。",
           ja: "興仁之門や駱山の城郭道へは、4号線で1駅の東大門駅のほうが近いです。",
+        },
+      },
+      {
+        kind: "access",
+        text: {
+          ko: "2·4·5호선이 만나는 큰 환승역이라 노선에 따라 게이트와 출구 번호가 달라요. 목적지 건물 이름을 보고 출구를 고르세요.",
+          en: "Lines 2, 4 and 5 meet here, so gates and exit numbers differ by line — pick the exit named for the building you want.",
+          zh: "2、4、5号线在此交汇，闸机和出口编号因线路而异，请按目标建筑名称选择出口。",
+          ja: "2・4・5号線が交わる大きな乗り換え駅で、路線ごとに改札と出口番号が違います。行きたい建物名で出口を選んでください。",
+        },
+      },
+    ],
+  },
+  을지로3가역: {
+    intro: {
+      ko: "을지로3가역은 인쇄·조명 골목과 을지로 노가리 골목, 충무로·명동으로 이어지는 2·3호선 환승역이에요.",
+      en: "Euljiro 3-ga Station is the Line 2–3 transfer for the print and lighting alleys, Euljiro’s nogari bars, and walks toward Chungmuro and Myeongdong.",
+      zh: "乙支路三街站是2号线与3号线的换乘站，通往印刷·照明巷、乙支路小鱼干酒吧街，以及忠武路、明洞方向。",
+      ja: "乙支路3街駅は印刷・照明の路地や乙支路のノガリ横丁、忠武路・明洞方面につながる2・3号線乗り換え駅です。",
+    },
+    notes: [
+      {
+        kind: "route",
+        text: {
+          ko: "을지로 인쇄·조명 골목은 지상으로 나와 골목을 따라가면 되고, 명동·충무로는 3호선으로 한두 정거장이면 닿아요.",
+          en: "The print and lighting alleys are a short walk once you exit; Myeongdong and Chungmuro are one or two stops on Line 3.",
+          zh: "印刷·照明巷出站后沿街步行即可；去明洞、忠武路乘3号线一两站就到。",
+          ja: "印刷・照明の路地は地上に出てすぐ歩けます。明洞や忠武路は3号線で1〜2駅です。",
+        },
+      },
+      {
+        kind: "timing",
+        text: {
+          ko: "노가리 골목은 저녁에 활발하고, 인쇄·공구 상가는 평일 낮에 문이 열려 있어요.",
+          en: "The nogari alley wakes up in the evening; print and hardware shops are open on weekday afternoons.",
+          zh: "小鱼干巷晚上最热闹，印刷和五金店则在工作日白天营业。",
+          ja: "ノガリ横丁は夜がにぎやかで、印刷・金物店は平日の昼間に開いています。",
+        },
+      },
+      {
+        kind: "luggage",
+        text: {
+          ko: "게이트 근처 T-Locker에 짐을 맡기고 골목을 걷는 편이, 캐리어를 끌고 다니는 것보다 편해요.",
+          en: "Stash bags in the T-Lockers near the gates before walking the alleys — easier than rolling a suitcase through them.",
+          zh: "建议先把行李寄存在闸机附近的T-Locker再逛巷子，比拖着行李箱方便。",
+          ja: "改札付近のT-Lockerに荷物を預けてから路地を歩くほうが、スーツケースを引きずるよりラクです。",
         },
       },
     ],

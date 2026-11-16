@@ -580,7 +580,8 @@ export function stationOverview(station: GuideStation, detail: GuideDetail, loca
   const guide = localGuide(station);
   const write = (p: string) => (locale === "zh-tw" ? inScript(locale, p).replace(/(\d)米/g, "$1公尺") : p);
   return {
-    overview: [paragraph(text.overview, base)].filter(Boolean).map(write),
+    // One <p> per sentence so crawlers see distinct blocks instead of a single merged template blob.
+    overview: text.overview.filter((sentence): sentence is string => !!sentence).map(write),
     tips: [paragraph(text.care, base), paragraph(text.moving, base)].filter(Boolean).map(write),
     notes: (guide?.notes ?? []).map((note) => ({ kind: note.kind, text: inScript(locale, t(note.text, base)) })),
     checked: guide ? LOCAL_GUIDES_CHECKED : null,

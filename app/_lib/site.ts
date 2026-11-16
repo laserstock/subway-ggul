@@ -20,7 +20,7 @@ export const APP_RELEASED = false;
 export const APP_SCREEN_ROBOTS: Metadata["robots"] = { index: false, follow: true };
 
 /** Bump when the guide pages' data or copy change, for the sitemap's lastmod. */
-export const GUIDE_UPDATED = "2026-11-04";
+export const GUIDE_UPDATED = "2026-11-16";
 
 /** Server-rendered, crawlable station guides live under /ko, /en, /zh, /zh-tw and /ja; returns the app locale. */
 export function guideLocale(pathname: string | null): Locale | null {
@@ -33,11 +33,8 @@ export function localePath(code: GuideLocale, path: string) {
   return code === "ko" && !path ? "/" : `/${code}${path}`;
 }
 
-/**
- * hreflang links between the same guide page in every language; English is the fallback. Korean points at
- * /ko, not the `/` app home: every page in the set must list itself, or Google drops the whole set.
- */
-export function guideLanguages(path: string) {
+/** Relative hreflang paths (sitemap absolutizes these; metadata uses guideLanguages). */
+export function guideLanguagePaths(path: string) {
   return {
     ...Object.fromEntries(
       GUIDE_LOCALES.flatMap((code) => GUIDE_HREFLANGS[code].map((hreflang) => [hreflang, `/${code}${path}`])),
@@ -46,8 +43,18 @@ export function guideLanguages(path: string) {
   };
 }
 
+/**
+ * Absolute hreflang links between the same guide page in every language; English is the fallback.
+ * Korean points at /ko, not the `/` app home: every page in the set must list itself, or Google drops the set.
+ */
+export function guideLanguages(path: string) {
+  return Object.fromEntries(
+    Object.entries(guideLanguagePaths(path)).map(([hreflang, href]) => [hreflang, `${SITE_URL}${href}`]),
+  );
+}
+
 export function guideAlternates(path: string, locale: GuideLocale): Metadata["alternates"] {
-  return { canonical: `/${locale}${path}`, languages: guideLanguages(path) };
+  return { canonical: `${SITE_URL}/${locale}${path}`, languages: guideLanguages(path) };
 }
 
 export const OG_LOCALES: Record<GuideLocale, string> = {
