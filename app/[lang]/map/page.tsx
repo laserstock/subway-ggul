@@ -30,7 +30,7 @@ export default async function SubwayMapPage({ params }: PageProps<"/[lang]/map">
   cacheLife("max");
   const { lang } = await params;
   if (!isGuideLocale(lang)) notFound();
-  const { width, height, focus, image, levels, maxZoom, lines, stations } = mapData(lang);
+  const { width, height, focus, levels, maxZoom, lines, stations } = mapData(lang);
   const heading = tc("mapHeading", lang);
   const copy = mapCopy(lang);
 
@@ -64,7 +64,6 @@ export default async function SubwayMapPage({ params }: PageProps<"/[lang]/map">
           lines={lines}
           stations={stations}
           copy={copy}
-          image={image}
         />
       </div>
 

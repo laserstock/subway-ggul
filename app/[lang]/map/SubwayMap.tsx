@@ -93,13 +93,6 @@ const STYLE = `
 .ksub-map .ring{fill:rgba(245,167,0,.2);stroke:#f5a700;stroke-width:2.5px}
 .ksub-map .pin{pointer-events:none;animation:ksub-pin .45s cubic-bezier(.2,.9,.3,1.3) both}
 .ksub-map .pulse{animation:ksub-pulse 1.8s ease-out infinite}
-.ksub-map.official .bg{pointer-events:none}
-.ksub-map.official .hit{fill:rgba(15,23,42,.01)}
-.ksub-map.official .dot,.ksub-map.official .hub{opacity:0;transition:opacity .15s ease}
-.ksub-map.official .st:hover .dot,.ksub-map.official .st:focus-visible .dot,.ksub-map.official .st.on .dot,
-.ksub-map.official .st:hover .hub,.ksub-map.official .st:focus-visible .hub,.ksub-map.official .st.on .hub{opacity:1}
-.ksub-map.official .nm{display:none}
-.ksub-map.official .filter-dim{opacity:.28}
 @keyframes ksub-pin{from{opacity:0;transform:translateY(-10px) scale(.6)}to{opacity:1;transform:none}}
 @keyframes ksub-pulse{from{opacity:.55;transform:scale(.6)}to{opacity:0;transform:scale(2.2)}}
 @media (prefers-reduced-motion:reduce){.ksub-map .pin,.ksub-map .pulse{animation:none}}
@@ -132,26 +125,10 @@ type LayerProps = {
   selected: number | null;
   activeLine: number | null;
   onPick: (index: number) => void;
-  /** Official Seoul Metro diagram drawn under the clickable stations. */
-  image?: string;
-  width: number;
-  height: number;
 };
 
 /** Lines and stations; re-rendered only when the label level, the selection or the line filter changes. */
-const MapLayer = memo(function MapLayer({
-  lang,
-  lines,
-  stations,
-  level,
-  selected,
-  activeLine,
-  onPick,
-  image,
-  width,
-  height,
-}: LayerProps) {
-  const official = Boolean(image);
+const MapLayer = memo(function MapLayer({ lang, lines, stations, level, selected, activeLine, onPick }: LayerProps) {
   const labels = useMemo(
     () =>
       stations.map((station) => {
@@ -170,27 +147,14 @@ const MapLayer = memo(function MapLayer({
 
   return (
     <>
-      {image ? (
-        <image
-          className={`bg${activeLine !== null ? " filter-dim" : ""}`}
-          href={image}
-          x={0}
-          y={0}
-          width={width}
-          height={height}
-          preserveAspectRatio="xMidYMid meet"
-        />
-      ) : null}
-      {!official ? (
-        <g>
-          {lineOrder.map((index) => (
-            <g key={lines[index].ko} opacity={activeLine === null || activeLine === index ? 1 : 0.12}>
-              <path className="cs" d={lines[index].d} />
-              <path className="ln" d={lines[index].d} stroke={lines[index].color} />
-            </g>
-          ))}
-        </g>
-      ) : null}
+      <g>
+        {lineOrder.map((index) => (
+          <g key={lines[index].ko} opacity={activeLine === null || activeLine === index ? 1 : 0.12}>
+            <path className="cs" d={lines[index].d} />
+            <path className="ln" d={lines[index].d} stroke={lines[index].color} />
+          </g>
+        ))}
+      </g>
       <g>
         {drawOrder.map((index) => {
           const station = stations[index];
@@ -203,24 +167,24 @@ const MapLayer = memo(function MapLayer({
               key={station.slug}
               href={`/${lang}/stations/${station.slug}`}
               className={`st${dim ? " dim" : ""}${on ? " on" : ""}`}
-              aria-label={station.alt ? `${station.name} (${station.alt})` : station.name}
+              aria-label={station.name}
               onClick={(event) => {
                 if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                 event.preventDefault();
                 onPick(index);
               }}
             >
-              <title>{station.alt ? `${station.name} (${station.alt})` : station.name}</title>
+              <title>{station.name}</title>
               <g transform={`translate(${station.x} ${station.y})`}>
                 <g className="sc">
-                  <circle className="hit" r={official ? 16 : 13} />
+                  <circle className="hit" r={13} />
                   {on ? <circle className="ring" r={r + 5} /> : null}
                   <circle
                     className={station.hub ? "hub" : "dot"}
                     r={r}
                     stroke={station.hub ? undefined : lines[station.lines[0]]?.color}
                   />
-                  {!official && !dim && (on || station.level <= level + (activeLine === null ? 0 : 2)) ? (
+                  {!dim && (on || station.level <= level + (activeLine === null ? 0 : 2)) ? (
                     <text className={station.hub ? "nm hb" : "nm"} fontSize={label.layout.size} textAnchor={label.layout.anchor} aria-hidden>
                       {label.text.map((part, line) => (
                         <tspan key={line} x={label.layout.x} y={label.layout.baselines[line]}>
@@ -494,7 +458,6 @@ export default function SubwayMap({
   copy,
   actions,
   marks,
-  image,
 }: {
   lang: string;
   appLang: string;
@@ -509,8 +472,6 @@ export default function SubwayMap({
   /** Picker mode: the map fills its container, has no full-screen toggle, and the panel offers these buttons. */
   actions?: MapPickAction[];
   marks?: MapMark[];
-  /** Official Seoul Metro diagram URL; when set, schematic lines/labels are hidden under the image. */
-  image?: string;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const sizeRef = useRef<Size>(SERVER_SIZE);
@@ -859,7 +820,7 @@ export default function SubwayMap({
           preserveAspectRatio="xMidYMid meet"
           role="group"
           aria-label={copy.label}
-          className={`ksub-map absolute inset-0 h-full w-full cursor-grab touch-none select-none active:cursor-grabbing${image ? " official" : ""}`}
+          className="ksub-map absolute inset-0 h-full w-full cursor-grab touch-none select-none active:cursor-grabbing"
           style={{ "--z": initial.z } as CSSProperties}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -871,18 +832,7 @@ export default function SubwayMap({
             event.stopPropagation();
           }}
         >
-          <MapLayer
-            lang={lang}
-            lines={lines}
-            stations={stations}
-            level={level}
-            selected={selected}
-            activeLine={activeLine}
-            onPick={pick}
-            image={image}
-            width={width}
-            height={height}
-          />
+          <MapLayer lang={lang} lines={lines} stations={stations} level={level} selected={selected} activeLine={activeLine} onPick={pick} />
           {marks?.map((mark) => {
             const station = stations.find((item) => item.slug === mark.slug);
             if (!station) return null;

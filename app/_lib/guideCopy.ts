@@ -494,10 +494,10 @@ export const COPY = {
     ja: "公式路線図のように線をまっすぐにし、駅を等間隔に描いているため、距離や方角はおおよそです。",
   },
   mapNote: {
-    ko: "노선도 디자인은 서울 지하철 공식 노선도를 참고했어요. 검색·탭으로 역 가이드를 열고, 확대하면 역 이름이 더 잘 보여요.",
-    en: "Map artwork follows the official Seoul Metro diagram. Search or tap a station to open its guide; zoom in to read every label.",
-    zh: "线路图参照首尔地铁官方线路图。可搜索或点选车站打开指南，放大后站名更清晰。",
-    ja: "路線図はソウル地下鉄の公式路線図を参考にしています。検索やタップで駅ガイドを開き、拡大すると駅名が読みやすくなります。",
+    ko: "2호선을 원형으로 둔 공식 노선도 스타일의 도식도예요. 검색·탭으로 역 가이드를 열고, 확대하면 역 이름이 더 잘 보여요.",
+    en: "Schematic map in the official style, with Line 2 drawn as a circle. Search or tap a station to open its guide; zoom in to read every label.",
+    zh: "参照官方风格的示意图，2号线画成圆环。可搜索或点选车站打开指南，放大后站名更清晰。",
+    ja: "2号線を円で描いた公式風の模式図です。検索やタップで駅ガイドを開き、拡大すると駅名が読みやすくなります。",
   },
   guidesTitle: {
     ko: "서울 지하철 이용 가이드: 공항·교통카드·요금·짐",

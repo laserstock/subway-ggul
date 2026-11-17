@@ -1,16 +1,16 @@
 import { guideDetail } from "../../_lib/guide";
 import { gt, lineLabel, tc } from "../../_lib/guideCopy";
 import type { GuideLocale } from "../../_lib/guideLocale";
-import { OFFICIAL_MAP, OFFICIAL_MAP_LEVELS, OFFICIAL_MAP_MAX_ZOOM } from "../../_lib/officialMap";
-import { SUBWAY_MAP } from "../../_lib/subwayMap";
+import { MAP_LEVELS, MAP_MAX_ZOOM, placeLabels, SUBWAY_MAP } from "../../_lib/subwayMap";
 import type { MapCopy, MapLineData, MapStationData } from "./SubwayMap";
 
-export { OFFICIAL_MAP_LEVELS as MAP_LEVELS, OFFICIAL_MAP_MAX_ZOOM as MAP_MAX_ZOOM };
+export { MAP_LEVELS, MAP_MAX_ZOOM };
 
-/** Lines and stations for `SubwayMap`, pinned to the official Seoul Metro diagram. */
+/** Lines and stations for `SubwayMap`, with locale-only names and collision-aware label levels. */
 export function mapData(lang: GuideLocale) {
-  const { nodes, lines } = SUBWAY_MAP;
+  const { width, height, focus, nodes, lines } = SUBWAY_MAP;
   const names = nodes.map((node) => gt(node.station.name, lang));
+  const labels = placeLabels(names);
   const lineIndex = new Map(lines.map((line, index) => [line.line, index]));
   const mapLines: MapLineData[] = lines.map((line) => ({
     ko: line.line,
@@ -21,19 +21,18 @@ export function mapData(lang: GuideLocale) {
   const stations: MapStationData[] = nodes.map((node, index) => {
     const detail = guideDetail(node.station);
     const inside = detail.toilets.filter((row) => row.gate === "inside").length;
-    const pin = OFFICIAL_MAP.stations[node.station.slug];
     return {
       slug: node.station.slug,
       name: names[index],
       ko: node.station.ko,
+      // SVG labels use `name` only (locale). `alt` is English for the panel/search, not drawn on the map.
       alt: lang === "en" ? null : gt(node.station.name, "en"),
-      x: pin?.x ?? node.x,
-      y: pin?.y ?? node.y,
+      x: node.x,
+      y: node.y,
       lines: node.lines.map((line) => lineIndex.get(line)).filter((line): line is number => line !== undefined),
       hub: node.hub,
-      // Official diagram already labels stations; keep hits easy to find when zoomed out.
-      level: pin && !pin.fallback ? 0 : 2,
-      position: 0,
+      level: Math.min(labels[index].level, MAP_LEVELS.length - 1),
+      position: labels[index].position,
       lat: node.station.lat,
       lng: node.station.lng,
       exits: detail.exits.length,
@@ -45,12 +44,11 @@ export function mapData(lang: GuideLocale) {
     };
   });
   return {
-    width: OFFICIAL_MAP.width,
-    height: OFFICIAL_MAP.height,
-    focus: OFFICIAL_MAP.focus,
-    image: OFFICIAL_MAP.image,
-    levels: OFFICIAL_MAP_LEVELS,
-    maxZoom: OFFICIAL_MAP_MAX_ZOOM,
+    width,
+    height,
+    focus,
+    levels: MAP_LEVELS,
+    maxZoom: MAP_MAX_ZOOM,
     lines: mapLines,
     stations,
   };
