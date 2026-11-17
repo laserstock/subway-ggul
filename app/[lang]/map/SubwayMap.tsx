@@ -79,6 +79,8 @@ const WIDE = 640;
 
 const STYLE = `
 .ksub-map .sc{transform:scale(calc(1 / var(--z)))}
+.ksub-map .terrain{pointer-events:none}
+.ksub-map .water{fill:#ddf0fa}
 .ksub-map .ln{fill:none;stroke-width:calc(4.2px / var(--z));stroke-linecap:round;stroke-linejoin:round}
 .ksub-map .cs{fill:none;stroke:#fff;stroke-width:calc(7.4px / var(--z));stroke-linecap:round;stroke-linejoin:round}
 .ksub-map .dot{fill:#fff;stroke-width:2.2px}
@@ -117,6 +119,8 @@ function levelOf(levels: readonly number[], z: number) {
 const fill = (text: string, values: Record<string, string | number>) =>
   text.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""));
 
+export type MapTerrainData = { river: string; sea: string };
+
 type LayerProps = {
   lang: string;
   lines: MapLineData[];
@@ -125,10 +129,11 @@ type LayerProps = {
   selected: number | null;
   activeLine: number | null;
   onPick: (index: number) => void;
+  terrain?: MapTerrainData;
 };
 
 /** Lines and stations; re-rendered only when the label level, the selection or the line filter changes. */
-const MapLayer = memo(function MapLayer({ lang, lines, stations, level, selected, activeLine, onPick }: LayerProps) {
+const MapLayer = memo(function MapLayer({ lang, lines, stations, level, selected, activeLine, onPick, terrain }: LayerProps) {
   const labels = useMemo(
     () =>
       stations.map((station) => {
@@ -147,6 +152,12 @@ const MapLayer = memo(function MapLayer({ lang, lines, stations, level, selected
 
   return (
     <>
+      {terrain ? (
+        <g className="terrain" aria-hidden>
+          <path className="water" d={terrain.sea} />
+          <path className="water" d={terrain.river} />
+        </g>
+      ) : null}
       <g>
         {lineOrder.map((index) => (
           <g key={lines[index].ko} opacity={activeLine === null || activeLine === index ? 1 : 0.12}>
@@ -458,6 +469,7 @@ export default function SubwayMap({
   copy,
   actions,
   marks,
+  terrain,
 }: {
   lang: string;
   appLang: string;
@@ -472,6 +484,8 @@ export default function SubwayMap({
   /** Picker mode: the map fills its container, has no full-screen toggle, and the panel offers these buttons. */
   actions?: MapPickAction[];
   marks?: MapMark[];
+  /** Schematic Han River / West Sea under the lines. */
+  terrain?: MapTerrainData;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const sizeRef = useRef<Size>(SERVER_SIZE);
@@ -832,7 +846,16 @@ export default function SubwayMap({
             event.stopPropagation();
           }}
         >
-          <MapLayer lang={lang} lines={lines} stations={stations} level={level} selected={selected} activeLine={activeLine} onPick={pick} />
+          <MapLayer
+            lang={lang}
+            lines={lines}
+            stations={stations}
+            level={level}
+            selected={selected}
+            activeLine={activeLine}
+            onPick={pick}
+            terrain={terrain}
+          />
           {marks?.map((mark) => {
             const station = stations.find((item) => item.slug === mark.slug);
             if (!station) return null;

@@ -8,7 +8,7 @@ export { MAP_LEVELS, MAP_MAX_ZOOM };
 
 /** Lines and stations for `SubwayMap`, with locale-only names and collision-aware label levels. */
 export function mapData(lang: GuideLocale) {
-  const { width, height, focus, nodes, lines } = SUBWAY_MAP;
+  const { width, height, focus, nodes, lines, terrain } = SUBWAY_MAP;
   const names = nodes.map((node) => gt(node.station.name, lang));
   const labels = placeLabels(names);
   const lineIndex = new Map(lines.map((line, index) => [line.line, index]));
@@ -49,6 +49,7 @@ export function mapData(lang: GuideLocale) {
     focus,
     levels: MAP_LEVELS,
     maxZoom: MAP_MAX_ZOOM,
+    terrain,
     lines: mapLines,
     stations,
   };

@@ -7,7 +7,7 @@ import { contentLocale, type GuideLocale } from "../../_lib/guideLocale";
 import type { PlannerStationOption } from "../../_lib/planner";
 import { DEFAULT_CATEGORIES, DEFAULT_END, DEFAULT_START, fillCopy } from "../../_lib/plannerParams";
 import type { PlannerCopy } from "../../_lib/plannerText";
-import SubwayMap, { type MapCopy, type MapLineData, type MapMark, type MapStationData } from "../map/SubwayMap";
+import SubwayMap, { type MapCopy, type MapLineData, type MapMark, type MapStationData, type MapTerrainData } from "../map/SubwayMap";
 import { PlannerForm } from "./PlannerFormModal";
 import { PIN_COLORS } from "./plannerIcons";
 
@@ -20,6 +20,7 @@ export type StudioMap = {
   lines: MapLineData[];
   stations: MapStationData[];
   copy: MapCopy;
+  terrain?: MapTerrainData;
 };
 
 /** Step 1 of the planner home: the subway map beside a navy setup panel; tapping a station fills the form. */
@@ -59,6 +60,7 @@ export default function PlannerStudio({
             lines={map.lines}
             stations={map.stations}
             copy={map.copy}
+            terrain={map.terrain}
             marks={marks}
             actions={[
               { label: copy.departure, icon: "train", onPick: (slug) => known(slug) && setPair((current) => ({ ...current, from: slug })) },

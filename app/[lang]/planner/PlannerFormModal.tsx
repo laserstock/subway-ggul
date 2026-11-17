@@ -9,7 +9,7 @@ import { clockLabel, EARLIEST, LATEST, MIN_WINDOW, plannerHref, type PlannerQuer
 import type { PlannerCopy } from "../../_lib/plannerText";
 import { PLANNER_CATEGORIES, QUICK_TAGS, type PlannerCategory, type QuickTag } from "../../_lib/plannerTypes";
 import { normalizeQuery } from "../_guide/searchKeys";
-import SubwayMap, { type MapCopy, type MapLineData, type MapStationData } from "../map/SubwayMap";
+import SubwayMap, { type MapCopy, type MapLineData, type MapStationData, type MapTerrainData } from "../map/SubwayMap";
 import { CATEGORY_ICONS, LineBadge, PIN_COLORS } from "./plannerIcons";
 
 const TIMES = Array.from({ length: (LATEST - EARLIEST) / 30 + 1 }, (_, index) => EARLIEST + index * 30);
@@ -23,6 +23,7 @@ type MapPayload = {
   lines: MapLineData[];
   stations: MapStationData[];
   copy: MapCopy;
+  terrain?: MapTerrainData;
 };
 
 const mapRequests = new Map<GuideLocale, Promise<MapPayload>>();
@@ -286,6 +287,7 @@ function MapPicker({
             lines={data.lines}
             stations={data.stations}
             copy={data.copy}
+            terrain={data.terrain}
             actions={[
               { label: copy.departure, icon: "train", onPick: (slug) => onPick("from", slug) },
               { label: copy.arrival, icon: "pin", onPick: (slug) => onPick("to", slug) },
