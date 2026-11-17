@@ -20,6 +20,7 @@ export type StudioMap = {
   lines: MapLineData[];
   stations: MapStationData[];
   copy: MapCopy;
+  image?: string;
 };
 
 /** Step 1 of the planner home: the subway map beside a navy setup panel; tapping a station fills the form. */
@@ -59,6 +60,7 @@ export default function PlannerStudio({
             lines={map.lines}
             stations={map.stations}
             copy={map.copy}
+            image={map.image}
             marks={marks}
             actions={[
               { label: copy.departure, icon: "train", onPick: (slug) => known(slug) && setPair((current) => ({ ...current, from: slug })) },

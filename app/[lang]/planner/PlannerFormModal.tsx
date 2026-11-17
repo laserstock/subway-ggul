@@ -23,6 +23,7 @@ type MapPayload = {
   lines: MapLineData[];
   stations: MapStationData[];
   copy: MapCopy;
+  image?: string;
 };
 
 const mapRequests = new Map<GuideLocale, Promise<MapPayload>>();
@@ -286,6 +287,7 @@ function MapPicker({
             lines={data.lines}
             stations={data.stations}
             copy={data.copy}
+            image={data.image}
             actions={[
               { label: copy.departure, icon: "train", onPick: (slug) => onPick("from", slug) },
               { label: copy.arrival, icon: "pin", onPick: (slug) => onPick("to", slug) },

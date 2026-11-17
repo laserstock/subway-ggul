@@ -494,10 +494,10 @@ export const COPY = {
     ja: "公式路線図のように線をまっすぐにし、駅を等間隔に描いているため、距離や方角はおおよそです。",
   },
   mapNote: {
-    ko: "역 순서 © OpenStreetMap 기여자(ODbL). 급행 노선은 표시하지 않았어요.",
-    en: "Station order © OpenStreetMap contributors (ODbL). Express services are not drawn separately.",
-    zh: "车站顺序 © OpenStreetMap 贡献者（ODbL）。快车线路未单独绘制。",
-    ja: "駅の順番 © OpenStreetMap contributors（ODbL）。急行は別に描いていません。",
+    ko: "노선도 디자인은 서울 지하철 공식 노선도를 참고했어요. 검색·탭으로 역 가이드를 열고, 확대하면 역 이름이 더 잘 보여요.",
+    en: "Map artwork follows the official Seoul Metro diagram. Search or tap a station to open its guide; zoom in to read every label.",
+    zh: "线路图参照首尔地铁官方线路图。可搜索或点选车站打开指南，放大后站名更清晰。",
+    ja: "路線図はソウル地下鉄の公式路線図を参考にしています。検索やタップで駅ガイドを開き、拡大すると駅名が読みやすくなります。",
   },
   guidesTitle: {
     ko: "서울 지하철 이용 가이드: 공항·교통카드·요금·짐",

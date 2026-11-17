@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ALL_LINES } from "../../_lib/guide";
 import { BRAND, COPY, gt, tc } from "../../_lib/guideCopy";
 import { contentLocale, isGuideLocale } from "../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../_lib/site";
-import { MAP_LEVELS, MAP_MAX_ZOOM, SUBWAY_MAP } from "../../_lib/subwayMap";
 import { AppPromo, JsonLd, LineLink } from "../_guide/parts";
 import { mapCopy, mapData } from "./mapData";
 import SubwayMap from "./SubwayMap";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/map">): Promise<Metadata> {
+  "use cache";
+  cacheLife("max");
   const { lang } = await params;
   if (!isGuideLocale(lang)) return {};
   const title = `${gt(COPY.mapTitle, lang)} | ${lang === "en" ? "K-SUB" : gt(BRAND, lang)}`;
@@ -24,10 +26,11 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/map">): Pr
 }
 
 export default async function SubwayMapPage({ params }: PageProps<"/[lang]/map">) {
+  "use cache";
+  cacheLife("max");
   const { lang } = await params;
   if (!isGuideLocale(lang)) notFound();
-  const { width, height, focus } = SUBWAY_MAP;
-  const { lines, stations } = mapData(lang);
+  const { width, height, focus, image, levels, maxZoom, lines, stations } = mapData(lang);
   const heading = tc("mapHeading", lang);
   const copy = mapCopy(lang);
 
@@ -56,11 +59,12 @@ export default async function SubwayMapPage({ params }: PageProps<"/[lang]/map">
           width={width}
           height={height}
           focus={focus}
-          levels={MAP_LEVELS}
-          maxZoom={MAP_MAX_ZOOM}
+          levels={levels}
+          maxZoom={maxZoom}
           lines={lines}
           stations={stations}
           copy={copy}
+          image={image}
         />
       </div>
 

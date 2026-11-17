@@ -1,5 +1,6 @@
 import { ArrowRight, Car, Luggage, MapPin, Repeat, Sparkles, type LucideIcon } from "lucide-react";
 import type { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,7 +11,6 @@ import { plannerPairs, plannerStations } from "../../_lib/planner";
 import { plannerImageSrc } from "../../_lib/plannerImages";
 import { plannerCopy, pt, type PlannerTextKey } from "../../_lib/plannerText";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../_lib/site";
-import { MAP_LEVELS, MAP_MAX_ZOOM, SUBWAY_MAP } from "../../_lib/subwayMap";
 import { AppPromo, JsonLd } from "../_guide/parts";
 import { mapCopy, mapData } from "../map/mapData";
 import { StepTracker } from "./PlannerSteps";
@@ -18,6 +18,8 @@ import PlannerStudio from "./PlannerStudio";
 import { SavedTourList } from "./SavedTours";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/planner">): Promise<Metadata> {
+  "use cache";
+  cacheLife("max");
   const { lang } = await params;
   if (!isGuideLocale(lang)) return {};
   const title = `${pt("homeTitle", lang)} | ${lang === "en" ? "K-SUB" : gt(BRAND, lang)}`;
@@ -41,11 +43,13 @@ const FEATURES: [LucideIcon, PlannerTextKey, PlannerTextKey][] = [
 const SLIDE = { "planner-forward": "planner-forward", "planner-back": "planner-back", default: "none" };
 
 export default async function PlannerHome({ params }: PageProps<"/[lang]/planner">) {
+  "use cache";
+  cacheLife("max");
   const { lang } = await params;
   if (!isGuideLocale(lang)) notFound();
   const copy = plannerCopy(lang);
   const pairs = plannerPairs(lang);
-  const { width, height, focus } = SUBWAY_MAP;
+  const map = mapData(lang);
 
   return (
     <ViewTransition enter={SLIDE} exit={SLIDE} default="none">
@@ -94,7 +98,7 @@ export default async function PlannerHome({ params }: PageProps<"/[lang]/planner
           lang={lang}
           copy={copy}
           stations={plannerStations(lang)}
-          map={{ width, height, focus, levels: MAP_LEVELS, maxZoom: MAP_MAX_ZOOM, ...mapData(lang), copy: mapCopy(lang) }}
+          map={{ ...map, copy: mapCopy(lang) }}
         />
 
         <SavedTourList copy={copy} lang={lang} />
