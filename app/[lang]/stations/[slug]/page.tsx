@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
@@ -42,8 +43,11 @@ import { Icon, IconTile, type IconName } from "../../_guide/icons";
 import { DesktopWide } from "../../_guide/desktop";
 import { AppPromo, LineChip, LineLink, StationLink } from "../../_guide/parts";
 import ShowKorean from "../../_guide/ShowKorean";
+import RelatedStations from "../../_guide/RelatedStations";
+import StationFaq from "../../_guide/StationFaq";
 import { OverviewLead, TravelerTips } from "../../_guide/StationOverview";
 import StationSeoSchema from "../../_guide/StationSeoSchema";
+import { relatedStations } from "../../../_lib/stationRelated";
 
 export function generateStaticParams() {
   return GUIDE_STATIONS.map((station) => ({ slug: station.slug }));
@@ -63,6 +67,8 @@ async function resolve(params: PageProps<"/[lang]/stations/[slug]">["params"]) {
 }
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/stations/[slug]">): Promise<Metadata> {
+  "use cache";
+  cacheLife("max");
   const found = await resolve(params);
   if (!found) return {};
   const { lang, station } = found;
@@ -133,6 +139,7 @@ function UtilityChip({ href, icon, label, value, external }: {
   return (
     <a
       href={href}
+      aria-label={`${label}: ${value}`}
       {...(external ? { target: "_blank", rel: "noopener" } : {})}
       className={`${className} transition hover:-translate-y-1 hover:border-honey/40 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] active:scale-[0.98] lg:duration-200`}
     >
@@ -291,6 +298,8 @@ function TransferRow({ row, locale }: { row: GuideTransfer; locale: GuideLocale 
 }
 
 export default async function StationGuide({ params }: PageProps<"/[lang]/stations/[slug]">) {
+  "use cache";
+  cacheLife("max");
   const found = await resolve(params);
   if (!found) notFound();
   const { lang, station } = found;
@@ -299,6 +308,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
   const url = `${SITE_URL}/${lang}/stations/${station.slug}`;
   const faq = stationFaq(station, detail, lang);
   const overview = stationOverview(station, detail, lang);
+  const related = relatedStations(station, detail, lang);
   const checked = overview.checked
     ? tc("localChecked", lang, {
         date: new Intl.DateTimeFormat(GUIDE_LANGUAGES[lang].htmlLang, { dateStyle: "long" }).format(
@@ -537,26 +547,13 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
 
       {faq.length ? (
         <Section id="faq" title={tc("faq", lang)}>
-          <div className="flex flex-col gap-2 lg:max-w-3xl lg:gap-3">
-            {faq.map((item, index) => (
-              <details
-                key={item.question}
-                open={index === 0}
-                className="group rounded-2xl border border-line bg-surface open:border-honey/40 lg:transition-colors lg:duration-200"
-              >
-                <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 py-3 hover:text-honey-strong lg:px-5 lg:py-4 [&::-webkit-details-marker]:hidden">
-                  <h3 className="min-w-0 flex-1 text-[15px] font-bold leading-snug text-ink lg:text-[17px]">{item.question}</h3>
-                  <span
-                    aria-hidden
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-muted text-ink-muted transition-transform duration-200 group-open:rotate-45 group-open:bg-honey-soft group-open:text-honey-strong"
-                  >
-                    <Icon name="plus" size={16} />
-                  </span>
-                </summary>
-                <p className="px-4 pb-4 text-[15px] leading-relaxed text-ink-muted lg:px-5 lg:pb-5 lg:text-[16px]">{item.answer}</p>
-              </details>
-            ))}
-          </div>
+          <StationFaq items={faq} sectionLabel={tc("faq", lang)} />
+        </Section>
+      ) : null}
+
+      {related.length ? (
+        <Section id="related-stations" title={tc("relatedHeading", lang)} hint={tc("relatedLead", lang)}>
+          <RelatedStations items={related} locale={lang} />
         </Section>
       ) : null}
 

@@ -147,9 +147,11 @@ export function StationLink({
   /** 44px touch target, as on LineLink. */
   large?: boolean;
 }) {
+  const name = gt(station.name, locale);
   return (
     <Link
       href={`/${locale}/stations/${station.slug}`}
+      aria-label={tc("relatedOpen", locale, { station: name })}
       className={`inline-flex items-center gap-1.5 rounded-full border border-line bg-surface font-semibold text-ink hover:-translate-y-0.5 hover:border-honey/50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)] active:bg-surface-muted lg:transition-all lg:duration-200 ${
         large ? "min-h-11 px-4 text-[14px]" : "px-3 py-1.5 text-[13px] lg:px-3.5 lg:py-2 lg:text-[14px]"
       }`}
@@ -159,7 +161,7 @@ export function StationLink({
         style={{ backgroundColor: stationLineColor(station.lines[0] ?? "") }}
         aria-hidden
       />
-      {gt(station.name, locale)}
+      {name}
     </Link>
   );
 }

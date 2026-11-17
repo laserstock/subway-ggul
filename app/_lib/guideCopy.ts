@@ -3,6 +3,7 @@ import { localLine } from "./guide";
 import { contentLocale, type GuideLocale } from "./guideLocale";
 import { gt, inScript } from "./hant";
 import { lineName } from "./lineNames";
+import { PLANNER_SPOTS } from "./plannerSpots";
 import type { StationLocker } from "./stationLockers";
 import { t, type Locale, type Localized } from "./i18n";
 
@@ -357,6 +358,25 @@ export const COPY = {
   },
   advertisement: { ko: "광고", en: "Advertisement", zh: "广告", ja: "広告" },
   faq: { ko: "자주 묻는 질문", en: "FAQ", zh: "常见问题", ja: "よくある質問" },
+  relatedHeading: {
+    ko: "이 역에서 많이 이어가는 추천 역",
+    en: "Stations travelers visit next",
+    zh: "旅客常接着去的车站",
+    ja: "この駅のあとに人気の駅",
+  },
+  relatedLead: {
+    ko: "근처 관광·쇼핑 거점 역으로 바로 이동해 출구·보관함 정보를 이어서 보세요.",
+    en: "Jump to nearby sightseeing and shopping hubs and keep reading exit and locker guides.",
+    zh: "跳转到附近观光与购物枢纽站，继续查看出口与储物柜信息。",
+    ja: "近くの観光・ショッピング拠点駅へ移り、出口・ロッカー案内を続けて読めます。",
+  },
+  relatedCta: { ko: "역 가이드 보기", en: "Open station guide", zh: "查看车站指南", ja: "駅ガイドを見る" },
+  relatedOpen: {
+    ko: "{station} 역 가이드 열기",
+    en: "Open {station} station guide",
+    zh: "打开{station}车站指南",
+    ja: "{station}の駅ガイドを開く",
+  },
   browseLines: { ko: "노선별로 보기", en: "Browse by line", zh: "按线路浏览", ja: "路線から探す" },
   lineHeading: {
     ko: "{line} 전체 역 안내",
@@ -850,6 +870,9 @@ function travelerFaq(station: GuideStation, detail: GuideDetail, locale: Locale)
     locale,
   );
 
+  const landmark = landmarkFaq(station, title, locale);
+  const lastTrain = lastTrainFaq(title, locale);
+
   if (locale === "en")
     return [
       {
@@ -883,6 +906,8 @@ function travelerFaq(station: GuideStation, detail: GuideDetail, locale: Locale)
               : ` Use ${toilets === 1 ? "it" : "them"} before you tap in.`)
           : `K-Sub has no restroom data for ${title} yet. Signs near the ticket gates show whether a restroom is inside or outside the fare gates.`,
       },
+      lastTrain,
+      ...(landmark ? [landmark] : []),
     ];
   if (locale === "zh")
     return [
@@ -915,6 +940,8 @@ function travelerFaq(station: GuideStation, detail: GuideDetail, locale: Locale)
             (inside ? "" : "请在进站刷卡前使用。")
           : `K-Sub暂未收录${title}的洗手间信息。检票口附近的指示牌会标明洗手间位于检票口内还是检票口外。`,
       },
+      lastTrain,
+      ...(landmark ? [landmark] : []),
     ];
   if (locale === "ja")
     return [
@@ -947,6 +974,8 @@ function travelerFaq(station: GuideStation, detail: GuideDetail, locale: Locale)
             (inside ? "" : "改札に入る前に済ませておきましょう。")
           : `${title}のトイレ情報はまだありません。改札付近の案内板で、トイレが改札内か改札外かを確認できます。`,
       },
+      lastTrain,
+      ...(landmark ? [landmark] : []),
     ];
   return [
     {
@@ -978,7 +1007,62 @@ function travelerFaq(station: GuideStation, detail: GuideDetail, locale: Locale)
           (inside ? "" : " 개찰구에 들어가기 전에 이용하세요.")
         : `${title}의 화장실 정보는 아직 없어요. 개찰구 근처 안내판에서 화장실이 개찰구 안인지 밖인지 확인할 수 있어요.`,
     },
+    lastTrain,
+    ...(landmark ? [landmark] : []),
   ];
+}
+
+function lastTrainFaq(title: string, locale: Locale): FaqItem {
+  if (locale === "en")
+    return {
+      question: `How do I check the first and last train at ${title}?`,
+      answer: `First and last trains change by line, direction and weekday vs weekend. Check Naver Map, Kakao Map or Google Maps for “${title}” before you leave, and re-check on the platform screens when you arrive — K-Sub does not publish live timetables.`,
+    };
+  if (locale === "zh")
+    return {
+      question: `${title}的首班车和末班车怎么查？`,
+      answer: `首末班车因线路、方向和工作日/周末而不同。出发前在 Naver Map、Kakao Map 或 Google 地图搜索“${title}”确认，到站后再看站台屏幕。K-Sub 不提供实时时刻表。`,
+    };
+  if (locale === "ja")
+    return {
+      question: `${title}の始発・終電はどこで確認できますか？`,
+      answer: `始発・終電は路線・方面・平日/休日で変わります。出発前にNaver Map・Kakao Map・Googleマップで「${title}」を検索し、到着後はホームの電光掲示も確認してください。K-Subはリアルタイム時刻表を掲載していません。`,
+    };
+  return {
+    question: `${title} 첫차·막차는 어디서 확인하나요?`,
+    answer: `첫차·막차는 노선·방면·평일/주말에 따라 달라요. 출발 전에 네이버·카카오·구글 지도에서 “${title}”을 검색하고, 도착 후에는 승강장 전광판을 다시 확인하세요. K-Sub은 실시간 시간표를 제공하지 않아요.`,
+  };
+}
+
+function landmarkFaq(station: GuideStation, title: string, locale: Locale): FaqItem | null {
+  const spots = (PLANNER_SPOTS[station.ko] ?? []).slice(0, 3);
+  if (!spots.length) return null;
+  const list = spots
+    .map((spot) => {
+      const name = t(spot.name, locale);
+      const exit = spot.exit ? tc("exitLabel", locale, { n: spot.exit }) : null;
+      return exit ? `${name} (${exit})` : name;
+    })
+    .join(locale === "en" ? "; " : locale === "ja" ? "、" : locale === "zh" ? "；" : ", ");
+  if (locale === "en")
+    return {
+      question: `Which exit should I take for nearby sights from ${title}?`,
+      answer: `Popular nearby spots include ${list}. Open each exit card on this page for the map pin and what’s around that gate.`,
+    };
+  if (locale === "zh")
+    return {
+      question: `从${title}去附近景点该走哪个出口？`,
+      answer: `附近热门地点包括${list}。点开本页各出口卡片可查看地图定位和周边。`,
+    };
+  if (locale === "ja")
+    return {
+      question: `${title}から近くの観光スポットへはどの出口ですか？`,
+      answer: `近くの人気スポットは${list}です。このページの出口カードから地図と周辺情報を確認できます。`,
+    };
+  return {
+    question: `${title} 근처 관광지는 몇 번 출구로 가나요?`,
+    answer: `근처 인기 장소는 ${list}예요. 이 페이지의 출구 카드에서 지도와 주변 정보를 확인할 수 있어요.`,
+  };
 }
 
 /** "Line 2 · Shinbundang": short line names, optionally capped with "+n". */
@@ -1018,20 +1102,20 @@ export function guideYearTag(locale: GuideLocale) {
   );
 }
 
-/** Search-phrase titles; claims a station can't back (gated restrooms, transfers) are dropped for that station. */
-export function stationMetaTitle(station: GuideStation, detail: GuideDetail, locale: GuideLocale) {
+/**
+ * CTR-oriented titles with the high-intent phrases travelers search (exits, coin lockers, first/last trains).
+ * `detail` is kept in the signature so callers stay stable; titles no longer drop claims by facility.
+ */
+export function stationMetaTitle(station: GuideStation, _detail: GuideDetail, locale: GuideLocale) {
   const base = contentLocale(locale);
   const name = stationName(station, base);
-  const tag = guideYearTag(locale);
-  const insideRestroom = detail.toilets.some((row) => row.gate === "inside");
-  const transfers = detail.transfers.length > 0;
   return inScript(
     locale,
     {
-      en: `${tag} ${name}: Exit Map, Lockers & Restrooms | K-SUB`,
-      ja: `${tag}${name} 出口マップ・コインロッカー・トイレ | K-SUB`,
-      zh: `${tag}${name}出口地图、储物柜及洗手间 | K-SUB`,
-      ko: `${tag} ${name} ${insideRestroom ? "개찰구 안 " : ""}화장실·물품보관함·${transfers ? "빠른환승·" : ""}출구 지도 | 지하철꿀정보`,
+      en: `${englishName(station)} Station Exit Guide, Coin Lockers & First/Last Train | K-Sub`,
+      ja: `${name} 出口案内・コインロッカー・始発終電ガイド | K-Sub`,
+      zh: `${name}出口指南、投币储物柜与首末班车 | K-Sub`,
+      ko: `${name} 출구 정보, 물품보관함(코인락커), 첫차·막차 시간표 | K-Sub`,
     }[base],
   );
 }
@@ -1040,14 +1124,13 @@ export function stationMetaTitle(station: GuideStation, detail: GuideDetail, loc
 export function stationOgTitle(station: GuideStation, locale: GuideLocale) {
   const base = contentLocale(locale);
   const name = stationName(station, base);
-  const tag = guideYearTag(locale);
   return inScript(
     locale,
     {
-      en: `${tag} ${name}: Exit Map, Lockers & Restrooms`,
-      ja: `${tag}${name} 出口マップ・コインロッカー・トイレ`,
-      zh: `${tag}${name}出口地图、储物柜及洗手间`,
-      ko: `${tag} ${name} 출구 지도·물품보관함·화장실`,
+      en: `${englishName(station)} Station: Exits, Coin Lockers & First/Last Train`,
+      ja: `${name} 出口案内・コインロッカー・始発終電`,
+      zh: `${name}出口、投币储物柜与首末班车`,
+      ko: `${name} 출구·물품보관함(코인락커)·첫차·막차`,
     }[base],
   );
 }
@@ -1075,17 +1158,17 @@ function englishFactsDescription(station: GuideStation, detail: GuideDetail) {
   const elevator =
     detail.elevators.map((row) => t(row.exit, "en")).find((exit) => /\d/.test(exit)) ?? null;
   const facts: string[] = [];
-  if (exits) facts.push(`map of ${exits} exit${exits === 1 ? "" : "s"}`);
+  if (exits) facts.push(`exit numbers for ${exits} gate${exits === 1 ? "" : "s"}`);
   if (toilets)
     facts.push(
       `${toilets} restroom${toilets === 1 ? "" : "s"}${allInsideLabel(inside, toilets, "en")}`,
     );
-  if (slots) facts.push(`about ${slots} T-Locker slots`);
-  else if (banks) facts.push(`${banks} T-Locker bank${banks === 1 ? "" : "s"}`);
-  if (elevator) facts.push(`elevator via ${elevator}`);
-  if (detail.transfers.length) facts.push("fastest transfer doors");
-  const body = facts.length ? listJoin(facts, "en") : "exits, restrooms, T-Lockers and transfer tips";
-  return `${name} Station (${lines}): ${body} on one page, in plain English.`;
+  if (slots) facts.push(`about ${slots} coin locker (T-Locker) slots`);
+  else if (banks) facts.push(`${banks} coin locker bank${banks === 1 ? "" : "s"}`);
+  if (elevator) facts.push(`luggage elevator via ${elevator}`);
+  if (detail.transfers.length) facts.push("fastest transfer car doors");
+  const body = facts.length ? listJoin(facts, "en") : "exits, coin lockers, elevators and transfers";
+  return `${name} Station (${lines}) exit guide with ${body}. Confirm first and last train times in your map app before you ride.`;
 }
 
 function japaneseFactsDescription(station: GuideStation, detail: GuideDetail) {
@@ -1099,13 +1182,13 @@ function japaneseFactsDescription(station: GuideStation, detail: GuideDetail) {
   const elevator =
     detail.elevators.map((row) => t(row.exit, "ja")).find((exit) => /\d/.test(exit)) ?? null;
   const facts: string[] = [];
-  if (exits) facts.push(`出口マップ${exits}か所`);
+  if (exits) facts.push(`出口番号${exits}か所`);
   if (toilets) facts.push(`トイレ${toilets}か所${allInsideLabel(inside, toilets, "ja")}`);
   if (slots) facts.push(`コインロッカー約${slots}個`);
   else if (banks) facts.push(`コインロッカー${banks}か所`);
   if (elevator) facts.push(`${elevator}のエレベーター`);
   if (detail.transfers.length) facts.push("最速乗り換えドア");
-  return `${title}（${lines}）：${facts.length ? facts.join("、") : "出口・トイレ・ロッカー・乗り換え"}を駅ごとに案内。`;
+  return `${title}（${lines}）の出口案内。${facts.length ? facts.join("、") : "出口・ロッカー・乗り換え"}と始発・終電の確認方法まで、旅行者向けにまとめています。`;
 }
 
 function allInsideLabel(inside: number, toilets: number, locale: Locale) {
@@ -1129,7 +1212,14 @@ export function stationOgDescription(station: GuideStation, detail: GuideDetail,
 export function stationKeywords(station: GuideStation, locale: GuideLocale) {
   if (locale !== "en") return undefined;
   const name = englishName(station);
-  return [`${name} station`, `${name} station exit map`, `${name} station lockers`, `t-locker ${name}`, "seoul subway guide"];
+  return [
+    `${name} station`,
+    `${name} station exit guide`,
+    `${name} station coin lockers`,
+    `${name} station first last train`,
+    `t-locker ${name}`,
+    "seoul subway guide",
+  ];
 }
 
 function stationFactsDescription(station: GuideStation, detail: GuideDetail, locale: Locale) {
@@ -1147,21 +1237,21 @@ function stationFactsDescription(station: GuideStation, detail: GuideDetail, loc
   const facts: string[] = [];
 
   if (locale === "zh") {
-    if (exits) facts.push(`${exits}个出口地图`);
+    if (exits) facts.push(`${exits}个出口编号`);
     if (toilets) facts.push(`${toilets}处洗手间${allInside ? "（检票口内）" : inside ? `（检票口内${inside}处）` : ""}`);
     if (slots) facts.push(`${slots}格投币储物柜`);
-    else if (banks) facts.push(`${banks}处储物柜`);
+    else if (banks) facts.push(`${banks}处投币储物柜`);
     if (elevator) facts.push(`${elevator}电梯`);
     if (transfers) facts.push("最快换乘车门");
-    return `${title.startsWith("首尔") ? "" : "首尔"}${title}（${lines}）：${facts.length ? listJoin(facts, locale) : "出口、洗手间、投币储物柜与换乘信息"}，一页看懂。`;
+    return `${title.startsWith("首尔") ? "" : "首尔"}${title}（${lines}）出口指南：${facts.length ? listJoin(facts, locale) : "出口、投币储物柜与换乘"}，并说明如何确认首末班车。`;
   }
-  if (exits) facts.push(`출구 ${exits}곳 지도`);
+  if (exits) facts.push(`출구 번호 ${exits}곳`);
   if (toilets) facts.push(`화장실 ${toilets}곳${allInside ? "(개찰구 안)" : inside ? `(개찰구 안 ${inside}곳)` : ""}`);
-  if (slots) facts.push(`물품보관함 ${slots}칸`);
-  else if (banks) facts.push(`물품보관함 ${banks}곳`);
+  if (slots) facts.push(`물품보관함(코인락커) 약 ${slots}칸`);
+  else if (banks) facts.push(`물품보관함(코인락커) ${banks}곳`);
   if (elevator) facts.push(`${elevator} 엘리베이터`);
   if (transfers) facts.push("빠른환승 칸");
-  return `${title}(${lines}) ${facts.length ? listJoin(facts, locale) : "출구, 화장실, 물품보관함, 빠른환승 정보"}까지 한눈에 확인하세요.`;
+  return `${title}(${lines}) 출구 정보와 ${facts.length ? listJoin(facts, locale) : "물품보관함·환승 정보"}. 첫차·막차는 지도 앱에서 출발 전에 확인하세요.`;
 }
 
 export function walkMinutesLabel(seconds: number, locale: GuideLocale) {
