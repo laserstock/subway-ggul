@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import { GoogleTagManager } from "@next/third-parties/google";
+import Script from "next/script";
 import ArrivalAlarmRunner from "./_components/ArrivalAlarmRunner";
 import BadgeCelebration from "./_components/BadgeCelebration";
 import PreloadResources from "./_components/PreloadResources";
@@ -58,6 +59,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: ADSENSE_LOADER }} />
+        <Script
+          id="travelpayouts"
+          src="https://emrldtp.cc/NjAzMTU3.js?t=603157"
+          strategy="afterInteractive"
+          data-cmp-ab="2"
+        />
       </head>
       <GoogleTagManager gtmId="GTM-5RW9WQZH" />
       <body className={`${notoSansKr.className} min-h-full flex flex-col`}>
