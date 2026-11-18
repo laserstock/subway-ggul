@@ -1,6 +1,7 @@
 /** Station marker and label geometry shared by the server-side label placement and the client map, in screen px. */
 
-export const DOT_R = 4;
+/** KakaoMetro-style markers: small coloured ring for locals, larger dark ring for transfers. */
+export const DOT_R = 3.5;
 export const HUB_R = 5.5;
 const GAP = 3;
 const LINE_HEIGHT = 1.2;

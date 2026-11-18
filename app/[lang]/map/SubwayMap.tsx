@@ -80,13 +80,13 @@ const WIDE = 640;
 const STYLE = `
 .ksub-map .sc{transform:scale(calc(1 / var(--z)))}
 .ksub-map .terrain{pointer-events:none}
-.ksub-map .water{fill:#ddf0fa}
-.ksub-map .ln{fill:none;stroke-width:calc(4.2px / var(--z));stroke-linecap:round;stroke-linejoin:round}
-.ksub-map .cs{fill:none;stroke:#fff;stroke-width:calc(7.4px / var(--z));stroke-linecap:round;stroke-linejoin:round}
-.ksub-map .dot{fill:#fff;stroke-width:2.2px}
-.ksub-map .hub{fill:#fff;stroke:#1f2937;stroke-width:2.4px}
+.ksub-map .water{fill:#e0f2fe}
+.ksub-map .ln{fill:none;stroke-width:calc(4.8px / var(--z));stroke-linecap:round;stroke-linejoin:round}
+.ksub-map .cs{fill:none;stroke:#f8fafc;stroke-width:calc(8.2px / var(--z));stroke-linecap:round;stroke-linejoin:round}
+.ksub-map .dot{fill:#fff;stroke-width:2px}
+.ksub-map .hub{fill:#fff;stroke:#111827;stroke-width:2.6px}
 .ksub-map .hit{fill:transparent}
-.ksub-map .nm{fill:#273041;font-weight:600;paint-order:stroke;stroke:#fbfbf9;stroke-width:3.4px;stroke-linejoin:round;pointer-events:none}
+.ksub-map .nm{fill:#1e293b;font-weight:600;paint-order:stroke;stroke:#f8fafc;stroke-width:3.6px;stroke-linejoin:round;pointer-events:none}
 .ksub-map .nm.hb{font-weight:800;fill:#0f172a}
 .ksub-map .st{cursor:pointer;outline:none}
 .ksub-map .st:hover .nm,.ksub-map .st:focus-visible .nm,.ksub-map .st.on .nm{fill:#b45309}
@@ -188,7 +188,7 @@ const MapLayer = memo(function MapLayer({ lang, lines, stations, level, selected
               <title>{station.name}</title>
               <g transform={`translate(${station.x} ${station.y})`}>
                 <g className="sc">
-                  <circle className="hit" r={13} />
+                  <circle className="hit" r={14} />
                   {on ? <circle className="ring" r={r + 5} /> : null}
                   <circle
                     className={station.hub ? "hub" : "dot"}
@@ -788,10 +788,10 @@ export default function SubwayMap({
     <div
       className={
         actions
-          ? "flex h-full min-h-0 flex-col overflow-hidden bg-[#fbfbf9]"
+          ? "flex h-full min-h-0 flex-col overflow-hidden bg-[#f8fafc]"
           : expanded
-            ? "fixed inset-0 z-[70] flex flex-col bg-[#fbfbf9] pt-[env(safe-area-inset-top)]"
-            : "flex h-[min(80dvh,760px)] min-h-[480px] flex-col overflow-hidden rounded-3xl border border-line bg-[#fbfbf9]"
+            ? "fixed inset-0 z-[70] flex flex-col bg-[#f8fafc] pt-[env(safe-area-inset-top)]"
+            : "flex h-[min(80dvh,760px)] min-h-[480px] flex-col overflow-hidden rounded-3xl border border-line bg-[#f8fafc]"
       }
     >
       <style>{STYLE}</style>

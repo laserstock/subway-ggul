@@ -8,24 +8,123 @@ export type MapLine = { line: string; color: string; d: string };
 export type MapTerrain = { river: string; sea: string };
 
 /** Screen px per map unit at which each label level switches on; a label with level k shows from MAP_LEVELS[k]. */
-export const MAP_LEVELS = [0.4, 0.6, 0.9, 1.3, 1.85, 2.6, 3.7, 5.2, 7.2] as const;
+export const MAP_LEVELS = [0.35, 0.55, 0.85, 1.2, 1.7, 2.4, 3.4, 4.8, 6.8] as const;
 export const MAP_MAX_ZOOM = 12;
 
-/** Spacing target between neighbouring stations once the layout is scaled. */
-const EDGE = 10;
-const PADDING = 32;
-/** Geographic centre (City Hall) for bearing only — never used as a compressing fisheye. */
+const EDGE = 9.5;
+const PADDING = 34;
 const GEO_CENTER = { lat: 37.5657, lng: 126.9769 };
-const ITERATIONS = 480;
-/** Radius of the Line 2 circle in pre-scale layout units. */
-const LOOP2_R = 48;
-/** Extra radius per hop away from Line 2 for suburban rays. */
-const RING = 3.35;
+/** Han River latitude by longitude (the river bends; a single cut misplaces Yeouido/Apgujeong/Ichon). */
+function riverLatAt(lng: number) {
+  if (lng < 126.95) return 37.528; // Yeouido south, Mapo north
+  if (lng < 127.02) return 37.518; // Ichon north, Dongjak south
+  return 37.533; // Oksu north, Apgujeong/Cheongdam south
+}
+const ITERATIONS = 460;
+/** Line 2 KakaoMetro-style rounded rectangle (pre-scale units). */
+const LOOP2_W = 100;
+const LOOP2_H = 92;
+const LOOP2_CORNER = 24;
+const RING = 3.2;
 const STEP = Math.PI / 4;
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
 type Edge = { a: number; b: number; lines: Set<string>; target: number };
+type Pt = { x: number; y: number };
+
+/** Perimeter length of a rounded rectangle. */
+function roundedRectPerimeter(w: number, h: number, r: number) {
+  const rr = Math.min(r, w / 2, h / 2);
+  return 2 * (w - 2 * rr) + 2 * (h - 2 * rr) + 2 * Math.PI * rr;
+}
+
+/**
+ * Point and outward normal on a rounded rectangle centered at origin.
+ * `s` is arc length from the middle of the top edge, clockwise (y grows downward).
+ */
+function roundedRectFrame(s: number, w: number, h: number, r: number): { point: Pt; normal: Pt } {
+  const rr = Math.min(r, w / 2, h / 2);
+  const perim = roundedRectPerimeter(w, h, rr);
+  let d = ((s % perim) + perim) % perim;
+  const top = w - 2 * rr;
+  const right = h - 2 * rr;
+  const bottom = top;
+  const left = right;
+  const arc = (Math.PI / 2) * rr;
+
+  // Start at top-edge midpoint going right, so Gangnam can sit on the bottom midpoint.
+  const start = top / 2;
+  d = (d + start) % perim;
+
+  if (d <= top) {
+    return { point: { x: -w / 2 + rr + d, y: -h / 2 }, normal: { x: 0, y: -1 } };
+  }
+  d -= top;
+  if (d <= arc) {
+    const a = -Math.PI / 2 + d / rr;
+    return {
+      point: { x: w / 2 - rr + Math.cos(a) * rr, y: -h / 2 + rr + Math.sin(a) * rr },
+      normal: { x: Math.cos(a), y: Math.sin(a) },
+    };
+  }
+  d -= arc;
+  if (d <= right) {
+    return { point: { x: w / 2, y: -h / 2 + rr + d }, normal: { x: 1, y: 0 } };
+  }
+  d -= right;
+  if (d <= arc) {
+    const a = 0 + d / rr;
+    return {
+      point: { x: w / 2 - rr + Math.cos(a) * rr, y: h / 2 - rr + Math.sin(a) * rr },
+      normal: { x: Math.cos(a), y: Math.sin(a) },
+    };
+  }
+  d -= arc;
+  if (d <= bottom) {
+    return { point: { x: w / 2 - rr - d, y: h / 2 }, normal: { x: 0, y: 1 } };
+  }
+  d -= bottom;
+  if (d <= arc) {
+    const a = Math.PI / 2 + d / rr;
+    return {
+      point: { x: -w / 2 + rr + Math.cos(a) * rr, y: h / 2 - rr + Math.sin(a) * rr },
+      normal: { x: Math.cos(a), y: Math.sin(a) },
+    };
+  }
+  d -= arc;
+  if (d <= left) {
+    return { point: { x: -w / 2, y: h / 2 - rr - d }, normal: { x: -1, y: 0 } };
+  }
+  d -= left;
+  const a = Math.PI + d / rr;
+  return {
+    point: { x: -w / 2 + rr + Math.cos(a) * rr, y: -h / 2 + rr + Math.sin(a) * rr },
+    normal: { x: Math.cos(a), y: Math.sin(a) },
+  };
+}
+
+/** SVG path for the Line 2 rounded rectangle (screen coords). */
+function roundedRectPath(cx: number, cy: number, w: number, h: number, r: number) {
+  const rr = Math.min(r, w / 2, h / 2);
+  const x0 = round(cx - w / 2);
+  const y0 = round(cy - h / 2);
+  const x1 = round(cx + w / 2);
+  const y1 = round(cy + h / 2);
+  const rad = round(rr);
+  return [
+    `M${x0 + rad} ${y0}`,
+    `L${x1 - rad} ${y0}`,
+    `A${rad} ${rad} 0 0 1 ${x1} ${y0 + rad}`,
+    `L${x1} ${y1 - rad}`,
+    `A${rad} ${rad} 0 0 1 ${x1 - rad} ${y1}`,
+    `L${x0 + rad} ${y1}`,
+    `A${rad} ${rad} 0 0 1 ${x0} ${y1 - rad}`,
+    `L${x0} ${y0 + rad}`,
+    `A${rad} ${rad} 0 0 1 ${x0 + rad} ${y0}`,
+    "Z",
+  ].join("");
+}
 
 /** Undirected Line 2 graph over network station indexes. */
 function line2Graph() {
@@ -97,11 +196,10 @@ const snapAngle = (angle: number, strength: number) => {
 };
 
 /**
- * Official-style schematic layout:
- * - Line 2 main loop is a fixed circle (Gangnam at bottom).
- * - Other stations sit on radial rings by graph hops from Line 2 (no GPS fisheye),
- *   so suburbs like Paju / Soyosan stay outside the core.
- * - Edges relax onto octilinear (0° / 45° / 90°) segments with rounded corners.
+ * KakaoMetro-style schematic:
+ * - Line 2 is a rounded rectangle (not GPS).
+ * - Other stations sit on outward rings by hops from Line 2; suburbs never enter the core.
+ * - Han River splits north/south banks; edges snap to octilinear rounded paths.
  */
 export const SUBWAY_MAP = (() => {
   const services = NETWORK_EDGES.filter(([service]) => NETWORK_SERVICES[service] && !NETWORK_SERVICES[service].express);
@@ -143,14 +241,15 @@ export const SUBWAY_MAP = (() => {
     .map((networkIndex) => networkIndexOf.get(networkIndex))
     .filter((index): index is number => index !== undefined);
   const onLoop = new Set(loopNodes);
+  const loopPerim = roundedRectPerimeter(LOOP2_W, LOOP2_H, LOOP2_CORNER);
 
   const kmX = 111.32 * Math.cos((GEO_CENTER.lat * Math.PI) / 180);
   const geo = stations.map((station) => ({
     x: (station.lng - GEO_CENTER.lng) * kmX,
     y: (GEO_CENTER.lat - station.lat) * 110.57,
   }));
+  const northOfRiver = stations.map((station) => station.lat >= riverLatAt(station.lng));
 
-  // Hop distance + Line 2 attachment (BFS). Suburbs grow outward from their gateway.
   const hops = new Array(count).fill(Infinity);
   const attach = new Array(count).fill(-1);
   const queue: number[] = [];
@@ -174,110 +273,145 @@ export const SUBWAY_MAP = (() => {
   const isInner = stations.map((_, index) => {
     if (onLoop.has(index)) return false;
     if (!Number.isFinite(hops[index])) return false;
-    const geoR = Math.hypot(geo[index].x, geo[index].y);
-    return geoR < loopGeoR * 0.9 && hops[index] <= 5;
+    return Math.hypot(geo[index].x, geo[index].y) < loopGeoR * 0.88 && hops[index] <= 5;
   });
 
-  const loopCenter = { x: 0, y: 0 };
-  const loopAngle = (index: number) => {
-    const gangnam = loopNodes.findIndex((node) => stations[node].ko === "강남역");
-    const target = gangnam >= 0 ? gangnam : 0;
-    return Math.PI / 2 + ((index - target) / Math.max(loopNodes.length, 1)) * Math.PI * 2;
-  };
-  const loopAngleOf = new Map<number, number>();
-  loopNodes.forEach((node, index) => loopAngleOf.set(node, loopAngle(index)));
+  // Gangnam at bottom midpoint; other loop stations evenly along the rounded rectangle.
+  const gangnamIndex = Math.max(
+    0,
+    loopNodes.findIndex((node) => stations[node].ko === "강남역"),
+  );
+  const bottomMidS = loopPerim / 2;
+  const loopS = new Map<number, number>();
+  loopNodes.forEach((node, index) => {
+    const s = bottomMidS + ((index - gangnamIndex) / loopNodes.length) * loopPerim;
+    loopS.set(node, ((s % loopPerim) + loopPerim) % loopPerim);
+  });
 
-  const minOuterR = (index: number) => LOOP2_R + Math.max(1, hops[index]) * RING + Math.max(0, hops[index] - 6) * 1.15;
-
+  const riverY = LOOP2_H * 0.12;
   const xs = new Array(count).fill(0);
   const ys = new Array(count).fill(0);
   const anchor = stations.map(() => ({ x: 0, y: 0 }));
 
-  loopNodes.forEach((node, index) => {
-    const angle = loopAngle(index);
-    xs[node] = loopCenter.x + Math.cos(angle) * LOOP2_R;
-    ys[node] = loopCenter.y + Math.sin(angle) * LOOP2_R;
+  const placeLoop = (node: number) => {
+    const frame = roundedRectFrame(loopS.get(node) ?? 0, LOOP2_W, LOOP2_H, LOOP2_CORNER);
+    xs[node] = frame.point.x;
+    ys[node] = frame.point.y;
     anchor[node] = { x: xs[node], y: ys[node] };
-  });
+  };
+  for (const node of loopNodes) placeLoop(node);
+
+  const gateS = (node: number) => {
+    const gate = attach[node];
+    if (gate >= 0 && loopS.has(gate)) return loopS.get(gate)!;
+    // Approximate s from geographic angle around the rectangle.
+    const angle = Math.atan2(geo[node].y, geo[node].x);
+    return ((angle / (Math.PI * 2) + 0.25) * loopPerim + loopPerim) % loopPerim;
+  };
+
+  const minOutset = (index: number) => Math.max(1, hops[index]) * RING + Math.max(0, hops[index] - 6) * 1.1;
+
+  const applyRiverBank = (node: number) => {
+    if (onLoop.has(node)) return;
+    const margin = 3.5;
+    if (northOfRiver[node] && ys[node] > riverY - margin) ys[node] = riverY - margin;
+    if (!northOfRiver[node] && ys[node] < riverY + margin) ys[node] = riverY + margin;
+  };
 
   for (let node = 0; node < count; node += 1) {
     if (onLoop.has(node)) continue;
-    const geoAngle = Math.atan2(geo[node].y, geo[node].x);
-    const gate = attach[node];
-    const gateAngle = gate >= 0 && loopAngleOf.has(gate) ? loopAngleOf.get(gate)! : geoAngle;
-
     if (isInner[node]) {
-      const geoR = Math.hypot(geo[node].x, geo[node].y) || 1e-6;
-      const r = Math.min(LOOP2_R - 6, Math.max(5, (geoR / loopGeoR) * LOOP2_R * 0.72));
-      const angle = snapAngle(geoAngle, 0.35);
-      xs[node] = Math.cos(angle) * r;
-      ys[node] = Math.sin(angle) * r;
+      const scale = 0.62;
+      xs[node] = Math.max(-LOOP2_W * 0.38, Math.min(LOOP2_W * 0.38, (geo[node].x / loopGeoR) * (LOOP2_W / 2) * scale));
+      ys[node] = Math.max(-LOOP2_H * 0.38, Math.min(LOOP2_H * 0.38, (geo[node].y / loopGeoR) * (LOOP2_H / 2) * scale));
+      applyRiverBank(node);
     } else {
-      const hop = Number.isFinite(hops[node]) ? hops[node] : 18;
-      // Near the gateway, follow its spoke; farther out, follow geographic bearing (still outside).
-      const blend = Math.min(1, 0.25 + hop / 10);
-      const angle = snapAngle(lerpAngle(gateAngle, geoAngle, blend), Math.min(0.85, 0.25 + hop / 14));
-      const r = minOuterR(node);
-      xs[node] = Math.cos(angle) * r;
-      ys[node] = Math.sin(angle) * r;
+      const hop = Number.isFinite(hops[node]) ? hops[node] : 14;
+      const s = gateS(node);
+      const geoAngle = Math.atan2(geo[node].y, geo[node].x);
+      const gateFrame = roundedRectFrame(s, LOOP2_W, LOOP2_H, LOOP2_CORNER);
+      const gateAngle = Math.atan2(gateFrame.normal.y, gateFrame.normal.x);
+      const blend = Math.min(1, 0.2 + hop / 11);
+      const angle = snapAngle(lerpAngle(gateAngle, geoAngle, blend), Math.min(0.9, 0.3 + hop / 12));
+      const outset = minOutset(node);
+      const base = roundedRectFrame(s, LOOP2_W, LOOP2_H, LOOP2_CORNER);
+      // Mix spoke normal with snapped geographic direction so lines stay octilinear-ish.
+      const nx = (1 - blend * 0.45) * base.normal.x + blend * 0.45 * Math.cos(angle);
+      const ny = (1 - blend * 0.45) * base.normal.y + blend * 0.45 * Math.sin(angle);
+      const nLen = Math.hypot(nx, ny) || 1;
+      xs[node] = base.point.x + (nx / nLen) * outset;
+      ys[node] = base.point.y + (ny / nLen) * outset;
+      applyRiverBank(node);
     }
     anchor[node] = { x: xs[node], y: ys[node] };
   }
 
-  // Orphans (no network path to Line 2): park on the geographic ray outside the circle.
   for (let node = 0; node < count; node += 1) {
     if (onLoop.has(node) || Number.isFinite(hops[node])) continue;
-    const angle = snapAngle(Math.atan2(geo[node].y, geo[node].x), 0.7);
-    const r = LOOP2_R + 20;
-    xs[node] = Math.cos(angle) * r;
-    ys[node] = Math.sin(angle) * r;
+    const frame = roundedRectFrame(gateS(node), LOOP2_W, LOOP2_H, LOOP2_CORNER);
+    xs[node] = frame.point.x + frame.normal.x * 22;
+    ys[node] = frame.point.y + frame.normal.y * 22;
+    applyRiverBank(node);
     anchor[node] = { x: xs[node], y: ys[node] };
     hops[node] = 12;
   }
 
   for (const edge of edges) {
-    const bothLoop = onLoop.has(edge.a) && onLoop.has(edge.b);
-    if (bothLoop) {
-      edge.target = 2 * LOOP2_R * Math.sin(Math.PI / Math.max(loopNodes.length, 1));
+    if (onLoop.has(edge.a) && onLoop.has(edge.b)) {
+      edge.target = loopPerim / Math.max(loopNodes.length, 1);
       continue;
     }
     const ha = Number.isFinite(hops[edge.a]) ? hops[edge.a] : 8;
     const hb = Number.isFinite(hops[edge.b]) ? hops[edge.b] : 8;
-    const ring = 1 + Math.min(ha, hb) * 0.04;
-    edge.target = RING * ring;
+    edge.target = RING * (1 + Math.min(ha, hb) * 0.035);
   }
 
-  const gapBase = RING * 0.92;
-  const gapOf = stations.map((_, index) => gapBase * (onLoop.has(index) ? 0.75 : isInner[index] ? 0.9 : 1 + Math.min(hops[index], 12) * 0.02));
+  const gapBase = RING * 0.9;
+  const gapOf = stations.map((_, index) => gapBase * (onLoop.has(index) ? 0.7 : isInner[index] ? 0.88 : 1 + Math.min(hops[index], 12) * 0.02));
   const reach = Math.max(...gapOf, RING);
 
-  const pinRadial = (node: number) => {
+  const insideLoop = (x: number, y: number) => {
+    const ax = Math.abs(x);
+    const ay = Math.abs(y);
+    const hw = LOOP2_W / 2 - 4;
+    const hh = LOOP2_H / 2 - 4;
+    const rr = LOOP2_CORNER - 2;
+    if (ax <= hw - rr && ay <= hh) return true;
+    if (ay <= hh - rr && ax <= hw) return true;
+    const cx = hw - rr;
+    const cy = hh - rr;
+    if (ax > cx && ay > cy) return Math.hypot(ax - cx, ay - cy) <= rr;
+    return ax <= hw && ay <= hh;
+  };
+
+  const pinNode = (node: number) => {
     if (onLoop.has(node)) {
-      const angle = Math.atan2(ys[node] - loopCenter.y, xs[node] - loopCenter.x);
-      xs[node] = loopCenter.x + Math.cos(angle) * LOOP2_R;
-      ys[node] = loopCenter.y + Math.sin(angle) * LOOP2_R;
+      placeLoop(node);
       return;
     }
     if (isInner[node]) {
-      const r = Math.hypot(xs[node], ys[node]) || 1e-6;
-      const maxR = LOOP2_R - 5;
-      if (r > maxR) {
-        xs[node] = (xs[node] / r) * maxR;
-        ys[node] = (ys[node] / r) * maxR;
+      if (!insideLoop(xs[node], ys[node])) {
+        const scale = 0.9;
+        xs[node] *= scale;
+        ys[node] *= scale;
       }
+      applyRiverBank(node);
       return;
     }
-    const r = Math.hypot(xs[node], ys[node]) || 1e-6;
-    const minR = minOuterR(node);
-    if (r < minR) {
-      xs[node] = (xs[node] / r) * minR;
-      ys[node] = (ys[node] / r) * minR;
+    // Keep suburbs outside the rounded rectangle.
+    if (insideLoop(xs[node], ys[node])) {
+      const s = gateS(node);
+      const frame = roundedRectFrame(s, LOOP2_W, LOOP2_H, LOOP2_CORNER);
+      const outset = minOutset(node);
+      xs[node] = frame.point.x + frame.normal.x * outset;
+      ys[node] = frame.point.y + frame.normal.y * outset;
     }
+    applyRiverBank(node);
   };
 
   for (let iteration = 0; iteration < ITERATIONS; iteration += 1) {
     const progress = iteration / ITERATIONS;
-    const snap = Math.min(1, 0.18 + progress * 1.2);
+    const snap = Math.min(1, 0.2 + progress * 1.15);
 
     for (const edge of edges) {
       if (onLoop.has(edge.a) && onLoop.has(edge.b)) continue;
@@ -308,8 +442,8 @@ export const SUBWAY_MAP = (() => {
       const around = neighbors[node];
       if (around.length !== 2) continue;
       const [p, q] = around;
-      xs[node] += ((xs[p] + xs[q]) / 2 - xs[node]) * 0.06;
-      ys[node] += ((ys[p] + ys[q]) / 2 - ys[node]) * 0.06;
+      xs[node] += ((xs[p] + xs[q]) / 2 - xs[node]) * 0.055;
+      ys[node] += ((ys[p] + ys[q]) / 2 - ys[node]) * 0.055;
     }
 
     const grid = new Map<string, number[]>();
@@ -332,7 +466,7 @@ export const SUBWAY_MAP = (() => {
             const distance = Math.hypot(dx, dy) || 1e-6;
             const gap = Math.max(gapOf[node], gapOf[other]);
             if (distance >= gap) continue;
-            const push = ((gap - distance) / distance) * 0.26;
+            const push = ((gap - distance) / distance) * 0.25;
             xs[node] -= dx * push;
             ys[node] -= dy * push;
             if (!onLoop.has(other)) {
@@ -344,24 +478,19 @@ export const SUBWAY_MAP = (() => {
       }
     }
 
-    const pull = 0.02 * (1 - progress);
+    const pull = 0.018 * (1 - progress);
     for (let node = 0; node < count; node += 1) {
       if (onLoop.has(node)) continue;
       xs[node] += (anchor[node].x - xs[node]) * pull;
       ys[node] += (anchor[node].y - ys[node]) * pull;
-      pinRadial(node);
+      pinNode(node);
     }
-    for (const node of loopNodes) pinRadial(node);
+    for (const node of loopNodes) pinNode(node);
   }
 
-  // Final even spacing on the Line 2 circle.
-  loopNodes.forEach((node, index) => {
-    const angle = loopAngle(index);
-    xs[node] = loopCenter.x + Math.cos(angle) * LOOP2_R;
-    ys[node] = loopCenter.y + Math.sin(angle) * LOOP2_R;
-  });
+  for (const node of loopNodes) pinNode(node);
   for (let node = 0; node < count; node += 1) {
-    if (!onLoop.has(node)) pinRadial(node);
+    if (!onLoop.has(node)) pinNode(node);
   }
 
   const laid = edges.map(({ a, b }) => Math.hypot(xs[a] - xs[b], ys[a] - ys[b])).sort((p, q) => p - q);
@@ -387,12 +516,14 @@ export const SUBWAY_MAP = (() => {
   const width = Math.ceil(Math.max(...nodes.map((node) => node.x)) + PADDING);
   const height = Math.ceil(Math.max(...nodes.map((node) => node.y)) + PADDING);
 
-  const loopScreen = toScreen(loopCenter.x, loopCenter.y);
-  const cx = loopScreen.x;
-  const cy = loopScreen.y;
-  const loopR = round(LOOP2_R * scale);
+  const origin = toScreen(0, 0);
+  const cx = origin.x;
+  const cy = origin.y;
+  const loopW = round(LOOP2_W * scale);
+  const loopH = round(LOOP2_H * scale);
+  const loopR = round(LOOP2_CORNER * scale);
+  const riverScreenY = toScreen(0, riverY).y;
 
-  /** Octilinear elbow with soft quadratic corners (official diagram feel). */
   const elbow = (p: MapNode, q: MapNode): [number, number][] => {
     const dx = q.x - p.x;
     const dy = q.y - p.y;
@@ -418,7 +549,7 @@ export const SUBWAY_MAP = (() => {
   const roundedPath = (pts: [number, number][]) => {
     if (pts.length < 2) return "";
     if (pts.length === 2) return `M${pts[0][0]} ${pts[0][1]}L${pts[1][0]} ${pts[1][1]}`;
-    const corner = 3.2;
+    const corner = 3.6;
     let d = `M${pts[0][0]} ${pts[0][1]}`;
     for (let index = 1; index < pts.length - 1; index += 1) {
       const [x0, y0] = pts[index - 1];
@@ -454,46 +585,42 @@ export const SUBWAY_MAP = (() => {
   });
 
   if (loopNodes.length >= 3) {
-    const first = nodes[loopNodes[0]];
-    const circle = `M${first.x} ${first.y}A${loopR} ${loopR} 0 1 1 ${first.x - 0.01} ${first.y}A${loopR} ${loopR} 0 1 1 ${first.x} ${first.y}`;
-    byLine.set("2호선", [circle, ...(byLine.get("2호선") ?? [])]);
+    const rect = roundedRectPath(cx, cy, loopW, loopH, loopR);
+    byLine.set("2호선", [rect, ...(byLine.get("2호선") ?? [])]);
   }
 
   const lines: MapLine[] = [...byLine]
     .sort(([a], [b]) => compareLines(b, a))
     .map(([line, parts]) => ({ line, color: stationLineColor(line), d: parts.join("") }));
 
-  // Schematic Han River (through the lower half of Line 2) + West Sea near Incheon.
-  const riverW = loopR * 3.4;
-  const riverY = cy + loopR * 0.28;
-  const riverH = Math.max(14, loopR * 0.22);
+  const riverHalf = Math.max(16, loopH * 0.2);
   const river: string = [
-    `M${round(cx - riverW * 0.55)} ${round(riverY - riverH * 0.15)}`,
-    `C${round(cx - loopR * 0.9)} ${round(riverY - riverH * 0.55)}`,
-    `${round(cx - loopR * 0.2)} ${round(riverY - riverH * 0.7)}`,
-    `${round(cx + loopR * 0.15)} ${round(riverY - riverH * 0.35)}`,
-    `S${round(cx + loopR * 0.85)} ${round(riverY + riverH * 0.15)}`,
-    `${round(cx + loopR * 1.35)} ${round(riverY + riverH * 0.05)}`,
-    `S${round(cx + riverW * 0.42)} ${round(riverY - riverH * 0.2)}`,
-    `${round(cx + riverW * 0.55)} ${round(riverY - riverH * 0.35)}`,
-    `L${round(cx + riverW * 0.55)} ${round(riverY + riverH * 0.85)}`,
-    `C${round(cx + loopR * 1.2)} ${round(riverY + riverH * 1.05)}`,
-    `${round(cx + loopR * 0.4)} ${round(riverY + riverH * 1.15)}`,
-    `${round(cx - loopR * 0.1)} ${round(riverY + riverH * 0.95)}`,
-    `S${round(cx - loopR * 1.05)} ${round(riverY + riverH * 0.75)}`,
-    `${round(cx - riverW * 0.55)} ${round(riverY + riverH * 0.55)}`,
+    `M${round(cx - loopW * 1.55)} ${round(riverScreenY - riverHalf * 0.2)}`,
+    `C${round(cx - loopW * 0.85)} ${round(riverScreenY - riverHalf * 0.85)}`,
+    `${round(cx - loopW * 0.25)} ${round(riverScreenY - riverHalf * 0.95)}`,
+    `${round(cx + loopW * 0.05)} ${round(riverScreenY - riverHalf * 0.35)}`,
+    `S${round(cx + loopW * 0.55)} ${round(riverScreenY + riverHalf * 0.15)}`,
+    `${round(cx + loopW * 0.95)} ${round(riverScreenY - riverHalf * 0.05)}`,
+    `S${round(cx + loopW * 1.45)} ${round(riverScreenY - riverHalf * 0.4)}`,
+    `${round(cx + loopW * 1.65)} ${round(riverScreenY - riverHalf * 0.55)}`,
+    `L${round(cx + loopW * 1.65)} ${round(riverScreenY + riverHalf * 0.95)}`,
+    `C${round(cx + loopW * 1.15)} ${round(riverScreenY + riverHalf * 1.15)}`,
+    `${round(cx + loopW * 0.45)} ${round(riverScreenY + riverHalf * 1.2)}`,
+    `${round(cx - loopW * 0.05)} ${round(riverScreenY + riverHalf * 0.95)}`,
+    `S${round(cx - loopW * 0.95)} ${round(riverScreenY + riverHalf * 0.7)}`,
+    `${round(cx - loopW * 1.55)} ${round(riverScreenY + riverHalf * 0.55)}`,
     "Z",
   ].join(" ");
 
-  const seaLeft = Math.min(...nodes.map((node) => node.x)) - 4;
+  const seaLeft = Math.min(...nodes.map((node) => node.x)) - 2;
   const sea: string = [
-    `M${round(seaLeft)} ${round(cy - loopR * 0.4)}`,
-    `C${round(seaLeft + loopR * 0.15)} ${round(cy - loopR * 1.1)}`,
-    `${round(cx - loopR * 2.1)} ${round(cy - loopR * 0.2)}`,
-    `${round(cx - loopR * 1.75)} ${round(cy + loopR * 0.35)}`,
-    `C${round(cx - loopR * 1.9)} ${round(cy + loopR * 0.9)}`,
-    `${round(seaLeft + loopR * 0.35)} ${round(cy + loopR * 1.35)}`,
-    `${round(seaLeft)} ${round(cy + loopR * 1.1)}`,
+    `M${round(seaLeft)} ${round(cy - loopH * 0.55)}`,
+    `C${round(seaLeft + loopW * 0.12)} ${round(cy - loopH * 1.05)}`,
+    `${round(cx - loopW * 1.15)} ${round(cy - loopH * 0.15)}`,
+    `${round(cx - loopW * 0.95)} ${round(cy + loopH * 0.25)}`,
+    `C${round(cx - loopW * 1.05)} ${round(cy + loopH * 0.85)}`,
+    `${round(seaLeft + loopW * 0.2)} ${round(cy + loopH * 1.25)}`,
+    `${round(seaLeft)} ${round(cy + loopH * 0.95)}`,
     "Z",
   ].join(" ");
 
@@ -501,9 +628,10 @@ export const SUBWAY_MAP = (() => {
 
   const linePoints: [number, number][] = [];
   for (const node of nodes) linePoints.push([node.x, node.y]);
-  for (let step = 0; step < 72; step += 1) {
-    const angle = (step / 72) * Math.PI * 2;
-    linePoints.push([cx + Math.cos(angle) * loopR, cy + Math.sin(angle) * loopR]);
+  for (let step = 0; step < 96; step += 1) {
+    const frame = roundedRectFrame((step / 96) * loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER);
+    const point = toScreen(frame.point.x, frame.point.y);
+    linePoints.push([point.x, point.y]);
   }
   for (const edge of edges) {
     if (loopSet.has(edge.a) && loopSet.has(edge.b) && edge.lines.has("2호선")) continue;
@@ -524,22 +652,54 @@ export const SUBWAY_MAP = (() => {
   const fx = Math.min(...central.map((node) => node.x));
   const fy = Math.min(...central.map((node) => node.y));
   const focus: MapBox = {
-    x: fx - 10,
-    y: fy - 10,
-    w: Math.max(...central.map((node) => node.x)) - fx + 20,
-    h: Math.max(...central.map((node) => node.y)) - fy + 20,
+    x: fx - 12,
+    y: fy - 12,
+    w: Math.max(...central.map((node) => node.x)) - fx + 24,
+    h: Math.max(...central.map((node) => node.y)) - fy + 24,
   };
 
-  return { width, height, nodes, lines, linePoints, focus, terrain, loop: { cx, cy, r: loopR } };
+  return {
+    width,
+    height,
+    nodes,
+    lines,
+    linePoints,
+    focus,
+    terrain,
+    loop: { cx, cy, w: loopW, h: loopH, r: loopR },
+  };
 })();
 
 export type MapLabel = { level: number; position: number };
 
 const POPULAR = new Set(POPULAR_GUIDES.map((station) => station.slug));
+/** Extra hubs that should show names early (KakaoMetro-style LOD). */
+const PRIORITY_KO = new Set([
+  "서울역",
+  "명동역",
+  "홍대입구역",
+  "강남역",
+  "시청역",
+  "성수역",
+  "잠실역",
+  "신도림역",
+  "사당역",
+  "교대역",
+  "동대문역사문화공원역",
+  "왕십리역",
+  "합정역",
+  "여의도역",
+  "고속터미널역",
+  "건대입구역",
+  "이태원역",
+  "광화문역",
+  "종로3가역",
+  "을지로3가역",
+]);
 
 /**
- * Greedy label placement for one language: at each zoom level, from the most important station down,
- * take the first position whose box clears the lines, the stations and the labels already placed.
+ * Greedy label placement for one language: priority hubs first at low zoom,
+ * then remaining stations as the user zooms in.
  */
 export function placeLabels(names: string[]): MapLabel[] {
   const { nodes, linePoints } = SUBWAY_MAP;
@@ -560,11 +720,15 @@ export function placeLabels(names: string[]): MapLabel[] {
 
   const lines = names.map(labelLines);
   const boxes = nodes.map((node, index) => LABEL_POSITIONS.map((_, position) => labelBox(position, node.hub, lines[index])));
-  const key = (node: MapNode) => POPULAR.has(node.station.slug) || node.station.lines.length >= 3;
+  const priority = (node: MapNode) => POPULAR.has(node.station.slug) || PRIORITY_KO.has(node.station.ko);
   const order = nodes
     .map((entry, i) => ({
       node: i,
-      score: (POPULAR.has(entry.station.slug) ? 10 : 0) + entry.station.lines.length * 2 + (entry.hub ? 1 : 0),
+      score:
+        (POPULAR.has(entry.station.slug) ? 14 : 0) +
+        (PRIORITY_KO.has(entry.station.ko) ? 8 : 0) +
+        entry.station.lines.length * 2 +
+        (entry.hub ? 2 : 0),
     }))
     .sort((a, b) => b.score - a.score || nodes[a.node].x - nodes[b.node].x)
     .map(({ node }) => node);
@@ -605,12 +769,26 @@ export function placeLabels(names: string[]): MapLabel[] {
     }
   };
 
+  // Pass 1: priority hubs — collide only with other labels (not every line sample), so defaults stay readable.
+  for (let level = 0; level < 2; level += 1) {
+    for (const node of order) {
+      if (result[node] || !priority(nodes[node])) continue;
+      tryPlace(node, level, loose);
+    }
+  }
+  // Pass 2: remaining stations, avoiding lines when possible.
   MAP_LEVELS.forEach((_, level) => {
     for (const node of order) {
       if (result[node]) continue;
       tryPlace(node, level, strict);
-      if (!result[node] && key(nodes[node])) tryPlace(node, level, loose);
+      if (!result[node] && (priority(nodes[node]) || nodes[node].hub)) tryPlace(node, level, loose);
     }
   });
+  // Guarantee top tourist/transfer names appear by the second zoom step.
+  for (const node of order) {
+    if (!priority(nodes[node])) continue;
+    if (!result[node]) result[node] = { level: 1, position: 0 };
+    else result[node] = { level: Math.min(result[node].level, 1), position: result[node].position };
+  }
   return result.map((label) => label ?? { level: MAP_LEVELS.length, position: 0 });
 }
