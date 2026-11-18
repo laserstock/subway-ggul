@@ -81,8 +81,8 @@ const STYLE = `
 .ksub-map .sc{transform:scale(calc(1 / var(--z)))}
 .ksub-map .terrain{pointer-events:none}
 .ksub-map .water{fill:#e0f2fe}
-.ksub-map .ln{fill:none;stroke-width:calc(4.8px / var(--z));stroke-linecap:round;stroke-linejoin:round}
-.ksub-map .cs{fill:none;stroke:#f8fafc;stroke-width:calc(8.2px / var(--z));stroke-linecap:round;stroke-linejoin:round}
+.ksub-map .ln{fill:none;stroke-width:calc(5px / var(--z));stroke-linecap:round;stroke-linejoin:round}
+.ksub-map .cs{fill:none;stroke:#f8fafc;stroke-width:calc(8.6px / var(--z));stroke-linecap:round;stroke-linejoin:round}
 .ksub-map .dot{fill:#fff;stroke-width:2px}
 .ksub-map .hub{fill:#fff;stroke:#111827;stroke-width:2.6px}
 .ksub-map .hit{fill:transparent}

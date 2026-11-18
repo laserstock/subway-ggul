@@ -1,5 +1,6 @@
 import { compareLines, guideByKo, POPULAR_GUIDES, stationLineColor, type GuideStation } from "./guide";
 import { DOT_R, HUB_R, labelBox, labelLines, LABEL_POSITIONS, type LabelBox } from "./mapLabel";
+import { LOOP2_CORNER, LOOP2_H, LOOP2_W, RIVER_Y, SCHEMATIC_HUBS } from "./schematicHubs";
 import { NETWORK_EDGES, NETWORK_SERVICES, NETWORK_STATIONS } from "./subwayNetwork";
 
 export type MapBox = { x: number; y: number; w: number; h: number };
@@ -7,37 +8,22 @@ export type MapNode = { station: GuideStation; x: number; y: number; lines: stri
 export type MapLine = { line: string; color: string; d: string };
 export type MapTerrain = { river: string; sea: string };
 
-/** Screen px per map unit at which each label level switches on. */
 export const MAP_LEVELS = [0.35, 0.55, 0.85, 1.2, 1.7, 2.4, 3.4, 4.8, 6.8] as const;
 export const MAP_MAX_ZOOM = 12;
 
-const EDGE = 10;
-const PADDING = 36;
-const GEO_CENTER = { lat: 37.5657, lng: 126.9769 };
-const LOOP2_W = 100;
-const LOOP2_H = 90;
-const LOOP2_CORNER = 26;
-const RING = 4.2;
+const EDGE = 9.2;
+const PADDING = 40;
 const STEP = Math.PI / 4;
-const GRID = 3.2;
-
 const round = (value: number) => Math.round(value * 10) / 10;
 
 type Pt = { x: number; y: number };
-
-function riverLatAt(lng: number) {
-  if (lng < 126.95) return 37.528;
-  if (lng < 127.02) return 37.518;
-  return 37.533;
-}
 
 function roundedRectPerimeter(w: number, h: number, r: number) {
   const rr = Math.min(r, w / 2, h / 2);
   return 2 * (w - 2 * rr) + 2 * (h - 2 * rr) + 2 * Math.PI * rr;
 }
 
-/** Point + outward normal on a rounded rect; `s` from top-edge midpoint, clockwise. */
-function roundedRectFrame(s: number, w: number, h: number, r: number): { point: Pt; normal: Pt } {
+function roundedRectFrame(s: number, w: number, h: number, r: number): Pt {
   const rr = Math.min(r, w / 2, h / 2);
   const perim = roundedRectPerimeter(w, h, rr);
   let d = ((s % perim) + perim) % perim;
@@ -45,44 +31,31 @@ function roundedRectFrame(s: number, w: number, h: number, r: number): { point: 
   const side = h - 2 * rr;
   const arc = (Math.PI / 2) * rr;
   d = (d + top / 2) % perim;
-
-  if (d <= top) return { point: { x: -w / 2 + rr + d, y: -h / 2 }, normal: { x: 0, y: -1 } };
+  if (d <= top) return { x: -w / 2 + rr + d, y: -h / 2 };
   d -= top;
   if (d <= arc) {
     const a = -Math.PI / 2 + d / rr;
-    return {
-      point: { x: w / 2 - rr + Math.cos(a) * rr, y: -h / 2 + rr + Math.sin(a) * rr },
-      normal: { x: Math.cos(a), y: Math.sin(a) },
-    };
+    return { x: w / 2 - rr + Math.cos(a) * rr, y: -h / 2 + rr + Math.sin(a) * rr };
   }
   d -= arc;
-  if (d <= side) return { point: { x: w / 2, y: -h / 2 + rr + d }, normal: { x: 1, y: 0 } };
+  if (d <= side) return { x: w / 2, y: -h / 2 + rr + d };
   d -= side;
   if (d <= arc) {
     const a = d / rr;
-    return {
-      point: { x: w / 2 - rr + Math.cos(a) * rr, y: h / 2 - rr + Math.sin(a) * rr },
-      normal: { x: Math.cos(a), y: Math.sin(a) },
-    };
+    return { x: w / 2 - rr + Math.cos(a) * rr, y: h / 2 - rr + Math.sin(a) * rr };
   }
   d -= arc;
-  if (d <= top) return { point: { x: w / 2 - rr - d, y: h / 2 }, normal: { x: 0, y: 1 } };
+  if (d <= top) return { x: w / 2 - rr - d, y: h / 2 };
   d -= top;
   if (d <= arc) {
     const a = Math.PI / 2 + d / rr;
-    return {
-      point: { x: -w / 2 + rr + Math.cos(a) * rr, y: h / 2 - rr + Math.sin(a) * rr },
-      normal: { x: Math.cos(a), y: Math.sin(a) },
-    };
+    return { x: -w / 2 + rr + Math.cos(a) * rr, y: h / 2 - rr + Math.sin(a) * rr };
   }
   d -= arc;
-  if (d <= side) return { point: { x: -w / 2, y: h / 2 - rr - d }, normal: { x: -1, y: 0 } };
+  if (d <= side) return { x: -w / 2, y: h / 2 - rr - d };
   d -= side;
   const a = Math.PI + d / rr;
-  return {
-    point: { x: -w / 2 + rr + Math.cos(a) * rr, y: -h / 2 + rr + Math.sin(a) * rr },
-    normal: { x: Math.cos(a), y: Math.sin(a) },
-  };
+  return { x: -w / 2 + rr + Math.cos(a) * rr, y: -h / 2 + rr + Math.sin(a) * rr };
 }
 
 function roundedRectPath(cx: number, cy: number, w: number, h: number, r: number) {
@@ -148,29 +121,16 @@ function line2LoopOrder(): number[] {
   return path;
 }
 
-/** Snap a vector direction to the nearest octilinear angle. */
-function snapDir(dx: number, dy: number): Pt {
-  const length = Math.hypot(dx, dy) || 1;
-  const angle = Math.round(Math.atan2(dy, dx) / STEP) * STEP;
-  return { x: Math.cos(angle) * length, y: Math.sin(angle) * length };
-}
-
-/**
- * One octilinear corridor from A to B: straight, or axis+diagonal / two legs.
- * Stations between A and B will sit on this path so the line reads as a clean stroke.
- */
+/** Kakao-style octilinear elbow: only H / V / 45°. */
 function octilinearCorridor(a: Pt, b: Pt): Pt[] {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const ax = Math.abs(dx);
   const ay = Math.abs(dy);
-  if (ax < 0.2 && ay < 0.2) return [a, b];
-  // Already octilinear (H / V / 45°).
-  if (Math.min(ax, ay) < 0.35 || Math.abs(ax - ay) < 0.35) return [a, b];
-
+  if (ax < 0.15 && ay < 0.15) return [a, b];
+  if (Math.min(ax, ay) < 0.25 || Math.abs(ax - ay) < 0.25) return [a, b];
   const diagonal = Math.min(ax, ay);
   const rest = Math.max(ax, ay) - diagonal;
-  // Prefer putting the long axis first when the run is mostly horizontal/vertical.
   if (ax >= ay) {
     const mid1 = { x: a.x + Math.sign(dx) * (rest / 2), y: a.y };
     const mid2 = { x: mid1.x + Math.sign(dx) * diagonal, y: mid1.y + Math.sign(dy) * diagonal };
@@ -207,7 +167,6 @@ function pointAlong(pts: Pt[], t: number): Pt {
   return pts[pts.length - 1];
 }
 
-/** SVG path with soft corners; collinear samples collapse into long straight runs. */
 function strokePath(pts: Pt[]) {
   if (pts.length < 2) return "";
   const simplified: Pt[] = [pts[0]];
@@ -219,18 +178,14 @@ function strokePath(pts: Pt[]) {
     const ay = cur.y - prev.y;
     const bx = next.x - cur.x;
     const by = next.y - cur.y;
-    const cross = ax * by - ay * bx;
-    const dot = ax * bx + ay * by;
-    if (Math.abs(cross) < 0.15 && dot > 0) continue; // collinear — keep going
+    if (Math.abs(ax * by - ay * bx) < 0.2 && ax * bx + ay * by > 0) continue;
     simplified.push(cur);
   }
   simplified.push(pts[pts.length - 1]);
-
   if (simplified.length === 2) {
     return `M${round(simplified[0].x)} ${round(simplified[0].y)}L${round(simplified[1].x)} ${round(simplified[1].y)}`;
   }
-
-  const corner = 4;
+  const corner = 5;
   let d = `M${round(simplified[0].x)} ${round(simplified[0].y)}`;
   for (let index = 1; index < simplified.length - 1; index += 1) {
     const p0 = simplified[index - 1];
@@ -242,64 +197,51 @@ function strokePath(pts: Pt[]) {
     const outDy = p2.y - p1.y;
     const inLen = Math.hypot(inDx, inDy) || 1;
     const outLen = Math.hypot(outDx, outDy) || 1;
-    const cut = Math.min(corner, inLen * 0.42, outLen * 0.42);
-    const ax = round(p1.x - (inDx / inLen) * cut);
-    const ay = round(p1.y - (inDy / inLen) * cut);
-    const bx = round(p1.x + (outDx / outLen) * cut);
-    const by = round(p1.y + (outDy / outLen) * cut);
-    d += `L${ax} ${ay}Q${round(p1.x)} ${round(p1.y)} ${bx} ${by}`;
+    const cut = Math.min(corner, inLen * 0.45, outLen * 0.45);
+    d += `L${round(p1.x - (inDx / inLen) * cut)} ${round(p1.y - (inDy / inLen) * cut)}`;
+    d += `Q${round(p1.x)} ${round(p1.y)} ${round(p1.x + (outDx / outLen) * cut)} ${round(p1.y + (outDy / outLen) * cut)}`;
   }
   const last = simplified[simplified.length - 1];
   d += `L${round(last.x)} ${round(last.y)}`;
   return d;
 }
 
-/**
- * Walk undirected line graph into maximal simple paths (open chains + loops once).
- * Each path is an ordered list of map-node indexes for corridor placement.
- */
-function linePaths(neighbors: Map<number, number[]>, onLoop: Set<number>): number[][] {
+function linePaths(neighbors: Map<number, number[]>, skipAllIn?: Set<number>): number[][] {
   const paths: number[][] = [];
   const used = new Set<string>();
   const edgeKey = (a: number, b: number) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-
   const degree = (node: number) => neighbors.get(node)?.length ?? 0;
   const starts = [...neighbors.keys()].filter((node) => degree(node) !== 2).sort((a, b) => a - b);
   const seeds = starts.length ? starts : [...neighbors.keys()].sort((a, b) => a - b);
-
   for (const start of seeds) {
     for (const first of neighbors.get(start) ?? []) {
-      const key = edgeKey(start, first);
-      if (used.has(key)) continue;
+      if (used.has(edgeKey(start, first))) continue;
       const path = [start];
       let prev = start;
       let cur = first;
-      used.add(key);
+      used.add(edgeKey(start, first));
       while (true) {
         path.push(cur);
         if (degree(cur) !== 2) break;
         const next = (neighbors.get(cur) ?? []).find((node) => node !== prev);
-        if (next === undefined) break;
-        const nextKey = edgeKey(cur, next);
-        if (used.has(nextKey)) break;
-        used.add(nextKey);
+        if (next === undefined || used.has(edgeKey(cur, next))) break;
+        used.add(edgeKey(cur, next));
         prev = cur;
         cur = next;
-        if (path.length > 200) break;
+        if (path.length > 220) break;
       }
-      // Skip pure Line 2 loop edges — drawn as the rounded rectangle.
-      const allLoop = path.length >= 2 && path.every((node) => onLoop.has(node));
-      if (!allLoop && path.length >= 2) paths.push(path);
+      if (skipAllIn && path.length >= 2 && path.every((node) => skipAllIn.has(node))) continue;
+      if (path.length >= 2) paths.push(path);
     }
   }
   return paths;
 }
 
 /**
- * KakaoMetro-style schematic:
- * - Line 2 = rounded rectangle
- * - Other lines = long octilinear corridors with stations as beads on the wire
- *   (not GPS polylines, not per-edge zigzags)
+ * KakaoMetro-style schematic map:
+ * - Line 2 = rounded rectangle (like Kakao)
+ * - Known hubs = hand-tuned Kakao-like anchors
+ * - All other stations = beads on octilinear corridors between anchors
  */
 export const SUBWAY_MAP = (() => {
   const services = NETWORK_EDGES.filter(([service]) => NETWORK_SERVICES[service] && !NETWORK_SERVICES[service].express);
@@ -321,7 +263,6 @@ export const SUBWAY_MAP = (() => {
   type Edge = { a: number; b: number; lines: Set<string> };
   const edgeMap = new Map<string, Edge>();
   const lineNeighbors = new Map<string, Map<number, number[]>>();
-
   for (const [service, from, to] of services) {
     const a = nodeOf(from);
     const b = nodeOf(to);
@@ -331,7 +272,6 @@ export const SUBWAY_MAP = (() => {
     const edge = edgeMap.get(key) ?? { a: Math.min(a, b), b: Math.max(a, b), lines: new Set<string>() };
     edge.lines.add(line);
     edgeMap.set(key, edge);
-
     if (!lineNeighbors.has(line)) lineNeighbors.set(line, new Map());
     const graph = lineNeighbors.get(line)!;
     if (!graph.has(a)) graph.set(a, []);
@@ -354,161 +294,107 @@ export const SUBWAY_MAP = (() => {
   const onLoop = new Set(loopNodes);
   const loopPerim = roundedRectPerimeter(LOOP2_W, LOOP2_H, LOOP2_CORNER);
 
-  const kmX = 111.32 * Math.cos((GEO_CENTER.lat * Math.PI) / 180);
-  const geo = stations.map((station) => ({
-    x: (station.lng - GEO_CENTER.lng) * kmX,
-    y: (GEO_CENTER.lat - station.lat) * 110.57,
-  }));
-  const northOfRiver = stations.map((station) => station.lat >= riverLatAt(station.lng));
-
-  // Hops from Line 2 for suburban ring radius.
-  const hops = new Array(count).fill(Infinity);
-  const attach = new Array(count).fill(-1);
-  const queue = [...loopNodes];
-  for (const node of loopNodes) {
-    hops[node] = 0;
-    attach[node] = node;
-  }
-  for (let head = 0; head < queue.length; head += 1) {
-    const cur = queue[head];
-    for (const next of allNeighbors[cur]) {
-      if (hops[next] <= hops[cur] + 1) continue;
-      hops[next] = hops[cur] + 1;
-      attach[next] = attach[cur];
-      queue.push(next);
-    }
-  }
-
   const xs = new Array(count).fill(0);
   const ys = new Array(count).fill(0);
   const fixed = new Array(count).fill(false);
-  const riverY = LOOP2_H * 0.12;
 
+  // 1) Line 2 rounded rectangle — Gangnam at bottom centre (Kakao).
   const gangnamIndex = Math.max(
     0,
     loopNodes.findIndex((node) => stations[node].ko === "강남역"),
   );
   const bottomMidS = loopPerim / 2;
-  const loopS = new Map<number, number>();
   loopNodes.forEach((node, index) => {
     const s = bottomMidS + ((index - gangnamIndex) / Math.max(loopNodes.length, 1)) * loopPerim;
-    loopS.set(node, ((s % loopPerim) + loopPerim) % loopPerim);
-    const frame = roundedRectFrame(loopS.get(node)!, LOOP2_W, LOOP2_H, LOOP2_CORNER);
-    xs[node] = frame.point.x;
-    ys[node] = frame.point.y;
+    const point = roundedRectFrame(((s % loopPerim) + loopPerim) % loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER);
+    xs[node] = point.x;
+    ys[node] = point.y;
     fixed[node] = true;
   });
 
-  const loopGeoR =
-    loopNodes.map((node) => Math.hypot(geo[node].x, geo[node].y)).sort((a, b) => a - b)[Math.floor(loopNodes.length / 2)] ||
-    8;
+  // 2) Pin Kakao-tuned hubs.
+  for (let node = 0; node < count; node += 1) {
+    if (onLoop.has(node)) continue;
+    const hub = SCHEMATIC_HUBS[stations[node].ko];
+    if (!hub) continue;
+    xs[node] = hub.x;
+    ys[node] = hub.y;
+    fixed[node] = true;
+  }
 
-  const snapGrid = (value: number) => Math.round(value / GRID) * GRID;
-
-  /** Seed a station that isn't on a corridor yet (terminals / orphan hubs). */
-  const seedStation = (node: number) => {
+  // Geographic fallback seed for terminals still unfixed.
+  const kmX = 111.32 * Math.cos((37.5657 * Math.PI) / 180);
+  const seedFallback = (node: number) => {
     if (fixed[node]) return;
-    const gate = attach[node];
-    const s =
-      gate >= 0 && loopS.has(gate)
-        ? loopS.get(gate)!
-        : ((((Math.atan2(geo[node].y, geo[node].x) / (Math.PI * 2) + 0.25) % 1) + 1) % 1) * loopPerim;
-    const frame = roundedRectFrame(s, LOOP2_W, LOOP2_H, LOOP2_CORNER);
-    const hop = Number.isFinite(hops[node]) ? hops[node] : 10;
-    const geoR = Math.hypot(geo[node].x, geo[node].y);
-    const inner = geoR < loopGeoR * 0.85 && hop <= 4;
-
-    if (inner) {
-      xs[node] = snapGrid(Math.max(-LOOP2_W * 0.36, Math.min(LOOP2_W * 0.36, (geo[node].x / loopGeoR) * (LOOP2_W / 2) * 0.58)));
-      ys[node] = snapGrid(Math.max(-LOOP2_H * 0.36, Math.min(LOOP2_H * 0.36, (geo[node].y / loopGeoR) * (LOOP2_H / 2) * 0.58)));
-    } else {
-      const outset = Math.max(1, hop) * RING + Math.max(0, hop - 5) * 1.25;
-      const geoAngle = Math.atan2(geo[node].y, geo[node].x);
-      const gateAngle = Math.atan2(frame.normal.y, frame.normal.x);
-      let delta = geoAngle - gateAngle;
-      while (delta > Math.PI) delta -= Math.PI * 2;
-      while (delta < -Math.PI) delta += Math.PI * 2;
-      const angle = gateAngle + Math.round(delta / STEP) * STEP;
-      const dir = snapDir(Math.cos(angle), Math.sin(angle));
-      const nLen = Math.hypot(dir.x, dir.y) || 1;
-      xs[node] = snapGrid(frame.point.x + (dir.x / nLen) * outset);
-      ys[node] = snapGrid(frame.point.y + (dir.y / nLen) * outset);
-    }
-
-    const margin = 4;
-    if (northOfRiver[node] && ys[node] > riverY - margin) ys[node] = snapGrid(riverY - margin);
-    if (!northOfRiver[node] && ys[node] < riverY + margin) ys[node] = snapGrid(riverY + margin);
+    const station = stations[node];
+    const gx = (station.lng - 126.9769) * kmX;
+    const gy = (37.5657 - station.lat) * 110.57;
+    const angle = Math.round(Math.atan2(gy, gx) / STEP) * STEP;
+    const hopsGuess = 8 + Math.hypot(gx, gy);
+    xs[node] = Math.cos(angle) * (LOOP2_W / 2 + hopsGuess * 0.9);
+    ys[node] = Math.sin(angle) * (LOOP2_H / 2 + hopsGuess * 0.9);
     fixed[node] = true;
   };
 
   /**
-   * Lay a whole line path on long octilinear corridors.
-   * Already-fixed stations (Line 2 / earlier lines) become waypoints; everything else
-   * is a bead on the wire between them — so runs stay straight like KakaoMetro.
+   * Place every station on a line path as a bead on long octilinear corridors
+   * between already-fixed anchors (Line 2 / Kakao hubs). This is what makes
+   * KakaoMetro look "straight" instead of GPS-wavy.
    */
   const placeLinePath = (path: number[]) => {
     if (path.length < 2) return;
-    if (!fixed[path[0]]) seedStation(path[0]);
-    if (!fixed[path[path.length - 1]]) seedStation(path[path.length - 1]);
+    if (!fixed[path[0]]) seedFallback(path[0]);
+    if (!fixed[path[path.length - 1]]) seedFallback(path[path.length - 1]);
 
-    // Waypoints: already fixed stations on this path (Line 2 transfers, earlier lines).
-    let marks = path
-      .map((node, index) => ({ node, index }))
-      .filter(({ node, index }) => fixed[node] || index === 0 || index === path.length - 1);
-
-    // If the path only has endpoints fixed, that's one long corridor — ideal.
-    // If many waypoints exist, keep only endpoints + Line 2 gates + every Nth to avoid staircase noise.
-    if (marks.length > 4) {
-      const keep = new Set<number>([0, path.length - 1]);
+    // Anchors: fixed stations. Thin to endpoints + hubs on Line 2 + at most one bend.
+    let marks = path.map((node, index) => ({ node, index })).filter(({ node }) => fixed[node]);
+    if (marks.length < 2) {
+      marks = [
+        { node: path[0], index: 0 },
+        { node: path[path.length - 1], index: path.length - 1 },
+      ];
+    }
+    if (marks.length > 5) {
+      const keep = new Set<number>([marks[0].index, marks[marks.length - 1].index]);
       for (const mark of marks) {
-        if (onLoop.has(mark.node)) keep.add(mark.index);
+        if (onLoop.has(mark.node) || SCHEMATIC_HUBS[stations[mark.node].ko]) keep.add(mark.index);
       }
-      // Keep geographic extremes as bend candidates (at most two extras).
-      let maxDev = -1;
-      let bend = -1;
-      const a = { x: xs[path[0]], y: ys[path[0]] };
-      const b = { x: xs[path[path.length - 1]], y: ys[path[path.length - 1]] };
+      // One geographic bend if the run bows far from the chord.
+      const a = { x: xs[path[marks[0].index]], y: ys[path[marks[0].index]] };
+      const b = { x: xs[path[marks[marks.length - 1].index]], y: ys[path[marks[marks.length - 1].index]] };
       const abx = b.x - a.x;
       const aby = b.y - a.y;
       const abLen = Math.hypot(abx, aby) || 1;
+      let bend = -1;
+      let maxDev = 0;
       for (const mark of marks) {
         if (keep.has(mark.index)) continue;
-        const px = xs[mark.node] - a.x;
-        const py = ys[mark.node] - a.y;
-        const cross = Math.abs(abx * py - aby * px) / abLen;
+        const cross = Math.abs(abx * (ys[mark.node] - a.y) - aby * (xs[mark.node] - a.x)) / abLen;
         if (cross > maxDev) {
           maxDev = cross;
           bend = mark.index;
         }
       }
-      if (bend >= 0 && maxDev > GRID * 2) keep.add(bend);
-      marks = path.map((node, index) => ({ node, index })).filter(({ index }) => keep.has(index));
-      // Seed any newly required bend that wasn't fixed.
-      for (const mark of marks) {
-        if (!fixed[mark.node]) seedStation(mark.node);
-      }
+      if (bend >= 0 && maxDev > 8) keep.add(bend);
+      marks = marks.filter((mark) => keep.has(mark.index));
     }
 
     for (let m = 0; m < marks.length - 1; m += 1) {
       const from = marks[m];
       const to = marks[m + 1];
       if (to.index <= from.index) continue;
-      const corridor = octilinearCorridor(
-        { x: xs[from.node], y: ys[from.node] },
-        { x: xs[to.node], y: ys[to.node] },
-      );
+      const corridor = octilinearCorridor({ x: xs[from.node], y: ys[from.node] }, { x: xs[to.node], y: ys[to.node] });
       const span = to.index - from.index;
       for (let step = 0; step <= span; step += 1) {
         const node = path[from.index + step];
-        if (fixed[node] && (onLoop.has(node) || step === 0 || step === span)) continue;
-        // Line 2 stations stay glued; other previously-fixed transfers keep their spot
-        // only if they are waypoints. Intermediates always follow this corridor.
         if (onLoop.has(node)) continue;
-        if (fixed[node] && stations[node].lines.length > 1 && step !== 0 && step !== span) {
-          // Shared transfer claimed by an earlier line — leave it; corridor visually elbows via stroke.
+        // Keep Kakao hubs / earlier claims; fill everything else onto the corridor.
+        if (fixed[node] && SCHEMATIC_HUBS[stations[node].ko] && step !== 0 && step !== span) continue;
+        if (fixed[node] && step !== 0 && step !== span && stations[node].lines.length > 1) {
+          // Shared transfer already placed — leave it; stroke elbows through it.
           continue;
         }
-        const point = pointAlong(corridor, span === 0 ? 0 : step / span);
+        const point = pointAlong(corridor, span ? step / span : 0);
         xs[node] = point.x;
         ys[node] = point.y;
         fixed[node] = true;
@@ -523,25 +409,24 @@ export const SUBWAY_MAP = (() => {
   });
 
   for (const line of lineOrder) {
-    const graph = lineNeighbors.get(line)!;
-    for (const path of linePaths(graph, line === "2호선" ? onLoop : new Set())) {
+    for (const path of linePaths(lineNeighbors.get(line)!, line === "2호선" ? onLoop : undefined)) {
       placeLinePath(path);
     }
   }
-
   for (let node = 0; node < count; node += 1) {
-    if (!fixed[node]) seedStation(node);
+    if (!fixed[node]) seedFallback(node);
   }
 
-  // Re-pin Line 2 after corridor fills.
-  loopNodes.forEach((node) => {
-    const frame = roundedRectFrame(loopS.get(node)!, LOOP2_W, LOOP2_H, LOOP2_CORNER);
-    xs[node] = frame.point.x;
-    ys[node] = frame.point.y;
+  // Re-pin Line 2 after fills.
+  loopNodes.forEach((node, index) => {
+    const s = bottomMidS + ((index - gangnamIndex) / Math.max(loopNodes.length, 1)) * loopPerim;
+    const point = roundedRectFrame(((s % loopPerim) + loopPerim) % loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER);
+    xs[node] = point.x;
+    ys[node] = point.y;
   });
 
   const laid = edges.map(({ a, b }) => Math.hypot(xs[a] - xs[b], ys[a] - ys[b])).sort((p, q) => p - q);
-  const scale = EDGE / (laid[Math.floor(laid.length * 0.55)] || laid[Math.floor(laid.length / 2)] || 1);
+  const scale = EDGE / (laid[Math.floor(laid.length * 0.55)] || 1);
   const minX = Math.min(...xs);
   const minY = Math.min(...ys);
   const toScreen = (x: number, y: number) => ({
@@ -562,22 +447,19 @@ export const SUBWAY_MAP = (() => {
   });
   const width = Math.ceil(Math.max(...nodes.map((node) => node.x)) + PADDING);
   const height = Math.ceil(Math.max(...nodes.map((node) => node.y)) + PADDING);
-
   const origin = toScreen(0, 0);
   const cx = origin.x;
   const cy = origin.y;
   const loopW = round(LOOP2_W * scale);
   const loopH = round(LOOP2_H * scale);
   const loopR = round(LOOP2_CORNER * scale);
-  const riverScreenY = toScreen(0, riverY).y;
+  const riverScreenY = toScreen(0, RIVER_Y).y;
 
-  /** Build a stroke that only uses H / V / 45° legs between successive stations. */
   const octilinearStroke = (path: number[]) => {
     if (path.length < 2) return "";
     const pts: Pt[] = [{ x: nodes[path[0]].x, y: nodes[path[0]].y }];
     for (let index = 1; index < path.length; index += 1) {
-      const target = { x: nodes[path[index]].x, y: nodes[path[index]].y };
-      const corridor = octilinearCorridor(pts[pts.length - 1], target);
+      const corridor = octilinearCorridor(pts[pts.length - 1], { x: nodes[path[index]].x, y: nodes[path[index]].y });
       for (let step = 1; step < corridor.length; step += 1) pts.push(corridor[step]);
     }
     return strokePath(pts);
@@ -585,15 +467,10 @@ export const SUBWAY_MAP = (() => {
 
   const byLine = new Map<string, string[]>();
   for (const line of lineOrder) {
-    const graph = lineNeighbors.get(line)!;
-    if (line === "2호선") {
-      byLine.set(line, [roundedRectPath(cx, cy, loopW, loopH, loopR)]);
-    }
-    for (const path of linePaths(graph, line === "2호선" ? onLoop : new Set())) {
-      if (line === "2호선" && path.every((node) => onLoop.has(node))) continue;
+    if (line === "2호선") byLine.set(line, [roundedRectPath(cx, cy, loopW, loopH, loopR)]);
+    for (const path of linePaths(lineNeighbors.get(line)!, line === "2호선" ? onLoop : undefined)) {
       const d = octilinearStroke(path);
-      if (!d) continue;
-      byLine.set(line, [...(byLine.get(line) ?? []), d]);
+      if (d) byLine.set(line, [...(byLine.get(line) ?? []), d]);
     }
   }
 
@@ -601,66 +478,55 @@ export const SUBWAY_MAP = (() => {
     .sort(([a], [b]) => compareLines(b, a))
     .map(([line, parts]) => ({ line, color: stationLineColor(line), d: parts.join("") }));
 
-  const riverHalf = Math.max(16, loopH * 0.2);
+  const riverHalf = Math.max(18, loopH * 0.22);
   const river = [
-    `M${round(cx - loopW * 1.55)} ${round(riverScreenY - riverHalf * 0.2)}`,
-    `C${round(cx - loopW * 0.85)} ${round(riverScreenY - riverHalf * 0.85)}`,
-    `${round(cx - loopW * 0.2)} ${round(riverScreenY - riverHalf * 0.9)}`,
-    `${round(cx + loopW * 0.1)} ${round(riverScreenY - riverHalf * 0.3)}`,
-    `S${round(cx + loopW * 0.7)} ${round(riverScreenY + riverHalf * 0.1)}`,
-    `${round(cx + loopW * 1.15)} ${round(riverScreenY - riverHalf * 0.05)}`,
-    `S${round(cx + loopW * 1.55)} ${round(riverScreenY - riverHalf * 0.45)}`,
-    `${round(cx + loopW * 1.7)} ${round(riverScreenY - riverHalf * 0.55)}`,
-    `L${round(cx + loopW * 1.7)} ${round(riverScreenY + riverHalf * 0.95)}`,
-    `C${round(cx + loopW * 1.2)} ${round(riverScreenY + riverHalf * 1.15)}`,
-    `${round(cx + loopW * 0.4)} ${round(riverScreenY + riverHalf * 1.15)}`,
-    `${round(cx - loopW * 0.1)} ${round(riverScreenY + riverHalf * 0.9)}`,
-    `S${round(cx - loopW * 1.0)} ${round(riverScreenY + riverHalf * 0.7)}`,
-    `${round(cx - loopW * 1.55)} ${round(riverScreenY + riverHalf * 0.55)}Z`,
+    `M${round(cx - loopW * 1.7)} ${round(riverScreenY - riverHalf * 0.15)}`,
+    `C${round(cx - loopW * 0.9)} ${round(riverScreenY - riverHalf * 0.9)}`,
+    `${round(cx - loopW * 0.15)} ${round(riverScreenY - riverHalf * 0.85)}`,
+    `${round(cx + loopW * 0.2)} ${round(riverScreenY - riverHalf * 0.25)}`,
+    `S${round(cx + loopW * 0.85)} ${round(riverScreenY + riverHalf * 0.1)}`,
+    `${round(cx + loopW * 1.35)} ${round(riverScreenY - riverHalf * 0.05)}`,
+    `S${round(cx + loopW * 1.75)} ${round(riverScreenY - riverHalf * 0.4)}`,
+    `${round(cx + loopW * 1.9)} ${round(riverScreenY - riverHalf * 0.5)}`,
+    `L${round(cx + loopW * 1.9)} ${round(riverScreenY + riverHalf)}`,
+    `C${round(cx + loopW * 1.3)} ${round(riverScreenY + riverHalf * 1.15)}`,
+    `${round(cx + loopW * 0.35)} ${round(riverScreenY + riverHalf * 1.1)}`,
+    `${round(cx - loopW * 0.2)} ${round(riverScreenY + riverHalf * 0.85)}`,
+    `S${round(cx - loopW * 1.1)} ${round(riverScreenY + riverHalf * 0.65)}`,
+    `${round(cx - loopW * 1.7)} ${round(riverScreenY + riverHalf * 0.5)}Z`,
   ].join(" ");
   const seaLeft = Math.min(...nodes.map((node) => node.x)) - 2;
   const sea = [
-    `M${round(seaLeft)} ${round(cy - loopH * 0.5)}`,
-    `C${round(seaLeft + loopW * 0.12)} ${round(cy - loopH)}`,
-    `${round(cx - loopW * 1.1)} ${round(cy - loopH * 0.1)}`,
-    `${round(cx - loopW * 0.92)} ${round(cy + loopH * 0.28)}`,
-    `C${round(cx - loopW)} ${round(cy + loopH * 0.9)}`,
-    `${round(seaLeft + loopW * 0.22)} ${round(cy + loopH * 1.2)}`,
-    `${round(seaLeft)} ${round(cy + loopH * 0.9)}Z`,
+    `M${round(seaLeft)} ${round(cy - loopH * 0.4)}`,
+    `C${round(seaLeft + loopW * 0.15)} ${round(cy - loopH)}`,
+    `${round(cx - loopW * 1.2)} ${round(cy - loopH * 0.05)}`,
+    `${round(cx - loopW)} ${round(cy + loopH * 0.3)}`,
+    `C${round(cx - loopW * 1.05)} ${round(cy + loopH * 0.95)}`,
+    `${round(seaLeft + loopW * 0.25)} ${round(cy + loopH * 1.2)}`,
+    `${round(seaLeft)} ${round(cy + loopH * 0.85)}Z`,
   ].join(" ");
 
   const linePoints: [number, number][] = nodes.map((node) => [node.x, node.y]);
-  for (let step = 0; step < 80; step += 1) {
-    const frame = roundedRectFrame((step / 80) * loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER);
-    const point = toScreen(frame.point.x, frame.point.y);
+  for (let step = 0; step < 64; step += 1) {
+    const point = toScreen(
+      roundedRectFrame((step / 64) * loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER).x,
+      roundedRectFrame((step / 64) * loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER).y,
+    );
     linePoints.push([point.x, point.y]);
-  }
-  for (const line of lines) {
-    // Sample drawn paths lightly for label avoidance — approximate via station chains already listed.
-    void line;
   }
   for (const { a, b } of edges) {
     const corridor = octilinearCorridor({ x: nodes[a].x, y: nodes[a].y }, { x: nodes[b].x, y: nodes[b].y });
-    for (let index = 1; index < corridor.length; index += 1) {
-      const steps = 4;
-      for (let step = 0; step <= steps; step += 1) {
-        const u = step / steps;
-        linePoints.push([
-          corridor[index - 1].x + (corridor[index].x - corridor[index - 1].x) * u,
-          corridor[index - 1].y + (corridor[index].y - corridor[index - 1].y) * u,
-        ]);
-      }
-    }
+    for (const point of corridor) linePoints.push([point.x, point.y]);
   }
 
   const central = loopNodes.map((index) => nodes[index]);
   const fx = Math.min(...central.map((node) => node.x));
   const fy = Math.min(...central.map((node) => node.y));
   const focus: MapBox = {
-    x: fx - 14,
-    y: fy - 14,
-    w: Math.max(...central.map((node) => node.x)) - fx + 28,
-    h: Math.max(...central.map((node) => node.y)) - fy + 28,
+    x: fx - 16,
+    y: fy - 16,
+    w: Math.max(...central.map((node) => node.x)) - fx + 32,
+    h: Math.max(...central.map((node) => node.y)) - fy + 32,
   };
 
   return {
@@ -699,6 +565,8 @@ const PRIORITY_KO = new Set([
   "광화문역",
   "종로3가역",
   "을지로3가역",
+  "김포공항역",
+  "인천공항1터미널역",
 ]);
 
 export function placeLabels(names: string[]): MapLabel[] {
@@ -731,7 +599,6 @@ export function placeLabels(names: string[]): MapLabel[] {
     }))
     .sort((a, b) => b.score - a.score || nodes[a.node].x - nodes[b.node].x)
     .map(({ node }) => node);
-
   const result: (MapLabel | null)[] = nodes.map(() => null);
   const placed: number[] = [];
   const at = (index: number, box: LabelBox, z: number) => ({
@@ -766,7 +633,6 @@ export function placeLabels(names: string[]): MapLabel[] {
       return;
     }
   };
-
   for (let level = 0; level < 2; level += 1) {
     for (const node of order) {
       if (result[node] || !priority(nodes[node])) continue;
