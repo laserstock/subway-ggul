@@ -80,14 +80,15 @@ const WIDE = 640;
 const STYLE = `
 .ksub-map .sc{transform:scale(calc(1 / var(--z)))}
 .ksub-map .terrain{pointer-events:none}
-.ksub-map .water{fill:#e0f2fe}
+.ksub-map .water{fill:#E1F3FE}
+.ksub-map .river{fill:none;stroke:#E1F3FE;stroke-width:calc(28px / var(--z));stroke-linecap:round;stroke-linejoin:round}
 .ksub-map .ln{fill:none;stroke-width:calc(5px / var(--z));stroke-linecap:round;stroke-linejoin:round}
-.ksub-map .cs{fill:none;stroke:#f8fafc;stroke-width:calc(8.6px / var(--z));stroke-linecap:round;stroke-linejoin:round}
+.ksub-map .cs{fill:none;stroke:#ffffff;stroke-width:calc(8.6px / var(--z));stroke-linecap:round;stroke-linejoin:round}
 .ksub-map .dot{fill:#fff;stroke-width:2px}
-.ksub-map .hub{fill:#fff;stroke:#111827;stroke-width:2.6px}
+.ksub-map .hub{fill:#fff;stroke:#1E293B;stroke-width:2.5px}
 .ksub-map .hit{fill:transparent}
-.ksub-map .nm{fill:#1e293b;font-weight:600;paint-order:stroke;stroke:#f8fafc;stroke-width:3.6px;stroke-linejoin:round;pointer-events:none}
-.ksub-map .nm.hb{font-weight:800;fill:#0f172a}
+.ksub-map .nm{fill:#1e293b;font-weight:600;paint-order:stroke;stroke:#ffffff;stroke-width:3.6px;stroke-linejoin:round;pointer-events:none}
+.ksub-map .nm.hb{font-weight:700;fill:#0f172a}
 .ksub-map .st{cursor:pointer;outline:none}
 .ksub-map .st:hover .nm,.ksub-map .st:focus-visible .nm,.ksub-map .st.on .nm{fill:#b45309}
 .ksub-map .st:hover .dot,.ksub-map .st:hover .hub,.ksub-map .st:focus-visible .dot,.ksub-map .st:focus-visible .hub{stroke-width:3.4px}
@@ -154,8 +155,8 @@ const MapLayer = memo(function MapLayer({ lang, lines, stations, level, selected
     <>
       {terrain ? (
         <g className="terrain" aria-hidden>
-          <path className="water" d={terrain.sea} />
-          <path className="water" d={terrain.river} />
+          {terrain.sea ? <path className="water" d={terrain.sea} /> : null}
+          {terrain.river ? <path className="river" d={terrain.river} /> : null}
         </g>
       ) : null}
       <g>
@@ -788,10 +789,10 @@ export default function SubwayMap({
     <div
       className={
         actions
-          ? "flex h-full min-h-0 flex-col overflow-hidden bg-[#f8fafc]"
+          ? "flex h-full min-h-0 flex-col overflow-hidden bg-[#FFFFFF]"
           : expanded
-            ? "fixed inset-0 z-[70] flex flex-col bg-[#f8fafc] pt-[env(safe-area-inset-top)]"
-            : "flex h-[min(80dvh,760px)] min-h-[480px] flex-col overflow-hidden rounded-3xl border border-line bg-[#f8fafc]"
+            ? "fixed inset-0 z-[70] flex flex-col bg-[#FFFFFF] pt-[env(safe-area-inset-top)]"
+            : "flex h-[min(80dvh,760px)] min-h-[480px] flex-col overflow-hidden rounded-3xl border border-line bg-[#FFFFFF]"
       }
     >
       <style>{STYLE}</style>

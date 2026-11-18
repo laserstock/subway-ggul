@@ -2,7 +2,7 @@
 
 /** KakaoMetro-style markers: small coloured ring for locals, larger dark ring for transfers. */
 export const DOT_R = 3.5;
-export const HUB_R = 5.5;
+export const HUB_R = 6;
 const GAP = 3;
 const LINE_HEIGHT = 1.2;
 

@@ -1,71 +1,156 @@
 import { compareLines, guideByKo, POPULAR_GUIDES, stationLineColor, type GuideStation } from "./guide";
 import { DOT_R, HUB_R, labelBox, labelLines, LABEL_POSITIONS, type LabelBox } from "./mapLabel";
-import { LOOP2_CORNER, LOOP2_H, LOOP2_W, RIVER_Y, SCHEMATIC_HUBS } from "./schematicHubs";
+import { CANVAS, LINE2_ANCHORS, TRANSFER_HUBS } from "./schematicHubs";
 import { NETWORK_EDGES, NETWORK_SERVICES, NETWORK_STATIONS } from "./subwayNetwork";
 
 export type MapBox = { x: number; y: number; w: number; h: number };
 export type MapNode = { station: GuideStation; x: number; y: number; lines: string[]; hub: boolean };
 export type MapLine = { line: string; color: string; d: string };
+/** River is a stroke path (Kakao-style band); sea optional fill. */
 export type MapTerrain = { river: string; sea: string };
 
-export const MAP_LEVELS = [0.35, 0.55, 0.85, 1.2, 1.7, 2.4, 3.4, 4.8, 6.8] as const;
+/** Level thresholds; regular station labels unlock at index of 1.4. */
+export const MAP_LEVELS = [0.5, 0.85, 1.1, 1.4, 1.8, 2.5, 3.5, 5, 7] as const;
 export const MAP_MAX_ZOOM = 12;
+export const REGULAR_LABEL_LEVEL = MAP_LEVELS.indexOf(1.4);
 
-const EDGE = 9.2;
-const PADDING = 40;
-const STEP = Math.PI / 4;
+const PADDING = 24;
+const CORNER_R = 8;
 const round = (value: number) => Math.round(value * 10) / 10;
 
 type Pt = { x: number; y: number };
 
-function roundedRectPerimeter(w: number, h: number, r: number) {
-  const rr = Math.min(r, w / 2, h / 2);
-  return 2 * (w - 2 * rr) + 2 * (h - 2 * rr) + 2 * Math.PI * rr;
+/** Only H / V / 45° segments between two points. */
+function octilinearWaypoints(a: Pt, b: Pt): Pt[] {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const ax = Math.abs(dx);
+  const ay = Math.abs(dy);
+  if (ax < 0.01 && ay < 0.01) return [a, b];
+  if (Math.min(ax, ay) < 0.01 || Math.abs(ax - ay) < 0.01) return [a, b];
+  const diagonal = Math.min(ax, ay);
+  const rest = Math.max(ax, ay) - diagonal;
+  const sx = Math.sign(dx);
+  const sy = Math.sign(dy);
+  if (ax >= ay) {
+    const mid1 = { x: a.x + sx * (rest / 2), y: a.y };
+    const mid2 = { x: mid1.x + sx * diagonal, y: mid1.y + sy * diagonal };
+    return [a, mid1, mid2, b];
+  }
+  const mid1 = { x: a.x, y: a.y + sy * (rest / 2) };
+  const mid2 = { x: mid1.x + sx * diagonal, y: mid1.y + sy * diagonal };
+  return [a, mid1, mid2, b];
 }
 
-function roundedRectFrame(s: number, w: number, h: number, r: number): Pt {
-  const rr = Math.min(r, w / 2, h / 2);
-  const perim = roundedRectPerimeter(w, h, rr);
-  let d = ((s % perim) + perim) % perim;
-  const top = w - 2 * rr;
-  const side = h - 2 * rr;
-  const arc = (Math.PI / 2) * rr;
-  d = (d + top / 2) % perim;
-  if (d <= top) return { x: -w / 2 + rr + d, y: -h / 2 };
-  d -= top;
-  if (d <= arc) {
-    const a = -Math.PI / 2 + d / rr;
-    return { x: w / 2 - rr + Math.cos(a) * rr, y: -h / 2 + rr + Math.sin(a) * rr };
+/**
+ * Build an SVG path that only uses horizontal, vertical, and 45° segments,
+ * with Quadratic Bezier fillets (radius ≈ 8px) at corners.
+ */
+export function createOctilinearPath(points: Pt[]): string {
+  if (points.length < 2) return "";
+  const raw: Pt[] = [{ x: points[0].x, y: points[0].y }];
+  for (let i = 1; i < points.length; i += 1) {
+    const way = octilinearWaypoints(raw[raw.length - 1], points[i]);
+    for (let j = 1; j < way.length; j += 1) raw.push(way[j]);
   }
-  d -= arc;
-  if (d <= side) return { x: w / 2, y: -h / 2 + rr + d };
-  d -= side;
-  if (d <= arc) {
-    const a = d / rr;
-    return { x: w / 2 - rr + Math.cos(a) * rr, y: h / 2 - rr + Math.sin(a) * rr };
+  const simplified: Pt[] = [raw[0]];
+  for (let i = 1; i < raw.length - 1; i += 1) {
+    const prev = simplified[simplified.length - 1];
+    const cur = raw[i];
+    const next = raw[i + 1];
+    const ax = cur.x - prev.x;
+    const ay = cur.y - prev.y;
+    const bx = next.x - cur.x;
+    const by = next.y - cur.y;
+    if (Math.abs(ax * by - ay * bx) < 0.05 && ax * bx + ay * by > 0) continue;
+    simplified.push(cur);
   }
-  d -= arc;
-  if (d <= top) return { x: w / 2 - rr - d, y: h / 2 };
-  d -= top;
-  if (d <= arc) {
-    const a = Math.PI / 2 + d / rr;
-    return { x: -w / 2 + rr + Math.cos(a) * rr, y: h / 2 - rr + Math.sin(a) * rr };
+  simplified.push(raw[raw.length - 1]);
+
+  if (simplified.length === 2) {
+    return `M${round(simplified[0].x)} ${round(simplified[0].y)}L${round(simplified[1].x)} ${round(simplified[1].y)}`;
   }
-  d -= arc;
-  if (d <= side) return { x: -w / 2, y: h / 2 - rr - d };
-  d -= side;
-  const a = Math.PI + d / rr;
-  return { x: -w / 2 + rr + Math.cos(a) * rr, y: -h / 2 + rr + Math.sin(a) * rr };
+
+  let d = `M${round(simplified[0].x)} ${round(simplified[0].y)}`;
+  for (let i = 1; i < simplified.length - 1; i += 1) {
+    const p0 = simplified[i - 1];
+    const p1 = simplified[i];
+    const p2 = simplified[i + 1];
+    const inDx = p1.x - p0.x;
+    const inDy = p1.y - p0.y;
+    const outDx = p2.x - p1.x;
+    const outDy = p2.y - p1.y;
+    const inLen = Math.hypot(inDx, inDy) || 1;
+    const outLen = Math.hypot(outDx, outDy) || 1;
+    const cut = Math.min(CORNER_R, inLen * 0.45, outLen * 0.45);
+    d += `L${round(p1.x - (inDx / inLen) * cut)} ${round(p1.y - (inDy / inLen) * cut)}`;
+    d += `Q${round(p1.x)} ${round(p1.y)} ${round(p1.x + (outDx / outLen) * cut)} ${round(p1.y + (outDy / outLen) * cut)}`;
+  }
+  const last = simplified[simplified.length - 1];
+  d += `L${round(last.x)} ${round(last.y)}`;
+  return d;
 }
 
-function roundedRectPath(cx: number, cy: number, w: number, h: number, r: number) {
-  const rr = Math.min(r, w / 2, h / 2);
-  const x0 = round(cx - w / 2);
-  const y0 = round(cy - h / 2);
-  const x1 = round(cx + w / 2);
-  const y1 = round(cy + h / 2);
-  const rad = round(rr);
-  return `M${x0 + rad} ${y0}L${x1 - rad} ${y0}A${rad} ${rad} 0 0 1 ${x1} ${y0 + rad}L${x1} ${y1 - rad}A${rad} ${rad} 0 0 1 ${x1 - rad} ${y1}L${x0 + rad} ${y1}A${rad} ${rad} 0 0 1 ${x0} ${y1 - rad}L${x0} ${y0 + rad}A${rad} ${rad} 0 0 1 ${x0 + rad} ${y0}Z`;
+function lerp(a: Pt, b: Pt, t: number): Pt {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
+function pathLength(pts: Pt[]) {
+  let total = 0;
+  for (let i = 1; i < pts.length; i += 1) {
+    total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  }
+  return total;
+}
+
+/** Equal spacing along an octilinear corridor (stations sit on the stroke). */
+function pointAlong(pts: Pt[], t: number): Pt {
+  if (pts.length === 1) return pts[0];
+  const total = pathLength(pts) || 1;
+  let remain = Math.max(0, Math.min(1, t)) * total;
+  for (let i = 1; i < pts.length; i += 1) {
+    const seg = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y) || 1e-6;
+    if (remain <= seg) {
+      const u = remain / seg;
+      return {
+        x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * u,
+        y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * u,
+      };
+    }
+    remain -= seg;
+  }
+  return pts[pts.length - 1];
+}
+
+function linePaths(neighbors: Map<number, number[]>, skipAllIn?: Set<number>): number[][] {
+  const paths: number[][] = [];
+  const used = new Set<string>();
+  const edgeKey = (a: number, b: number) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const degree = (node: number) => neighbors.get(node)?.length ?? 0;
+  const starts = [...neighbors.keys()].filter((node) => degree(node) !== 2).sort((a, b) => a - b);
+  const seeds = starts.length ? starts : [...neighbors.keys()].sort((a, b) => a - b);
+  for (const start of seeds) {
+    for (const first of neighbors.get(start) ?? []) {
+      if (used.has(edgeKey(start, first))) continue;
+      const path = [start];
+      let prev = start;
+      let cur = first;
+      used.add(edgeKey(start, first));
+      while (true) {
+        path.push(cur);
+        if (degree(cur) !== 2) break;
+        const next = (neighbors.get(cur) ?? []).find((node) => node !== prev);
+        if (next === undefined || used.has(edgeKey(cur, next))) break;
+        used.add(edgeKey(cur, next));
+        prev = cur;
+        cur = next;
+        if (path.length > 220) break;
+      }
+      if (skipAllIn && path.length >= 2 && path.every((node) => skipAllIn.has(node))) continue;
+      if (path.length >= 2) paths.push(path);
+    }
+  }
+  return paths;
 }
 
 function line2Graph() {
@@ -121,127 +206,12 @@ function line2LoopOrder(): number[] {
   return path;
 }
 
-/** Kakao-style octilinear elbow: only H / V / 45°. */
-function octilinearCorridor(a: Pt, b: Pt): Pt[] {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const ax = Math.abs(dx);
-  const ay = Math.abs(dy);
-  if (ax < 0.15 && ay < 0.15) return [a, b];
-  if (Math.min(ax, ay) < 0.25 || Math.abs(ax - ay) < 0.25) return [a, b];
-  const diagonal = Math.min(ax, ay);
-  const rest = Math.max(ax, ay) - diagonal;
-  if (ax >= ay) {
-    const mid1 = { x: a.x + Math.sign(dx) * (rest / 2), y: a.y };
-    const mid2 = { x: mid1.x + Math.sign(dx) * diagonal, y: mid1.y + Math.sign(dy) * diagonal };
-    return [a, mid1, mid2, b];
-  }
-  const mid1 = { x: a.x, y: a.y + Math.sign(dy) * (rest / 2) };
-  const mid2 = { x: mid1.x + Math.sign(dx) * diagonal, y: mid1.y + Math.sign(dy) * diagonal };
-  return [a, mid1, mid2, b];
-}
-
-function pathLength(pts: Pt[]) {
-  let total = 0;
-  for (let index = 1; index < pts.length; index += 1) {
-    total += Math.hypot(pts[index].x - pts[index - 1].x, pts[index].y - pts[index - 1].y);
-  }
-  return total;
-}
-
-function pointAlong(pts: Pt[], t: number): Pt {
-  if (pts.length === 1) return pts[0];
-  const total = pathLength(pts) || 1;
-  let remain = Math.max(0, Math.min(1, t)) * total;
-  for (let index = 1; index < pts.length; index += 1) {
-    const seg = Math.hypot(pts[index].x - pts[index - 1].x, pts[index].y - pts[index - 1].y) || 1e-6;
-    if (remain <= seg) {
-      const u = remain / seg;
-      return {
-        x: pts[index - 1].x + (pts[index].x - pts[index - 1].x) * u,
-        y: pts[index - 1].y + (pts[index].y - pts[index - 1].y) * u,
-      };
-    }
-    remain -= seg;
-  }
-  return pts[pts.length - 1];
-}
-
-function strokePath(pts: Pt[]) {
-  if (pts.length < 2) return "";
-  const simplified: Pt[] = [pts[0]];
-  for (let index = 1; index < pts.length - 1; index += 1) {
-    const prev = simplified[simplified.length - 1];
-    const cur = pts[index];
-    const next = pts[index + 1];
-    const ax = cur.x - prev.x;
-    const ay = cur.y - prev.y;
-    const bx = next.x - cur.x;
-    const by = next.y - cur.y;
-    if (Math.abs(ax * by - ay * bx) < 0.2 && ax * bx + ay * by > 0) continue;
-    simplified.push(cur);
-  }
-  simplified.push(pts[pts.length - 1]);
-  if (simplified.length === 2) {
-    return `M${round(simplified[0].x)} ${round(simplified[0].y)}L${round(simplified[1].x)} ${round(simplified[1].y)}`;
-  }
-  const corner = 5;
-  let d = `M${round(simplified[0].x)} ${round(simplified[0].y)}`;
-  for (let index = 1; index < simplified.length - 1; index += 1) {
-    const p0 = simplified[index - 1];
-    const p1 = simplified[index];
-    const p2 = simplified[index + 1];
-    const inDx = p1.x - p0.x;
-    const inDy = p1.y - p0.y;
-    const outDx = p2.x - p1.x;
-    const outDy = p2.y - p1.y;
-    const inLen = Math.hypot(inDx, inDy) || 1;
-    const outLen = Math.hypot(outDx, outDy) || 1;
-    const cut = Math.min(corner, inLen * 0.45, outLen * 0.45);
-    d += `L${round(p1.x - (inDx / inLen) * cut)} ${round(p1.y - (inDy / inLen) * cut)}`;
-    d += `Q${round(p1.x)} ${round(p1.y)} ${round(p1.x + (outDx / outLen) * cut)} ${round(p1.y + (outDy / outLen) * cut)}`;
-  }
-  const last = simplified[simplified.length - 1];
-  d += `L${round(last.x)} ${round(last.y)}`;
-  return d;
-}
-
-function linePaths(neighbors: Map<number, number[]>, skipAllIn?: Set<number>): number[][] {
-  const paths: number[][] = [];
-  const used = new Set<string>();
-  const edgeKey = (a: number, b: number) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-  const degree = (node: number) => neighbors.get(node)?.length ?? 0;
-  const starts = [...neighbors.keys()].filter((node) => degree(node) !== 2).sort((a, b) => a - b);
-  const seeds = starts.length ? starts : [...neighbors.keys()].sort((a, b) => a - b);
-  for (const start of seeds) {
-    for (const first of neighbors.get(start) ?? []) {
-      if (used.has(edgeKey(start, first))) continue;
-      const path = [start];
-      let prev = start;
-      let cur = first;
-      used.add(edgeKey(start, first));
-      while (true) {
-        path.push(cur);
-        if (degree(cur) !== 2) break;
-        const next = (neighbors.get(cur) ?? []).find((node) => node !== prev);
-        if (next === undefined || used.has(edgeKey(cur, next))) break;
-        used.add(edgeKey(cur, next));
-        prev = cur;
-        cur = next;
-        if (path.length > 220) break;
-      }
-      if (skipAllIn && path.length >= 2 && path.every((node) => skipAllIn.has(node))) continue;
-      if (path.length >= 2) paths.push(path);
-    }
-  }
-  return paths;
-}
-
 /**
- * KakaoMetro-style schematic map:
- * - Line 2 = rounded rectangle (like Kakao)
- * - Known hubs = hand-tuned Kakao-like anchors
- * - All other stations = beads on octilinear corridors between anchors
+ * Integer-grid schematic map (1000×1000):
+ * - Line 2 = fixed rounded-rectangle anchors
+ * - Other transfers = TRANSFER_HUBS
+ * - Intermediates = equal linear interpolation between hubs (never GPS curves)
+ * - Strokes = createOctilinearPath (H/V/45° + Q r=8)
  */
 export const SUBWAY_MAP = (() => {
   const services = NETWORK_EDGES.filter(([service]) => NETWORK_SERVICES[service] && !NETWORK_SERVICES[service].express);
@@ -281,123 +251,106 @@ export const SUBWAY_MAP = (() => {
   }
   const edges = [...edgeMap.values()];
   const count = stations.length;
-  const allNeighbors: number[][] = stations.map(() => []);
-  for (const { a, b } of edges) {
-    allNeighbors[a].push(b);
-    allNeighbors[b].push(a);
-  }
-
-  const loopNetwork = line2LoopOrder();
-  const loopNodes = loopNetwork
-    .map((networkIndex) => networkIndexOf.get(networkIndex))
-    .filter((index): index is number => index !== undefined);
-  const onLoop = new Set(loopNodes);
-  const loopPerim = roundedRectPerimeter(LOOP2_W, LOOP2_H, LOOP2_CORNER);
 
   const xs = new Array(count).fill(0);
   const ys = new Array(count).fill(0);
   const fixed = new Array(count).fill(false);
 
-  // 1) Line 2 rounded rectangle — Gangnam at bottom centre (Kakao).
-  const gangnamIndex = Math.max(
-    0,
-    loopNodes.findIndex((node) => stations[node].ko === "강남역"),
-  );
-  const bottomMidS = loopPerim / 2;
-  loopNodes.forEach((node, index) => {
-    const s = bottomMidS + ((index - gangnamIndex) / Math.max(loopNodes.length, 1)) * loopPerim;
-    const point = roundedRectFrame(((s % loopPerim) + loopPerim) % loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER);
-    xs[node] = point.x;
-    ys[node] = point.y;
-    fixed[node] = true;
-  });
-
-  // 2) Pin Kakao-tuned hubs.
-  for (let node = 0; node < count; node += 1) {
-    if (onLoop.has(node)) continue;
-    const hub = SCHEMATIC_HUBS[stations[node].ko];
-    if (!hub) continue;
-    xs[node] = hub.x;
-    ys[node] = hub.y;
-    fixed[node] = true;
-  }
-
-  // Geographic fallback seed for terminals still unfixed.
-  const kmX = 111.32 * Math.cos((37.5657 * Math.PI) / 180);
-  const seedFallback = (node: number) => {
-    if (fixed[node]) return;
-    const station = stations[node];
-    const gx = (station.lng - 126.9769) * kmX;
-    const gy = (37.5657 - station.lat) * 110.57;
-    const angle = Math.round(Math.atan2(gy, gx) / STEP) * STEP;
-    const hopsGuess = 8 + Math.hypot(gx, gy);
-    xs[node] = Math.cos(angle) * (LOOP2_W / 2 + hopsGuess * 0.9);
-    ys[node] = Math.sin(angle) * (LOOP2_H / 2 + hopsGuess * 0.9);
+  const pin = (node: number, x: number, y: number) => {
+    xs[node] = x;
+    ys[node] = y;
     fixed[node] = true;
   };
 
-  /**
-   * Place every station on a line path as a bead on long octilinear corridors
-   * between already-fixed anchors (Line 2 / Kakao hubs). This is what makes
-   * KakaoMetro look "straight" instead of GPS-wavy.
-   */
+  // 1) Pin Line 2 loop from integer anchors.
+  const loopNetwork = line2LoopOrder();
+  const loopNodes = loopNetwork
+    .map((networkIndex) => networkIndexOf.get(networkIndex))
+    .filter((index): index is number => index !== undefined);
+  const onLoop = new Set(loopNodes);
+  const line2ByKo = new Map(LINE2_ANCHORS.map((entry) => [entry.ko, entry]));
+
+  loopNodes.forEach((node) => {
+    const hit = line2ByKo.get(stations[node].ko);
+    if (hit) pin(node, hit.x, hit.y);
+  });
+
+  // Interpolate any Line 2 loop station missing from the anchor list.
+  {
+    const marks = loopNodes.map((node, index) => ({ node, index })).filter(({ node }) => fixed[node]);
+    for (let m = 0; m < marks.length; m += 1) {
+      const from = marks[m];
+      const to = marks[(m + 1) % marks.length];
+      const span =
+        to.index > from.index ? to.index - from.index : to.index + loopNodes.length - from.index;
+      if (span <= 1) continue;
+      for (let step = 1; step < span; step += 1) {
+        const node = loopNodes[(from.index + step) % loopNodes.length];
+        if (fixed[node]) continue;
+        const point = lerp({ x: xs[from.node], y: ys[from.node] }, { x: xs[to.node], y: ys[to.node] }, step / span);
+        pin(node, round(point.x), round(point.y));
+      }
+    }
+  }
+
+  // 2) Pin transfer hubs from the integer grid table.
+  for (let node = 0; node < count; node += 1) {
+    if (onLoop.has(node)) continue;
+    const hub = TRANSFER_HUBS[stations[node].ko];
+    if (hub) pin(node, hub.x, hub.y);
+  }
+
+  /** Place stations on a line path by linear interpolation between fixed hubs. */
   const placeLinePath = (path: number[]) => {
     if (path.length < 2) return;
-    if (!fixed[path[0]]) seedFallback(path[0]);
-    if (!fixed[path[path.length - 1]]) seedFallback(path[path.length - 1]);
-
-    // Anchors: fixed stations. Thin to endpoints + hubs on Line 2 + at most one bend.
     let marks = path.map((node, index) => ({ node, index })).filter(({ node }) => fixed[node]);
-    if (marks.length < 2) {
-      marks = [
-        { node: path[0], index: 0 },
-        { node: path[path.length - 1], index: path.length - 1 },
-      ];
+    if (marks.length < 2) return;
+
+    // Prefix before first hub: equal spacing extending backward along first corridor direction.
+    if (marks[0].index > 0) {
+      const a = marks[0];
+      const b = marks[1] ?? a;
+      const dx = xs[a.node] - xs[b.node];
+      const dy = ys[a.node] - ys[b.node];
+      const len = Math.hypot(dx, dy) || 1;
+      const stepLen = len / Math.max(b.index - a.index, 1);
+      for (let i = a.index - 1; i >= 0; i -= 1) {
+        const dist = (a.index - i) * stepLen;
+        pin(path[i], round(xs[a.node] + (dx / len) * dist), round(ys[a.node] + (dy / len) * dist));
+      }
+      marks = path.map((node, index) => ({ node, index })).filter(({ node }) => fixed[node]);
     }
-    if (marks.length > 5) {
-      const keep = new Set<number>([marks[0].index, marks[marks.length - 1].index]);
-      for (const mark of marks) {
-        if (onLoop.has(mark.node) || SCHEMATIC_HUBS[stations[mark.node].ko]) keep.add(mark.index);
+
+    // Suffix after last hub.
+    const last = marks[marks.length - 1];
+    if (last.index < path.length - 1) {
+      const prev = marks[marks.length - 2] ?? last;
+      const dx = xs[last.node] - xs[prev.node];
+      const dy = ys[last.node] - ys[prev.node];
+      const len = Math.hypot(dx, dy) || 1;
+      const stepLen = len / Math.max(last.index - prev.index, 1);
+      for (let i = last.index + 1; i < path.length; i += 1) {
+        const dist = (i - last.index) * stepLen;
+        pin(path[i], round(xs[last.node] + (dx / len) * dist), round(ys[last.node] + (dy / len) * dist));
       }
-      // One geographic bend if the run bows far from the chord.
-      const a = { x: xs[path[marks[0].index]], y: ys[path[marks[0].index]] };
-      const b = { x: xs[path[marks[marks.length - 1].index]], y: ys[path[marks[marks.length - 1].index]] };
-      const abx = b.x - a.x;
-      const aby = b.y - a.y;
-      const abLen = Math.hypot(abx, aby) || 1;
-      let bend = -1;
-      let maxDev = 0;
-      for (const mark of marks) {
-        if (keep.has(mark.index)) continue;
-        const cross = Math.abs(abx * (ys[mark.node] - a.y) - aby * (xs[mark.node] - a.x)) / abLen;
-        if (cross > maxDev) {
-          maxDev = cross;
-          bend = mark.index;
-        }
-      }
-      if (bend >= 0 && maxDev > 8) keep.add(bend);
-      marks = marks.filter((mark) => keep.has(mark.index));
+      marks = path.map((node, index) => ({ node, index })).filter(({ node }) => fixed[node]);
     }
 
     for (let m = 0; m < marks.length - 1; m += 1) {
       const from = marks[m];
       const to = marks[m + 1];
-      if (to.index <= from.index) continue;
-      const corridor = octilinearCorridor({ x: xs[from.node], y: ys[from.node] }, { x: xs[to.node], y: ys[to.node] });
       const span = to.index - from.index;
-      for (let step = 0; step <= span; step += 1) {
+      if (span <= 1) continue;
+      const corridor = octilinearWaypoints(
+        { x: xs[from.node], y: ys[from.node] },
+        { x: xs[to.node], y: ys[to.node] },
+      );
+      for (let step = 1; step < span; step += 1) {
         const node = path[from.index + step];
         if (onLoop.has(node)) continue;
-        // Keep Kakao hubs / earlier claims; fill everything else onto the corridor.
-        if (fixed[node] && SCHEMATIC_HUBS[stations[node].ko] && step !== 0 && step !== span) continue;
-        if (fixed[node] && step !== 0 && step !== span && stations[node].lines.length > 1) {
-          // Shared transfer already placed — leave it; stroke elbows through it.
-          continue;
-        }
-        const point = pointAlong(corridor, span ? step / span : 0);
-        xs[node] = point.x;
-        ys[node] = point.y;
-        fixed[node] = true;
+        if (fixed[node] && (TRANSFER_HUBS[stations[node].ko] || stations[node].lines.length > 1)) continue;
+        const point = pointAlong(corridor, step / span);
+        pin(node, round(point.x), round(point.y));
       }
     }
   };
@@ -408,30 +361,47 @@ export const SUBWAY_MAP = (() => {
     return compareLines(a, b);
   });
 
-  for (const line of lineOrder) {
-    for (const path of linePaths(lineNeighbors.get(line)!, line === "2호선" ? onLoop : undefined)) {
-      placeLinePath(path);
+  // Multiple passes so lines that share later hubs still fill cleanly.
+  for (let pass = 0; pass < 3; pass += 1) {
+    for (const line of lineOrder) {
+      for (const path of linePaths(lineNeighbors.get(line)!, line === "2호선" ? onLoop : undefined)) {
+        placeLinePath(path);
+      }
     }
   }
+
+  // Any leftover (isolated) stations: park near nearest fixed neighbor on the network.
+  const allNeighbors: number[][] = stations.map(() => []);
+  for (const { a, b } of edges) {
+    allNeighbors[a].push(b);
+    allNeighbors[b].push(a);
+  }
+  for (let roundPass = 0; roundPass < 8; roundPass += 1) {
+    let moved = false;
+    for (let node = 0; node < count; node += 1) {
+      if (fixed[node]) continue;
+      const nbr = allNeighbors[node].filter((n) => fixed[n]);
+      if (!nbr.length) continue;
+      const sx = nbr.reduce((s, n) => s + xs[n], 0) / nbr.length;
+      const sy = nbr.reduce((s, n) => s + ys[n], 0) / nbr.length;
+      pin(node, round(sx + 12), round(sy + 12));
+      moved = true;
+    }
+    if (!moved) break;
+  }
   for (let node = 0; node < count; node += 1) {
-    if (!fixed[node]) seedFallback(node);
+    if (!fixed[node]) pin(node, CANVAS / 2, CANVAS / 2);
   }
 
-  // Re-pin Line 2 after fills.
-  loopNodes.forEach((node, index) => {
-    const s = bottomMidS + ((index - gangnamIndex) / Math.max(loopNodes.length, 1)) * loopPerim;
-    const point = roundedRectFrame(((s % loopPerim) + loopPerim) % loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER);
-    xs[node] = point.x;
-    ys[node] = point.y;
+  // Re-assert Line 2 anchors (never overwritten).
+  loopNodes.forEach((node) => {
+    const hit = line2ByKo.get(stations[node].ko);
+    if (hit) pin(node, hit.x, hit.y);
   });
 
-  const laid = edges.map(({ a, b }) => Math.hypot(xs[a] - xs[b], ys[a] - ys[b])).sort((p, q) => p - q);
-  const scale = EDGE / (laid[Math.floor(laid.length * 0.55)] || 1);
-  const minX = Math.min(...xs);
-  const minY = Math.min(...ys);
   const toScreen = (x: number, y: number) => ({
-    x: round(PADDING + (x - minX) * scale),
-    y: round(PADDING + (y - minY) * scale),
+    x: round(PADDING + x),
+    y: round(PADDING + y),
   });
 
   const nodes: MapNode[] = stations.map((station, index) => {
@@ -445,31 +415,24 @@ export const SUBWAY_MAP = (() => {
       hub: station.lines.length > 1,
     };
   });
-  const width = Math.ceil(Math.max(...nodes.map((node) => node.x)) + PADDING);
-  const height = Math.ceil(Math.max(...nodes.map((node) => node.y)) + PADDING);
-  const origin = toScreen(0, 0);
-  const cx = origin.x;
-  const cy = origin.y;
-  const loopW = round(LOOP2_W * scale);
-  const loopH = round(LOOP2_H * scale);
-  const loopR = round(LOOP2_CORNER * scale);
-  const riverScreenY = toScreen(0, RIVER_Y).y;
 
-  const octilinearStroke = (path: number[]) => {
+  const width = CANVAS + PADDING * 2;
+  const height = CANVAS + PADDING * 2;
+
+  const strokeForPath = (path: number[]) => {
     if (path.length < 2) return "";
-    const pts: Pt[] = [{ x: nodes[path[0]].x, y: nodes[path[0]].y }];
-    for (let index = 1; index < path.length; index += 1) {
-      const corridor = octilinearCorridor(pts[pts.length - 1], { x: nodes[path[index]].x, y: nodes[path[index]].y });
-      for (let step = 1; step < corridor.length; step += 1) pts.push(corridor[step]);
-    }
-    return strokePath(pts);
+    return createOctilinearPath(path.map((node) => ({ x: nodes[node].x, y: nodes[node].y })));
   };
 
   const byLine = new Map<string, string[]>();
   for (const line of lineOrder) {
-    if (line === "2호선") byLine.set(line, [roundedRectPath(cx, cy, loopW, loopH, loopR)]);
+    if (line === "2호선" && loopNodes.length >= 3) {
+      const loopPts = loopNodes.map((node) => ({ x: nodes[node].x, y: nodes[node].y }));
+      loopPts.push(loopPts[0]);
+      byLine.set(line, [createOctilinearPath(loopPts)]);
+    }
     for (const path of linePaths(lineNeighbors.get(line)!, line === "2호선" ? onLoop : undefined)) {
-      const d = octilinearStroke(path);
+      const d = strokeForPath(path);
       if (d) byLine.set(line, [...(byLine.get(line) ?? []), d]);
     }
   }
@@ -478,44 +441,23 @@ export const SUBWAY_MAP = (() => {
     .sort(([a], [b]) => compareLines(b, a))
     .map(([line, parts]) => ({ line, color: stationLineColor(line), d: parts.join("") }));
 
-  const riverHalf = Math.max(18, loopH * 0.22);
-  const river = [
-    `M${round(cx - loopW * 1.7)} ${round(riverScreenY - riverHalf * 0.15)}`,
-    `C${round(cx - loopW * 0.9)} ${round(riverScreenY - riverHalf * 0.9)}`,
-    `${round(cx - loopW * 0.15)} ${round(riverScreenY - riverHalf * 0.85)}`,
-    `${round(cx + loopW * 0.2)} ${round(riverScreenY - riverHalf * 0.25)}`,
-    `S${round(cx + loopW * 0.85)} ${round(riverScreenY + riverHalf * 0.1)}`,
-    `${round(cx + loopW * 1.35)} ${round(riverScreenY - riverHalf * 0.05)}`,
-    `S${round(cx + loopW * 1.75)} ${round(riverScreenY - riverHalf * 0.4)}`,
-    `${round(cx + loopW * 1.9)} ${round(riverScreenY - riverHalf * 0.5)}`,
-    `L${round(cx + loopW * 1.9)} ${round(riverScreenY + riverHalf)}`,
-    `C${round(cx + loopW * 1.3)} ${round(riverScreenY + riverHalf * 1.15)}`,
-    `${round(cx + loopW * 0.35)} ${round(riverScreenY + riverHalf * 1.1)}`,
-    `${round(cx - loopW * 0.2)} ${round(riverScreenY + riverHalf * 0.85)}`,
-    `S${round(cx - loopW * 1.1)} ${round(riverScreenY + riverHalf * 0.65)}`,
-    `${round(cx - loopW * 1.7)} ${round(riverScreenY + riverHalf * 0.5)}Z`,
-  ].join(" ");
-  const seaLeft = Math.min(...nodes.map((node) => node.x)) - 2;
-  const sea = [
-    `M${round(seaLeft)} ${round(cy - loopH * 0.4)}`,
-    `C${round(seaLeft + loopW * 0.15)} ${round(cy - loopH)}`,
-    `${round(cx - loopW * 1.2)} ${round(cy - loopH * 0.05)}`,
-    `${round(cx - loopW)} ${round(cy + loopH * 0.3)}`,
-    `C${round(cx - loopW * 1.05)} ${round(cy + loopH * 0.95)}`,
-    `${round(seaLeft + loopW * 0.25)} ${round(cy + loopH * 1.2)}`,
-    `${round(seaLeft)} ${round(cy + loopH * 0.85)}Z`,
-  ].join(" ");
+  const riverScreen = createOctilinearPath(
+    [
+      { x: 30, y: 440 },
+      { x: 280, y: 440 },
+      { x: 340, y: 490 },
+      { x: 420, y: 540 },
+      { x: 500, y: 510 },
+      { x: 580, y: 510 },
+      { x: 620, y: 500 },
+      { x: 650, y: 560 },
+      { x: 920, y: 560 },
+    ].map((p) => toScreen(p.x, p.y)),
+  );
 
   const linePoints: [number, number][] = nodes.map((node) => [node.x, node.y]);
-  for (let step = 0; step < 64; step += 1) {
-    const point = toScreen(
-      roundedRectFrame((step / 64) * loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER).x,
-      roundedRectFrame((step / 64) * loopPerim, LOOP2_W, LOOP2_H, LOOP2_CORNER).y,
-    );
-    linePoints.push([point.x, point.y]);
-  }
   for (const { a, b } of edges) {
-    const corridor = octilinearCorridor({ x: nodes[a].x, y: nodes[a].y }, { x: nodes[b].x, y: nodes[b].y });
+    const corridor = octilinearWaypoints({ x: nodes[a].x, y: nodes[a].y }, { x: nodes[b].x, y: nodes[b].y });
     for (const point of corridor) linePoints.push([point.x, point.y]);
   }
 
@@ -536,8 +478,7 @@ export const SUBWAY_MAP = (() => {
     lines,
     linePoints,
     focus,
-    terrain: { river, sea } satisfies MapTerrain,
-    loop: { cx, cy, w: loopW, h: loopH, r: loopR },
+    terrain: { river: riverScreen, sea: "" } satisfies MapTerrain,
   };
 })();
 
@@ -567,6 +508,9 @@ const PRIORITY_KO = new Set([
   "을지로3가역",
   "김포공항역",
   "인천공항1터미널역",
+  "당산역",
+  "선릉역",
+  "대림역",
 ]);
 
 export function placeLabels(names: string[]): MapLabel[] {
@@ -633,23 +577,18 @@ export function placeLabels(names: string[]): MapLabel[] {
       return;
     }
   };
-  for (let level = 0; level < 2; level += 1) {
-    for (const node of order) {
-      if (result[node] || !priority(nodes[node])) continue;
-      tryPlace(node, level, loose);
-    }
-  }
-  MAP_LEVELS.forEach((_, level) => {
-    for (const node of order) {
-      if (result[node]) continue;
-      tryPlace(node, level, strict);
-      if (!result[node] && (priority(nodes[node]) || nodes[node].hub)) tryPlace(node, level, loose);
-    }
-  });
+
+  // Hubs / priority always at level 0; regular stations unlock at zoom ≥ 1.4.
   for (const node of order) {
-    if (!priority(nodes[node])) continue;
-    if (!result[node]) result[node] = { level: 1, position: 0 };
-    else result[node] = { level: Math.min(result[node].level, 1), position: result[node].position };
+    if (!(nodes[node].hub || priority(nodes[node]))) continue;
+    tryPlace(node, 0, loose);
+    if (!result[node]) result[node] = { level: 0, position: 0 };
   }
-  return result.map((label) => label ?? { level: MAP_LEVELS.length, position: 0 });
+  for (const node of order) {
+    if (result[node]) continue;
+    tryPlace(node, REGULAR_LABEL_LEVEL, strict);
+    if (!result[node]) tryPlace(node, REGULAR_LABEL_LEVEL, loose);
+    if (!result[node]) result[node] = { level: REGULAR_LABEL_LEVEL, position: 0 };
+  }
+  return result.map((label) => label ?? { level: REGULAR_LABEL_LEVEL, position: 0 });
 }
