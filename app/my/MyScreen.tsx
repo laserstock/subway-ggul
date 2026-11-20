@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
+import { NotebookIcon, SeatIcon } from "../_components/icons";
 import LineBadges, { LineIcon } from "../_components/LineBadges";
 import { Toast, useToast } from "../_components/Toast";
 import { elevatorText, floorLabel } from "../_lib/arrivalTips";
 import { trainBound, trainStatus, trainsToward, useArrivals, useElapsed } from "../_lib/arrivals";
 import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
+import { countLogsForStation, useStationLogs } from "../_lib/myStationLogs";
 import {
   removePlace,
   removeRoute,
@@ -21,10 +23,17 @@ import {
 } from "../_lib/myStations";
 import { addRecentStation } from "../_lib/recentStations";
 import { routeSummary, useNearestStarbucks } from "../_lib/routeTips";
+import {
+  recordSeatSuccess,
+  seatSuccessForRoute,
+  topSeatCar,
+  useSeatSuccessStore,
+} from "../_lib/seatSuccess";
 import { setDestinationStation, useDestinationStation } from "../_lib/selectedStation";
 import { stationName, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import type { StationToilet } from "../_lib/stationToilets";
 import { routeHref } from "../route/params";
+import FootprintTimeline, { type StationFilter } from "./FootprintTimeline";
 import { MY_TITLE } from "./header";
 import { placeLabel, PlaceSheet, RouteSheet } from "./MySheets";
 
@@ -39,11 +48,38 @@ const COPY = {
   },
   placesTitle: { ko: "내가 즐겨찾는 My 역", en: "My favorite stations", zh: "我收藏的 My 车站", ja: "お気に入りの My 駅" },
   placesHint: {
-    ko: "탭하면 1초 만에 그 역 꿀정보로 이동해요",
-    en: "Tap to jump to that station's tips",
-    zh: "点击即可1秒跳转到该站信息",
-    ja: "タップで1秒でその駅の情報へ",
+    ko: "탭하면 그 역에 남긴 발자국·노트를 모아 봐요",
+    en: "Tap to see footprints & notes for that station",
+    zh: "点击可查看该站的足迹与笔记",
+    ja: "タップでその駅の足跡・ノートを集めます",
   },
+  seatWin: {
+    ko: "오늘 착석 성공!",
+    en: "Seated today!",
+    zh: "今天抢到座了！",
+    ja: "今日座れた！",
+  },
+  seatPick: { ko: "칸 선택", en: "Pick car", zh: "选择车厢", ja: "車両を選ぶ" },
+  seatStats: {
+    ko: "이번 달 착석 성공 {n}회 · 주로 앉은 칸: {car}",
+    en: "{n} seats this month · usually car {car}",
+    zh: "本月成功入座 {n} 次 · 常坐 {car}",
+    ja: "今月着席成功 {n} 回 · よく座る車両: {car}",
+  },
+  seatStatsEmpty: {
+    ko: "이번 달 착석 기록 없음 · 한 번 눌러 남겨 보세요",
+    en: "No seats logged this month · tap to start",
+    zh: "本月暂无入座记录 · 点一下开始",
+    ja: "今月の着席記録なし · タップして残そう",
+  },
+  seatCarUnit: { ko: "{car}칸", en: "Car {car}", zh: "{car}车厢", ja: "{car}号車" },
+  seatDone: {
+    ko: "착석 +1 · {car}칸",
+    en: "Seated +1 · car {car}",
+    zh: "入座 +1 · {car}车厢",
+    ja: "着席 +1 · {car}号車",
+  },
+  noteBadge: { ko: "노트 {n}", en: "{n} notes", zh: "{n}条笔记", ja: "ノート{n}" },
   placesEditHint: {
     ko: "칩을 눌러 수정하거나 ✕로 삭제하세요",
     en: "Tap a chip to edit, or ✕ to delete",
@@ -162,6 +198,7 @@ function PlaceChip({
   locale,
   editing,
   status,
+  noteCount,
   onOpen,
   onRemove,
 }: {
@@ -169,6 +206,7 @@ function PlaceChip({
   locale: Locale;
   editing: boolean;
   status: Localized | null;
+  noteCount: number;
   onOpen: () => void;
   onRemove: () => void;
 }) {
@@ -177,7 +215,7 @@ function PlaceChip({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-h-[48px] items-center gap-1.5 rounded-2xl bg-surface px-3 py-2.5 text-left transition active:scale-[0.96]"
+        className="flex min-h-[48px] items-center gap-1.5 rounded-2xl bg-surface px-3 py-2.5 pr-3.5 text-left transition active:scale-[0.96]"
         style={{ boxShadow: `inset 0 0 0 1px ${place.station.color}40` }}
       >
         <LineBadges station={place.station} locale={locale} size="md" />
@@ -189,6 +227,15 @@ function PlaceChip({
           </span>
         ) : null}
       </button>
+      {noteCount > 0 && !editing ? (
+        <span
+          className="pointer-events-none absolute -right-1 -top-1.5 inline-flex items-center gap-0.5 rounded-full bg-[#1e3a8a] px-1.5 py-[2px] text-[10px] font-extrabold text-white shadow-sm"
+          aria-label={fill(t(COPY.noteBadge, locale), { n: noteCount })}
+        >
+          <NotebookIcon size={10} />
+          {noteCount}
+        </span>
+      ) : null}
       {editing ? (
         <button
           type="button"
@@ -203,6 +250,81 @@ function PlaceChip({
   );
 }
 
+function SeatSuccessBar({
+  routeId,
+  locale,
+  onLogged,
+}: {
+  routeId: string;
+  locale: Locale;
+  onLogged: (car: string) => void;
+}) {
+  const store = useSeatSuccessStore();
+  const entry = seatSuccessForRoute(store, routeId);
+  const top = topSeatCar(entry);
+  const [picker, setPicker] = useState(false);
+  const cars = useMemo(() => {
+    const list: string[] = [];
+    for (let car = 1; car <= 10; car += 1) {
+      for (const door of [1, 2, 3, 4]) list.push(`${car}-${door}`);
+    }
+    return list;
+  }, []);
+
+  function log(car: string | null) {
+    const chosen = recordSeatSuccess(routeId, car);
+    setPicker(false);
+    onLogged(chosen);
+  }
+
+  return (
+    <div className="border-t border-neutral-100 bg-[#F8FAFC] px-4 py-3">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => log(entry.lastCar)}
+          className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-2xl bg-[#1e3a8a] px-3 py-2 text-[13px] font-extrabold text-white shadow-[0_4px_12px_rgba(30,58,138,0.22)] active:scale-[0.98]"
+        >
+          <SeatIcon size={15} />
+          {t(COPY.seatWin, locale)}
+        </button>
+        <button
+          type="button"
+          onClick={() => setPicker((value) => !value)}
+          aria-expanded={picker}
+          className="shrink-0 rounded-2xl bg-white px-2.5 py-2 text-[11px] font-bold text-neutral-600 ring-1 ring-neutral-200 active:scale-95"
+        >
+          {t(COPY.seatPick, locale)}
+        </button>
+      </div>
+      <p className="mt-2 text-[11px] font-semibold leading-snug text-neutral-500">
+        {entry.count > 0 && top
+          ? fill(t(COPY.seatStats, locale), {
+              n: entry.count,
+              car: fill(t(COPY.seatCarUnit, locale), { car: top }),
+            })
+          : t(COPY.seatStatsEmpty, locale)}
+      </p>
+      {picker ? (
+        <div className="no-scrollbar mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto rounded-2xl bg-white p-2 ring-1 ring-neutral-200">
+          {cars.map((car) => (
+            <button
+              key={car}
+              type="button"
+              onClick={() => log(car)}
+              className={`rounded-full px-2 py-1 text-[11px] font-bold active:scale-95 ${
+                car === entry.lastCar ? "bg-[#1e3a8a] text-white" : "bg-neutral-100 text-neutral-700"
+              }`}
+            >
+              {car}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function RouteCard({
   route,
   locale,
@@ -210,6 +332,7 @@ function RouteCard({
   onOpenStation,
   onReverse,
   onRemove,
+  onSeatLogged,
 }: {
   route: MyRoute;
   locale: Locale;
@@ -217,6 +340,7 @@ function RouteCard({
   onOpenStation: (station: StationOption) => void;
   onReverse: () => void;
   onRemove: () => void;
+  onSeatLogged: (car: string) => void;
 }) {
   const { from, to } = route;
   const summary = useMemo(() => routeSummary(from.station, to.station), [from.station, to.station]);
@@ -397,6 +521,7 @@ function RouteCard({
           </button>
         ))}
       </div>
+      {!editing ? <SeatSuccessBar routeId={route.id} locale={locale} onLogged={onSeatLogged} /> : null}
     </li>
   );
 }
@@ -405,13 +530,16 @@ export default function MyScreen() {
   const locale = useLocale();
   const router = useRouter();
   const { places, routes } = useMyStations();
+  const logs = useStationLogs();
   const destination = useDestinationStation();
   const lastStation = useLastStation();
   const { toast, showToast } = useToast();
   const mainRef = useRef<HTMLElement>(null);
+  const footprintRef = useRef<HTMLElement>(null);
   const [editing, setEditing] = useState(false);
   const [placeSheet, setPlaceSheet] = useState<{ place: MyPlace | null } | null>(null);
   const [routeSheetOpen, setRouteSheetOpen] = useState(false);
+  const [stationFilter, setStationFilter] = useState<StationFilter>({ key: null, nameKo: null });
   const closePlaceSheet = useCallback(() => setPlaceSheet(null), []);
   const closeRouteSheet = useCallback(() => setRouteSheetOpen(false), []);
 
@@ -423,6 +551,13 @@ export default function MyScreen() {
     setDestinationStation(station);
     addRecentStation(station);
     router.push(`/station?${stationParams(station)}`);
+  }
+
+  function filterToPlace(place: MyPlace) {
+    setStationFilter({ key: place.station.key, nameKo: place.station.name.ko });
+    requestAnimationFrame(() => {
+      footprintRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function placeStatus(place: MyPlace): Localized | null {
@@ -479,7 +614,8 @@ export default function MyScreen() {
                   locale={locale}
                   editing={editing}
                   status={placeStatus(place)}
-                  onOpen={() => (editing ? setPlaceSheet({ place }) : openDashboard(place.station))}
+                  noteCount={countLogsForStation(logs, place.station.key, place.station.name.ko)}
+                  onOpen={() => (editing ? setPlaceSheet({ place }) : filterToPlace(place))}
                   onRemove={() => {
                     removePlace(place.id);
                     showToast(t(COPY.placeRemoved, locale));
@@ -523,6 +659,9 @@ export default function MyScreen() {
                       removeRoute(route.id);
                       showToast(t(COPY.routeRemoved, locale));
                     }}
+                    onSeatLogged={(car) =>
+                      showToast(fill(t(COPY.seatDone, locale), { car }))
+                    }
                   />
                 ))}
               </ul>
@@ -535,6 +674,14 @@ export default function MyScreen() {
               {t(COPY.addRoute, locale)}
             </button>
           </section>
+
+          <FootprintTimeline
+            places={places}
+            filter={stationFilter}
+            onFilterChange={setStationFilter}
+            suggested={lastStation ?? destination}
+            sectionRef={footprintRef}
+          />
 
           <p className="mt-4 px-1 text-[11px] leading-relaxed text-neutral-400">{t(COPY.savedNote, locale)}</p>
         </main>

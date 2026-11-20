@@ -267,3 +267,68 @@ export function ChevronDownIcon({ size = 14, className = "" }: { size?: number; 
     </svg>
   );
 }
+
+export function NotebookIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M7 3.5h9.5A2.5 2.5 0 0 1 19 6v12.5A2.5 2.5 0 0 1 16.5 21H7A2.5 2.5 0 0 1 4.5 18.5V6A2.5 2.5 0 0 1 7 3.5z"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path d="M8.5 8h7M8.5 12h7M8.5 16h4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function SeatIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M6.5 11.5V7.8A3.3 3.3 0 0 1 9.8 4.5h4.4A3.3 3.3 0 0 1 17.5 7.8v3.7"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M5 12.5h14v3.2A2.8 2.8 0 0 1 16.2 18.5H7.8A2.8 2.8 0 0 1 5 15.7z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M7.2 18.5V21M16.8 18.5V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function MoreIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="5.5" cy="12" r="1.6" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+      <circle cx="18.5" cy="12" r="1.6" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function CameraIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M4.5 8.2A2.2 2.2 0 0 1 6.7 6h2.1l1.1-1.6h4.2L15.2 6h2.1a2.2 2.2 0 0 1 2.2 2.2v9.1a2.2 2.2 0 0 1-2.2 2.2H6.7a2.2 2.2 0 0 1-2.2-2.2z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12.5" r="3.2" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
