@@ -65,7 +65,9 @@ function asSingleLeg(station: SavedStation, line: string | null): AlarmLeg {
     line: lineFromSaved(station, line),
     stations: [station.name.ko],
     stationIds: [],
+    rideSeconds: 0,
     hopSeconds: [],
+    afterTransferSeconds: 0,
     expectedNextStations: [],
     oppositeStations: [],
     transferTip: null,
@@ -73,11 +75,19 @@ function asSingleLeg(station: SavedStation, line: string | null): AlarmLeg {
   };
 }
 
+/** Older saved alarms may lack ride/transfer fields — fill defaults. */
+function normalizeLeg(leg: AlarmLeg): AlarmLeg {
+  return {
+    ...leg,
+    rideSeconds: leg.rideSeconds ?? leg.hopSeconds?.reduce((sum, hop) => sum + hop, 0) ?? 0,
+    afterTransferSeconds: leg.afterTransferSeconds ?? 0,
+    hopSeconds: leg.hopSeconds ?? [],
+  };
+}
+
 function normalize(raw: ArrivalAlarm): ArrivalAlarm {
   const legs =
-    raw.legs?.length > 0
-      ? raw.legs
-      : [asSingleLeg(raw.station, raw.line)];
+    (raw.legs?.length > 0 ? raw.legs : [asSingleLeg(raw.station, raw.line)]).map(normalizeLeg);
   const legIndex = Math.min(Math.max(0, raw.legIndex ?? 0), legs.length - 1);
   return {
     ...raw,

@@ -14,8 +14,15 @@ export type AlarmLeg = {
   /** Korean names from board → target on this leg (inclusive). */
   stations: string[];
   stationIds: number[];
-  /** Seconds between consecutive stations[i] → stations[i+1]. */
+  /** Riding time for this leg only (same as `RouteLeg.seconds`). */
+  rideSeconds: number;
+  /** Seconds between consecutive stations[i] → stations[i+1] (sums to `rideSeconds`). */
   hopSeconds: number[];
+  /**
+   * Walk + average wait after alighting this leg before the next leg starts.
+   * 0 on the final leg. Matches `RouteTransfer.walkSeconds + waitSeconds`.
+   */
+  afterTransferSeconds: number;
   /** Correct-direction stations after boarding (bare names). */
   expectedNextStations: string[];
   /** Opposite-direction stations from the boarding stop (bare names). */
@@ -37,8 +44,9 @@ function stationOptionByKo(ko: string): StationOption | null {
 
 function hopSecondsForLeg(leg: RouteLeg): number[] {
   const hops = Math.max(1, leg.stations.length - 1);
-  const each = leg.seconds / hops;
-  return Array.from({ length: hops }, () => Math.max(30, Math.round(each)));
+  const base = Math.floor(leg.seconds / hops);
+  const rem = leg.seconds - base * hops;
+  return Array.from({ length: hops }, (_, index) => Math.max(1, base + (index < rem ? 1 : 0)));
 }
 
 /** Stations reachable the wrong way from the leg's boarding stop on the same line. */
@@ -106,7 +114,9 @@ export function buildAlarmLegs(route: Route): AlarmLeg[] {
       line: leg.line,
       stations: [...leg.stations],
       stationIds: [...leg.stationIds],
+      rideSeconds: leg.seconds,
       hopSeconds: hopSecondsForLeg(leg),
+      afterTransferSeconds: transfer ? transfer.walkSeconds + transfer.waitSeconds : 0,
       expectedNextStations: expected,
       oppositeStations: oppositeStationsForLeg(leg),
       transferTip: !isLast && next && transfer ? transferTipText(leg, next, transfer.station) : null,
@@ -133,13 +143,17 @@ export function remainingStopsOnLeg(leg: AlarmLeg, atBareName: string | null): n
 }
 
 export function etaSecondsOnLeg(leg: AlarmLeg, atBareName: string | null): number {
-  if (!atBareName) return leg.hopSeconds.reduce((sum, hop) => sum + hop, 0);
-  const index = leg.stations.findIndex((name) => bareStationName(name) === atBareName);
-  if (index < 0) return leg.hopSeconds.reduce((sum, hop) => sum + hop, 0);
-  return leg.hopSeconds.slice(index).reduce((sum, hop) => sum + hop, 0);
+  const hops = Math.max(0, leg.stations.length - 1);
+  if (!hops) return 0;
+  const remaining = remainingStopsOnLeg(leg, atBareName);
+  const ride = leg.rideSeconds || leg.hopSeconds.reduce((sum, hop) => sum + hop, 0);
+  return Math.round((ride * remaining) / hops);
 }
 
-/** Remaining stops/seconds from the current leg onward (full trip ETA for the ticker). */
+/**
+ * Remaining stops and ETA from the current position onward.
+ * ETA matches the route finder: riding + transfer walk + average wait (`Route.seconds`).
+ */
 export function remainingRouteProgress(legs: AlarmLeg[], legIndex: number, atBareName: string | null) {
   let remainingStops = 0;
   let etaSeconds = 0;
@@ -150,8 +164,9 @@ export function remainingRouteProgress(legs: AlarmLeg[], legIndex: number, atBar
       etaSeconds += etaSecondsOnLeg(leg, atBareName);
     } else {
       remainingStops += Math.max(0, leg.stations.length - 1);
-      etaSeconds += leg.hopSeconds.reduce((sum, hop) => sum + hop, 0);
+      etaSeconds += leg.rideSeconds || leg.hopSeconds.reduce((sum, hop) => sum + hop, 0);
     }
+    if (index < legs.length - 1) etaSeconds += leg.afterTransferSeconds ?? 0;
   }
   return { remainingStops, etaSeconds };
 }
