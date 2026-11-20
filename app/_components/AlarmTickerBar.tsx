@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   cancelArrivalAlarm,
   setAlarmMuteVoice,
@@ -53,6 +54,61 @@ function fill(template: string, values: Record<string, string | number>) {
   return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), template);
 }
 
+/** JS marquee — reliable in WebView / Capacitor where CSS animation can fail or reset. */
+function MarqueeText({ text }: { text: string }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(false);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
+
+  // Mount once — do not restart when ticker copy updates every second (stops/ETA).
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    let raf = 0;
+    let last = performance.now();
+    let offset = 0;
+    const speed = 42; // px/sec
+
+    const tick = (now: number) => {
+      const dt = Math.min(48, now - last) / 1000;
+      last = now;
+      if (!pausedRef.current) {
+        const loop = Math.max(1, track.scrollWidth / 2);
+        offset = (offset + speed * dt) % loop;
+        track.style.transform = `translate3d(${-offset}px,0,0)`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div
+      className="ksub-marquee-viewport relative flex min-w-0 flex-1 items-center overflow-hidden"
+      onPointerEnter={() => setPaused(true)}
+      onPointerLeave={() => setPaused(false)}
+      onPointerDown={() => setPaused(true)}
+      onPointerUp={() => setPaused(false)}
+      onPointerCancel={() => setPaused(false)}
+    >
+      <div
+        ref={trackRef}
+        className="ksub-marquee-track flex w-max shrink-0 text-[13px] font-semibold leading-9 text-[#1F2937]"
+      >
+        <span className="shrink-0 whitespace-nowrap pr-12">{text}</span>
+        <span className="shrink-0 whitespace-nowrap pr-12" aria-hidden="true">
+          {text}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /** Slim in-flow marquee under AppHeader — never overlays page content. */
 export default function AlarmTickerBar() {
   const alarm = useArrivalAlarm();
@@ -91,33 +147,10 @@ export default function AlarmTickerBar() {
       aria-live="polite"
       className="flex h-9 w-full items-center gap-1.5 border-b border-amber-200 bg-[#FEF9C3] px-2 text-[#78350F]"
     >
-      <style>{`
-        @keyframes ksub-marquee {
-          0% { transform: translate3d(0, 0, 0); }
-          100% { transform: translate3d(-50%, 0, 0); }
-        }
-        .ksub-marquee-viewport:hover .ksub-marquee-track,
-        .ksub-marquee-viewport:active .ksub-marquee-track {
-          animation-play-state: paused;
-        }
-        .ksub-marquee-track {
-          display: flex;
-          width: max-content;
-          animation: ksub-marquee 16s linear infinite;
-          will-change: transform;
-        }
-      `}</style>
       <span className="shrink-0 text-[13px] leading-none" aria-hidden>
         🔔
       </span>
-      <div className="ksub-marquee-viewport relative flex min-w-0 flex-1 items-center overflow-hidden">
-        <div className="ksub-marquee-track text-[13px] font-semibold leading-9 text-[#1F2937]">
-          <span className="whitespace-nowrap pr-12">{message}</span>
-          <span className="whitespace-nowrap pr-12" aria-hidden="true">
-            {message}
-          </span>
-        </div>
-      </div>
+      <MarqueeText text={message} />
       <button
         type="button"
         onClick={() => setAlarmMuteVoice(!alarm.muteVoice)}

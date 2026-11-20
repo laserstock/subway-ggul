@@ -364,14 +364,9 @@ body {
   scrollbar-width: none;
 }
 
-/* Slim alarm ticker under AppHeader — seamless horizontal marquee (also inlined in AlarmTickerBar). */
-@keyframes ksub-marquee {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    transform: translate3d(-50%, 0, 0);
-  }
+/* Alarm ticker marquee track is driven by requestAnimationFrame in AlarmTickerBar. */
+.ksub-marquee-track {
+  will-change: transform;
 }
 
 @keyframes tab-in {
