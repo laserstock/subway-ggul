@@ -19,6 +19,7 @@ import {
   useElapsed,
   type Train,
 } from "../_lib/arrivals";
+import { armRouteAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { useLocale } from "../_lib/locale";
 import { findRoute, networkStationId, type Route, type RouteLeg, type RouteMode, type RouteTransfer } from "../_lib/routeFinder";
 import { stationName, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
@@ -115,6 +116,24 @@ const COPY = {
     en: "Line data © OpenStreetMap contributors · Running times: Seoul Metro open data",
     zh: "线路数据 © OpenStreetMap 贡献者 · 运行时间：首尔交通公社公共数据",
     ja: "路線データ © OpenStreetMap 寄稿者 · 運行時間：ソウル交通公社 公共データ",
+  },
+  startAlarm: {
+    ko: "경로 전체 환승·하차 알람 시작",
+    en: "Start transfer & arrival alarms for this route",
+    zh: "启动全程换乘·下车提醒",
+    ja: "このルートの乗換・降車アラームを開始",
+  },
+  stopAlarm: {
+    ko: "경로 알람 끄기",
+    en: "Stop route alarm",
+    zh: "关闭路线提醒",
+    ja: "ルートアラームを停止",
+  },
+  alarmOn: {
+    ko: "이 경로 알람이 켜져 있어요",
+    en: "Route alarm is on",
+    zh: "此路线提醒已开启",
+    ja: "このルートのアラーム作動中",
   },
 } satisfies Record<string, Localized>;
 
@@ -353,6 +372,8 @@ function RouteResult({
   note: string | null;
   locale: Locale;
 }) {
+  const alarm = useArrivalAlarm();
+  const [arming, setArming] = useState(false);
   const stops = route.legs.reduce((sum, leg) => sum + leg.stations.length - 1, 0);
   const first = route.legs[0];
   const { board } = useArrivals(from.name.ko);
@@ -363,6 +384,19 @@ function RouteResult({
     .find((entry): entry is { train: Train; wait: number } => entry.wait !== null);
   const arriveAt =
     board.status === "ok" && catchable ? board.fetchedAt + (elapsed + catchable.wait + route.seconds) * 1000 : null;
+  const routeArmed = alarm?.mode === "route";
+  async function toggleRouteAlarm() {
+    if (routeArmed) {
+      cancelArrivalAlarm();
+      return;
+    }
+    setArming(true);
+    try {
+      await armRouteAlarm(route, from);
+    } finally {
+      setArming(false);
+    }
+  }
   return (
     <section className="rounded-2xl border border-neutral-200/70 bg-white px-4 pb-2 pt-4 shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
       <p className="text-[12px] font-bold text-neutral-500">{t(COPY.duration, locale)}</p>
@@ -415,6 +449,22 @@ function RouteResult({
           </Fragment>
         ))}
       </ol>
+      <div className="sticky bottom-0 -mx-4 mt-3 border-t border-neutral-100 bg-white/95 px-4 py-3 backdrop-blur">
+        {routeArmed ? (
+          <p className="mb-2 text-center text-[12px] font-bold text-emerald-700">{t(COPY.alarmOn, locale)}</p>
+        ) : null}
+        <button
+          type="button"
+          disabled={arming}
+          onClick={() => void toggleRouteAlarm()}
+          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-extrabold transition active:scale-[0.98] disabled:opacity-60 ${
+            routeArmed ? "bg-neutral-900 text-white" : "bg-[#f5b800] text-neutral-900"
+          }`}
+        >
+          <span aria-hidden>{routeArmed ? "⏹" : "🔔"}</span>
+          {routeArmed ? t(COPY.stopAlarm, locale) : t(COPY.startAlarm, locale)}
+        </button>
+      </div>
     </section>
   );
 }
