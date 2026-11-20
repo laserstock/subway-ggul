@@ -119,12 +119,22 @@ export function ElevatorIcon({ size = 16, className = "" }: { size?: number; cla
 
 export function RestroomIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <circle cx="7.5" cy="4.6" r="2" />
-      <path d="M5.6 8.2h3.8c.6 0 1.1.5 1.1 1.1V14H9.3v6.2H5.7V14H4.5V9.3c0-.6.5-1.1 1.1-1.1z" />
-      <circle cx="16.5" cy="4.6" r="2" />
-      <path d="M15.3 8.2h2.4l2.8 6.6h-2.1v5.4h-3.6v-5.4h-2.1z" />
-      <path d="M12 3.5v17" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.35" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="7.2" cy="5" r="1.7" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M5.4 8.6h3.6c.55 0 1 .45 1 1V13H8.6v6.2H5.8V13H4.4V9.6c0-.55.45-1 1-1z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle cx="16.8" cy="5" r="1.7" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M15.4 8.6h2.8l2.6 6.2h-2v5.4h-3.4v-5.4h-2z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M12 3.8v16.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.35" />
     </svg>
   );
 }

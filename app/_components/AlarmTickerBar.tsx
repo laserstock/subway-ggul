@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   cancelArrivalAlarm,
   setAlarmMuteVoice,
@@ -11,6 +11,7 @@ import { restroomText, restroomTip } from "../_lib/arrivalTips";
 import { useLocale } from "../_lib/locale";
 import { currentAlarmLeg } from "../_lib/multiLegAlarm";
 import { restoreStation, t, type Localized } from "../_lib/stations";
+import { ElevatorIcon, RestroomIcon } from "./icons";
 
 const COPY = {
   transferring: {
@@ -31,12 +32,14 @@ const COPY = {
     zh: "已到达{station}",
     ja: "{station}に到着",
   },
-  ticker: {
-    ko: "{station}까지 {n}정거장 (약 {m}분 남음)  •  🚻 화장실: {gate}  •  🛗 추천 출구/환승: {tip}",
-    en: "{n} stops to {station} (~{m} min)  •  🚻 Restroom: {gate}  •  🛗 Exit/transfer: {tip}",
-    zh: "距{station}还有{n}站（约{m}分钟）  •  🚻 洗手间：{gate}  •  🛗 出口/换乘：{tip}",
-    ja: "{station}まで{n}駅（約{m}分）  •  🚻 トイレ: {gate}  •  🛗 出口/乗換: {tip}",
+  until: {
+    ko: "{station}까지 {n}정거장 (약 {m}분 남음)",
+    en: "{n} stops to {station} (~{m} min)",
+    zh: "距{station}还有{n}站（约{m}分钟）",
+    ja: "{station}まで{n}駅（約{m}分）",
   },
+  restroom: { ko: "화장실", en: "Restroom", zh: "洗手间", ja: "トイレ" },
+  tipLabel: { ko: "추천 출구/환승", en: "Exit / transfer", zh: "出口/换乘", ja: "出口/乗換" },
   gateUnknown: { ko: "개찰구 안·밖 확인", en: "check near gates", zh: "请查看检票口附近", ja: "改札付近を確認" },
   tipTransfer: { ko: "빠른환승 {tip}", en: "Fast transfer {tip}", zh: "快速换乘 {tip}", ja: "快速乗換 {tip}" },
   tipDefault: {
@@ -54,8 +57,21 @@ function fill(template: string, values: Record<string, string | number>) {
   return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), template);
 }
 
+function Dot() {
+  return <span className="mx-2.5 opacity-40">•</span>;
+}
+
+function Label({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1 align-middle">
+      <span className="inline-flex text-honey-strong opacity-90">{icon}</span>
+      <span>{children}</span>
+    </span>
+  );
+}
+
 /** JS marquee — reliable in WebView / Capacitor where CSS animation can fail or reset. */
-function MarqueeText({ text }: { text: string }) {
+function MarqueeText({ children }: { children: ReactNode }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
   const [paused, setPaused] = useState(false);
@@ -64,14 +80,13 @@ function MarqueeText({ text }: { text: string }) {
     pausedRef.current = paused;
   }, [paused]);
 
-  // Mount once — do not restart when ticker copy updates every second (stops/ETA).
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
     let raf = 0;
     let last = performance.now();
     let offset = 0;
-    const speed = 42; // px/sec
+    const speed = 42;
 
     const tick = (now: number) => {
       const dt = Math.min(48, now - last) / 1000;
@@ -98,11 +113,11 @@ function MarqueeText({ text }: { text: string }) {
     >
       <div
         ref={trackRef}
-        className="ksub-marquee-track flex w-max shrink-0 text-[13px] font-semibold leading-9 text-[#1F2937]"
+        className="ksub-marquee-track flex w-max shrink-0 items-center text-[13px] font-semibold leading-9 text-[#1F2937]"
       >
-        <span className="shrink-0 whitespace-nowrap pr-12">{text}</span>
-        <span className="shrink-0 whitespace-nowrap pr-12" aria-hidden="true">
-          {text}
+        <span className="inline-flex shrink-0 items-center whitespace-nowrap pr-12">{children}</span>
+        <span className="inline-flex shrink-0 items-center whitespace-nowrap pr-12" aria-hidden="true">
+          {children}
         </span>
       </div>
     </div>
@@ -126,20 +141,26 @@ export default function AlarmTickerBar() {
     ? fill(t(COPY.tipTransfer, locale), { tip: leg.transferTip })
     : t(COPY.tipDefault, locale);
 
-  const message =
-    alarm.stage === "transferring"
-      ? t(COPY.transferring, locale)
-      : alarm.stage === "wrong_way"
-        ? t(COPY.wrongWay, locale)
-        : alarm.stage === "arrived"
-          ? fill(t(COPY.arrived, locale), { station: stationName })
-          : fill(t(COPY.ticker, locale), {
-              station: stationName,
-              n: progress.remainingStops,
-              m: minutes,
-              gate,
-              tip,
-            });
+  const content =
+    alarm.stage === "transferring" ? (
+      t(COPY.transferring, locale)
+    ) : alarm.stage === "wrong_way" ? (
+      t(COPY.wrongWay, locale)
+    ) : alarm.stage === "arrived" ? (
+      fill(t(COPY.arrived, locale), { station: stationName })
+    ) : (
+      <>
+        {fill(t(COPY.until, locale), { station: stationName, n: progress.remainingStops, m: minutes })}
+        <Dot />
+        <Label icon={<RestroomIcon size={13} />}>
+          {t(COPY.restroom, locale)}: {gate}
+        </Label>
+        <Dot />
+        <Label icon={<ElevatorIcon size={13} />}>
+          {t(COPY.tipLabel, locale)}: {tip}
+        </Label>
+      </>
+    );
 
   return (
     <div
@@ -150,7 +171,7 @@ export default function AlarmTickerBar() {
       <span className="shrink-0 text-[13px] leading-none" aria-hidden>
         🔔
       </span>
-      <MarqueeText text={message} />
+      <MarqueeText>{content}</MarqueeText>
       <button
         type="button"
         onClick={() => setAlarmMuteVoice(!alarm.muteVoice)}
