@@ -14,7 +14,13 @@ import {
 import { findRoute, networkStationId, type Route } from "./routeFinder";
 import { serializeStation, type SavedStation, type StationOption } from "./stations";
 
-export type AlarmStage = "armed" | "approaching" | "arrived" | "transferring" | "wrong_way";
+export type AlarmStage =
+  | "armed"
+  | "approaching"
+  | "arrived"
+  | "transferring"
+  | "wrong_way"
+  | "missed_transfer";
 
 export type ArrivalAlarm = {
   station: SavedStation;
@@ -38,6 +44,7 @@ export const VIBE = {
   preArrival: [200, 100, 200] as number[],
   arrival: [500, 200, 500, 200, 500] as number[],
   wrongWay: [400, 100, 400, 100, 400] as number[],
+  missedTransfer: [600, 120, 600, 120, 600, 120, 800] as number[],
   legacy: [300, 150, 300, 150, 600] as number[],
 };
 
@@ -70,7 +77,11 @@ function asSingleLeg(station: SavedStation, line: string | null): AlarmLeg {
     afterTransferSeconds: 0,
     expectedNextStations: [],
     oppositeStations: [],
+    beyondStations: [],
     transferTip: null,
+    nextLine: null,
+    nextToward: null,
+    elevatorTip: null,
     restroomGate: null,
   };
 }
@@ -82,6 +93,10 @@ function normalizeLeg(leg: AlarmLeg): AlarmLeg {
     rideSeconds: leg.rideSeconds ?? leg.hopSeconds?.reduce((sum, hop) => sum + hop, 0) ?? 0,
     afterTransferSeconds: leg.afterTransferSeconds ?? 0,
     hopSeconds: leg.hopSeconds ?? [],
+    beyondStations: leg.beyondStations ?? [],
+    nextLine: leg.nextLine ?? null,
+    nextToward: leg.nextToward ?? null,
+    elevatorTip: leg.elevatorTip ?? null,
   };
 }
 

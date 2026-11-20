@@ -93,6 +93,18 @@ const COPY = {
     zh: "注意！您坐反了。请在下一站下车并前往对侧站台。",
     ja: "注意！逆方向の電車です。次駅で降りて反対ホームへ移動してください。",
   },
+  missedTitle: {
+    ko: "환승역을 지나쳤습니다",
+    en: "You passed the transfer stop",
+    zh: "您已错过换乘站",
+    ja: "乗換駅を通り過ぎました",
+  },
+  missedSpeech: {
+    ko: "환승역을 지나쳤습니다. 다음 역에서 내려 반대편 열차를 이용하세요.",
+    en: "You passed the transfer. Get off at the next stop and take the opposite train.",
+    zh: "您已错过换乘站。请在下一站下车并乘坐对向列车。",
+    ja: "乗換駅を通り過ぎました。次の駅で降りて反対方面の電車をご利用ください。",
+  },
   trackingTitle: {
     ko: "지하철꿀정보 하차 알림",
     en: "Subway Honey arrival alert",
@@ -155,7 +167,7 @@ function useWakeLock(enabled: boolean) {
 }
 
 type Banner = {
-  tone: "pre" | "arrive" | "wrong";
+  tone: "pre" | "arrive" | "wrong" | "missed";
   title: string;
   body: string;
   speech: string;
@@ -338,6 +350,20 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     );
   }
 
+  function onMissedTransfer(stationName: string) {
+    updateArrivalAlarm({ stage: "missed_transfer", from: stationName + "역" });
+    const speech = t(COPY.missedSpeech, locale);
+    showBanner(
+      {
+        tone: "missed",
+        title: t(COPY.missedTitle, locale),
+        body: speech,
+        speech,
+      },
+      VIBE.missedTransfer,
+    );
+  }
+
   const handleEvent = useEffectEvent((event: AlarmEngineEvent) => {
     if (event.type === "progress") {
       setAlarmProgress({
@@ -351,6 +377,7 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     if (event.type === "preArrival") onPreArrival(event.leg, event.currentStation);
     else if (event.type === "arrival") onArrival(event.leg);
     else if (event.type === "wrongWay") onWrongWay(event.station);
+    else if (event.type === "missedTransfer") onMissedTransfer(event.station);
     else if (event.type === "boardNextLeg") {
       setBanner(null);
       advanceAlarmLeg();
@@ -408,11 +435,13 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     setBanner(null);
     const current = alarmRef.current;
     if (current.stage === "arrived") cancelArrivalAlarm();
-    else if (current.stage === "wrong_way") updateArrivalAlarm({ stage: "armed" });
+    else if (current.stage === "wrong_way" || current.stage === "missed_transfer") {
+      updateArrivalAlarm({ stage: "armed" });
+    }
   }
 
   const bannerTone =
-    banner?.tone === "wrong"
+    banner?.tone === "wrong" || banner?.tone === "missed"
       ? "border-red-500 bg-red-50 text-red-900"
       : banner?.tone === "arrive"
         ? "border-emerald-500 bg-emerald-50 text-emerald-950"

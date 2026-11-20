@@ -15,6 +15,7 @@ export type AlarmEngineEvent =
   | { type: "preArrival"; leg: AlarmLeg; currentStation: string }
   | { type: "arrival"; leg: AlarmLeg }
   | { type: "wrongWay"; station: string }
+  | { type: "missedTransfer"; station: string }
   | { type: "boardNextLeg" }
   | { type: "progress"; remainingStops: number; etaSeconds: number; atStation: string | null };
 
@@ -50,6 +51,7 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
   const firedPreRef = useRef(false);
   const firedArriveRef = useRef(false);
   const firedWrongRef = useRef(false);
+  const firedMissedRef = useRef(false);
   const legKeyRef = useRef(`${alarm.legIndex}:${alarm.station.key}`);
   const stageRef = useRef(alarm.stage);
   const legRef = useRef(leg);
@@ -77,6 +79,7 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
     firedPreRef.current = false;
     firedArriveRef.current = false;
     firedWrongRef.current = false;
+    firedMissedRef.current = false;
     setAtStation(alarm.from ? bareStationName(alarm.from) : null);
     const seeded = remainingRouteProgress(alarm.legs, alarm.legIndex, alarm.from ? bareStationName(alarm.from) : null);
     setRemainingStops(seeded.remainingStops);
@@ -96,9 +99,21 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
   }
 
   function handleStation(bare: string, nextLeg: AlarmLeg, stage: ArrivalAlarm["stage"], distanceToTarget: number) {
-    if (stage === "arrived") return;
+    if (stage === "arrived" || stage === "missed_transfer") return;
     const targetBare = bareStationName(nextLeg.station.name.ko);
     const index = nextLeg.stations.findIndex((name) => bareStationName(name) === bare);
+    const nearOrPastTarget = progressRef.current >= Math.max(0, nextLeg.stations.length - 2);
+    const pastTransfer =
+      nextLeg.kind === "transfer" &&
+      (nextLeg.beyondStations ?? []).includes(bare) &&
+      (nearOrPastTarget || stage === "transferring" || stage === "approaching");
+
+    if (pastTransfer && !firedMissedRef.current) {
+      firedMissedRef.current = true;
+      publishProgress(bare);
+      emit({ type: "missedTransfer", station: bare });
+      return;
+    }
 
     if (stage === "transferring") {
       const following = legsRef.current[legIndexRef.current + 1];
@@ -174,7 +189,7 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
 
   // Dead reckoning when GPS is weak or stalled.
   useEffect(() => {
-    if (!leg || alarm.stage === "arrived" || alarm.stage === "transferring") return;
+    if (!leg || alarm.stage === "arrived" || alarm.stage === "transferring" || alarm.stage === "missed_transfer") return;
     const hops = leg.hopSeconds;
     if (!hops.length) return;
     const id = window.setInterval(() => {

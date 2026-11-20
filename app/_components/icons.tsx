@@ -179,3 +179,91 @@ export function StarIcon({ size = 14, className = "" }: { size?: number; classNa
     </svg>
   );
 }
+
+export function BellIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M6.2 10.2a5.8 5.8 0 0 1 11.6 0v3.4l1.4 2.6H4.8l1.4-2.6z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M10 19.2a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function SpeakerIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M4.5 9.5h3.2L13 5.8v12.4l-5.3-3.7H4.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M16.2 9.2a3.4 3.4 0 0 1 0 5.6M18.4 7a6 6 0 0 1 0 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function MuteIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M4.5 9.5h3.2L13 5.8v12.4l-5.3-3.7H4.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M16 9.5 20 14.5M20 9.5 16 14.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function TransferIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M7 7h11.5M15.2 3.8 18.5 7l-3.3 3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17 17H5.5M8.8 20.2 5.5 17l3.3-3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function WalkIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="13.2" cy="4.6" r="1.8" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M10.2 21.2 12 14.8l-2.4-2.6 2.2-3.8h2.6l1.4 3.2 2.6 1.4M12 14.8l2.8 6.4"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function FlagIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M6 21V4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M6.5 5h9.2l-1.6 3.4 1.6 3.4H6.5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function DoorIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M6.5 20.5V5.2A1.7 1.7 0 0 1 8.2 3.5h7.6A1.7 1.7 0 0 1 17.5 5.2v15.3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M5 20.5h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="14.2" cy="12" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M6 9.5 12 15.5 18 9.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

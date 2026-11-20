@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { saveFeedback } from "../_lib/feedback";
 import { requestHomeReset } from "../_lib/homeReset";
 import { t, type Localized } from "../_lib/i18n";
@@ -153,15 +154,25 @@ export default function SideDrawer({
   const [feedback, setFeedback] = useState("");
   const [feedbackSent, setFeedbackSent] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
     closeButtonRef.current?.focus();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [isOpen, onClose]);
 
   function resetInnerState() {
@@ -212,10 +223,12 @@ export default function SideDrawer({
     router.push("/");
   }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       id={id}
-      className={`absolute inset-0 z-[90] ${isOpen ? "" : "pointer-events-none"}`}
+      className={`fixed inset-0 z-[90] ${isOpen ? "" : "pointer-events-none"}`}
       aria-hidden={!isOpen}
       inert={!isOpen}
     >
@@ -446,6 +459,7 @@ export default function SideDrawer({
           </button>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }

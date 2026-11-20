@@ -1,4 +1,4 @@
-import { bareStationName, restroomTip } from "./arrivalTips";
+import { bareStationName, elevatorTip, restroomTip } from "./arrivalTips";
 import type { Route, RouteLeg } from "./routeFinder";
 import { ALL_STATIONS, serializeStation, type SavedStation, type StationOption } from "./stations";
 import { NETWORK_EDGES, NETWORK_SERVICES, NETWORK_STATIONS } from "./subwayNetwork";
@@ -27,8 +27,16 @@ export type AlarmLeg = {
   expectedNextStations: string[];
   /** Opposite-direction stations from the boarding stop (bare names). */
   oppositeStations: string[];
-  /** Fast-transfer car/door tip for TTS, if known. */
+  /** Stations past this leg's target on the same line (missed-transfer detection). */
+  beyondStations: string[];
+  /** Fast-transfer car/door tip for TTS / marquee, if known. */
   transferTip: string | null;
+  /** Next line after this transfer (null on final leg). */
+  nextLine: string | null;
+  /** Next-leg toward station name (Korean, with 역) for direction copy. */
+  nextToward: string | null;
+  /** Short elevator / exit tip at final destination. */
+  elevatorTip: string | null;
   /** "inside" | "outside" for final restroom TTS, else null. */
   restroomGate: "inside" | "outside" | null;
 };
@@ -83,16 +91,66 @@ function oppositeStationsForLeg(leg: RouteLeg): string[] {
   return names;
 }
 
-function transferTipText(leg: RouteLeg, next: RouteLeg, transferStation: string): string | null {
+/** Stations past the alighting stop continuing on the same line (rider missed the transfer). */
+function beyondStationsForLeg(leg: RouteLeg): string[] {
+  const target = leg.stationIds.at(-1);
+  const prev = leg.stationIds.at(-2);
+  if (target === undefined || prev === undefined) return [];
+  const names: string[] = [];
+  const queue: { id: number; depth: number }[] = [];
+  const seen = new Set<number>([target, prev]);
+  for (const [service, a, b] of NETWORK_EDGES) {
+    const svc = NETWORK_SERVICES[service];
+    if (!svc || svc.express || svc.line !== leg.line) continue;
+    const other = a === target ? b : b === target ? a : null;
+    if (other === null || seen.has(other)) continue;
+    queue.push({ id: other, depth: 0 });
+  }
+  while (queue.length) {
+    const { id, depth } = queue.shift()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const name = NETWORK_STATIONS[id]?.[0];
+    if (name) names.push(bareStationName(name));
+    if (depth >= 4) continue;
+    for (const [service, a, b] of NETWORK_EDGES) {
+      const svc = NETWORK_SERVICES[service];
+      if (!svc || svc.express || svc.line !== leg.line) continue;
+      const other = a === id ? b : b === id ? a : null;
+      if (other === null || seen.has(other)) continue;
+      queue.push({ id: other, depth: depth + 1 });
+    }
+  }
+  return names;
+}
+
+function transferTipText(leg: RouteLeg, next: RouteLeg, transferStation: string): {
+  tip: string;
+  nextToward: string;
+} | null {
   const doors = routeTransferDoors(leg, next, {
     station: transferStation,
     toStation: null,
     walkSeconds: 0,
     waitSeconds: 0,
   });
-  if (!doors) return null;
+  const toward = next.stations[1] ?? next.stations[0] ?? "";
+  if (!doors) {
+    if (!toward) return null;
+    return { tip: `${next.line} ${bareStationName(toward)} 방향`, nextToward: toward };
+  }
   const alight = splitDoor(doors.alight);
-  return `${alight.car}번 칸 ${alight.door}번 문`;
+  const towardLabel = bareStationName(doors.toToward || toward);
+  return {
+    tip: `${alight.car}번 칸 ${alight.door}번 문 · ${next.line} ${towardLabel} 방향`,
+    nextToward: doors.toToward || toward,
+  };
+}
+
+function elevatorTipText(option: StationOption, fromKo: string | null): string | null {
+  const tip = elevatorTip(option, fromKo);
+  if (!tip?.cars[0]) return null;
+  return `${tip.cars[0].car} (엘리베이터)`;
 }
 
 /** Build the sequential alarm queue from a `findRoute` result. */
@@ -108,6 +166,8 @@ export function buildAlarmLegs(route: Route): AlarmLeg[] {
     const transfer = route.transfers[index];
     const toilet = isLast ? restroomTip(option, leg.line) : null;
     const expected = leg.stations.slice(1).map(bareStationName);
+    const fromKo = leg.stations.at(-2) ?? null;
+    const transferMeta = !isLast && next && transfer ? transferTipText(leg, next, transfer.station) : null;
     legs.push({
       station: serializeStation(option),
       kind: isLast ? "arrival" : "transfer",
@@ -119,7 +179,11 @@ export function buildAlarmLegs(route: Route): AlarmLeg[] {
       afterTransferSeconds: transfer ? transfer.walkSeconds + transfer.waitSeconds : 0,
       expectedNextStations: expected,
       oppositeStations: oppositeStationsForLeg(leg),
-      transferTip: !isLast && next && transfer ? transferTipText(leg, next, transfer.station) : null,
+      beyondStations: isLast ? [] : beyondStationsForLeg(leg),
+      transferTip: transferMeta?.tip ?? null,
+      nextLine: next?.line ?? null,
+      nextToward: transferMeta?.nextToward ?? next?.stations[1] ?? null,
+      elevatorTip: isLast ? elevatorTipText(option, fromKo) : null,
       restroomGate: toilet?.gate ?? null,
     });
   });
@@ -133,6 +197,23 @@ export function currentAlarmLeg(legs: AlarmLeg[], legIndex: number): AlarmLeg | 
 /** Final destination of the armed trip (last leg target). */
 export function finalAlarmStation(legs: AlarmLeg[]): SavedStation | null {
   return legs.at(-1)?.station ?? legs[0]?.station ?? null;
+}
+
+export function transferLegCount(legs: AlarmLeg[]): number {
+  return legs.filter((leg) => leg.kind === "transfer").length;
+}
+
+/** 1-based transfer index for the current transfer leg (0 when on final/arrival). */
+export function currentTransferOrdinal(legs: AlarmLeg[], legIndex: number): number {
+  let ordinal = 0;
+  for (let index = 0; index <= legIndex && index < legs.length; index += 1) {
+    if (legs[index].kind === "transfer") ordinal += 1;
+  }
+  return ordinal;
+}
+
+export function totalRouteStops(legs: AlarmLeg[]): number {
+  return legs.reduce((sum, leg) => sum + Math.max(0, leg.stations.length - 1), 0);
 }
 
 export function remainingStopsOnLeg(leg: AlarmLeg, atBareName: string | null): number {
@@ -169,4 +250,12 @@ export function remainingRouteProgress(legs: AlarmLeg[], legIndex: number, atBar
     if (index < legs.length - 1) etaSeconds += leg.afterTransferSeconds ?? 0;
   }
   return { remainingStops, etaSeconds };
+}
+
+/** 0–1 fraction of hop stops completed for the progress gauge. */
+export function routeProgressRatio(legs: AlarmLeg[], legIndex: number, atBareName: string | null): number {
+  const total = totalRouteStops(legs);
+  if (!total) return 0;
+  const remaining = remainingRouteProgress(legs, legIndex, atBareName).remainingStops;
+  return Math.min(1, Math.max(0, (total - remaining) / total));
 }
