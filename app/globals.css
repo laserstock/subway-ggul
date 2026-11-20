@@ -364,6 +364,27 @@ body {
   scrollbar-width: none;
 }
 
+/* Slim alarm ticker under AppHeader — seamless horizontal marquee. */
+@keyframes alarm-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.alarm-marquee-track {
+  display: inline-block;
+  min-width: 100%;
+  animation: alarm-marquee 14s linear infinite;
+}
+
+.alarm-marquee:hover .alarm-marquee-track,
+.alarm-marquee:active .alarm-marquee-track {
+  animation-play-state: paused;
+}
+
 @keyframes tab-in {
   from {
     opacity: 0;

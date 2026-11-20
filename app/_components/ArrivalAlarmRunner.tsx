@@ -1,13 +1,12 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { speakAlarm } from "../_lib/alarmSpeech";
 import {
   advanceAlarmLeg,
   cancelArrivalAlarm,
   sendArrivalAlert,
-  setAlarmMuteVoice,
+  setAlarmProgress,
   showPausedNotice,
   updateArrivalAlarm,
   useArrivalAlarm,
@@ -26,29 +25,9 @@ import {
 } from "../_lib/native";
 import { restoreStation, t, type Localized } from "../_lib/stations";
 import { lineNeighbors, loadLineStations, stationLines } from "../_lib/subwayLine";
-import { LOCATION_ISSUE_COPY } from "../_lib/useStationTracker";
 import { useSubwayAlarmEngine, type AlarmEngineEvent } from "../_lib/useSubwayAlarmEngine";
 
 const COPY = {
-  waiting: {
-    ko: "{station} · 남은 {n}정거장 · 약 {m}분",
-    en: "{station} · {n} stops · ~{m} min",
-    zh: "{station} · 剩余{n}站 · 约{m}分钟",
-    ja: "{station} · 残り{n}駅 · 約{m}分",
-  },
-  transferring: {
-    ko: "환승 중 · 다음 구간 탑승을 감지하면 알람이 이어져요",
-    en: "Transferring · next leg arms when you board",
-    zh: "换乘中 · 上车后自动进入下一段",
-    ja: "乗換中 · 次区間に乗るとアラーム継続",
-  },
-  wrongWay: {
-    ko: "반대 방향 감지 · 다음 역에서 갈아타세요",
-    en: "Wrong direction · change at the next stop",
-    zh: "检测到反方向 · 请在下一站换乘",
-    ja: "逆方向を検知 · 次駅で乗換えて",
-  },
-  arrived: { ko: "{station} 도착 · 알림 끝", en: "Arrived at {station}", zh: "已到达{station}", ja: "駅{station}に到着" },
   preBanner: {
     ko: "아직 내리지 마세요! 다음 역이 {target}입니다",
     en: "Don't get off yet! Next stop is {target}",
@@ -139,19 +118,10 @@ const COPY = {
     ja: "ブラウザはバックグラウンドで位置を取得できません。このページに戻ると{station}の通知を再開します",
   },
   cancel: { ko: "끄기", en: "Off", zh: "关闭", ja: "オフ" },
-  close: { ko: "닫기", en: "Close", zh: "关闭", ja: "閉じる" },
   ok: { ko: "확인", en: "OK", zh: "确定", ja: "OK" },
-  muteOn: { ko: "음성 켜짐", en: "Voice on", zh: "语音开", ja: "音声オン" },
-  muteOff: { ko: "음소거", en: "Muted", zh: "静音", ja: "ミュート" },
   appName: { ko: "지하철꿀정보 · 지금", en: "Subway Honey · now", zh: "地铁蜜信息 · 现在", ja: "地下鉄ハチミツ情報 · 今" },
   trackingChannel: { ko: "하차 알림 진행 중", en: "Arrival alert running", zh: "下车提醒运行中", ja: "降車通知の実行中" },
   alertChannel: { ko: "하차 알림", en: "Arrival alerts", zh: "下车提醒", ja: "降車通知" },
-  nativeDenied: {
-    ko: "위치 권한이 없어 앱을 닫으면 알림이 오지 않아요",
-    en: "Location is off, so alerts stop when the app is closed",
-    zh: "未授予定位权限，关闭应用后将无法提醒",
-    ja: "位置情報が許可されていないため、アプリを閉じると通知されません",
-  },
 } satisfies Record<string, Localized>;
 
 function fill(template: string, values: Record<string, string | number>) {
@@ -193,14 +163,10 @@ type Banner = {
 
 function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
   const locale = useLocale();
-  const pathname = usePathname();
   const station = useMemo(() => restoreStation(alarm.station), [alarm.station]);
   const [banner, setBanner] = useState<Banner | null>(null);
   const [neighbors, setNeighbors] = useState<{ lat: number; lng: number; title: string; body: string }[] | null>(null);
-  const [nativeDenied, setNativeDenied] = useState(false);
   const [route, setRoute] = useState<NativeAlarmConfig["route"]>([]);
-  const [remainingStops, setRemainingStops] = useState(0);
-  const [etaSeconds, setEtaSeconds] = useState(0);
   const alarmRef = useRef(alarm);
 
   useEffect(() => {
@@ -264,11 +230,9 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     void nativeArrivalAlarmStatus()
       .then((status) => {
         if (!alive || (status && status.armedAt === armedAt && !status.active)) return;
-        return startNativeArrivalAlarm(config).then(() => setNativeDenied(false));
+        return startNativeArrivalAlarm(config);
       })
-      .catch((error: { code?: string }) => {
-        if (alive && error?.code === "NOT_AUTHORIZED") setNativeDenied(true);
-      });
+      .catch(() => {});
     return () => {
       alive = false;
     };
@@ -376,8 +340,11 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
 
   const handleEvent = useEffectEvent((event: AlarmEngineEvent) => {
     if (event.type === "progress") {
-      setRemainingStops(event.remainingStops);
-      setEtaSeconds(event.etaSeconds);
+      setAlarmProgress({
+        remainingStops: event.remainingStops,
+        etaSeconds: event.etaSeconds,
+        atStation: event.atStation,
+      });
       if (event.atStation) updateArrivalAlarm({ from: event.atStation + "역" });
       return;
     }
@@ -397,9 +364,12 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
   });
 
   useEffect(() => {
-    setRemainingStops(engine.remainingStops);
-    setEtaSeconds(engine.etaSeconds);
-  }, [engine.remainingStops, engine.etaSeconds]);
+    setAlarmProgress({
+      remainingStops: engine.remainingStops,
+      etaSeconds: engine.etaSeconds,
+      atStation: engine.atStation,
+    });
+  }, [engine.remainingStops, engine.etaSeconds, engine.atStation]);
 
   const stopTracking = useEffectEvent(() => engine.stop());
   useEffect(() => {
@@ -441,19 +411,6 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     else if (current.stage === "wrong_way") updateArrivalAlarm({ stage: "armed" });
   }
 
-  const minutes = Math.max(1, Math.round(etaSeconds / 60));
-  const status = nativeDenied
-    ? t(COPY.nativeDenied, locale)
-    : engine.issue
-      ? t(LOCATION_ISSUE_COPY[engine.issue], locale)
-      : alarm.stage === "transferring"
-        ? t(COPY.transferring, locale)
-        : alarm.stage === "wrong_way"
-          ? t(COPY.wrongWay, locale)
-          : alarm.stage === "arrived"
-            ? fill(t(COPY.arrived, locale), { station: name })
-            : fill(t(COPY.waiting, locale), { station: name, n: remainingStops, m: minutes });
-
   const bannerTone =
     banner?.tone === "wrong"
       ? "border-red-500 bg-red-50 text-red-900"
@@ -461,60 +418,30 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
         ? "border-emerald-500 bg-emerald-50 text-emerald-950"
         : "border-amber-400 bg-amber-50 text-amber-950";
 
-  return (
-    <>
-      {banner ? (
-        <div
-          role="alertdialog"
-          aria-labelledby="arrival-alarm-title"
-          className="fixed inset-0 z-[130] flex items-start justify-center bg-black/45 px-4 pt-20"
-        >
-          <div className={`w-full max-w-[361px] rounded-3xl border-2 p-4 shadow-2xl ${bannerTone}`}>
-            <p className="text-[11px] font-bold opacity-60">{t(COPY.appName, locale)}</p>
-            <p id="arrival-alarm-title" className="mt-1 text-[18px] font-extrabold tracking-tight">
-              {banner.tone === "pre" ? "⚠️ " : banner.tone === "wrong" ? "🚨 " : "🚨 "}
-              {banner.title}
-            </p>
-            <p className="mt-1.5 text-[14px] font-semibold leading-snug opacity-90">{banner.body}</p>
-            <button
-              type="button"
-              onClick={dismiss}
-              className="mt-3.5 w-full rounded-xl bg-[#f5b800] py-2.5 text-[14px] font-extrabold text-neutral-900 transition active:scale-[0.98]"
-            >
-              {t(COPY.ok, locale)}
-            </button>
-          </div>
-        </div>
-      ) : null}
+  if (!banner) return null;
 
-      {pathname === "/station" ? null : (
-        <div className="pointer-events-none fixed inset-x-0 top-[env(safe-area-inset-top,0px)] z-[110] flex justify-center px-3 pt-2">
-          <div className="pointer-events-auto flex w-full max-w-[420px] items-center gap-2 rounded-2xl bg-neutral-900/92 py-2 pl-3.5 pr-1.5 text-white shadow-lg">
-            <span className={alarm.stage === "arrived" ? "" : "animate-pulse"} aria-hidden>
-              🔔
-            </span>
-            <p className="min-w-0 flex-1 break-words text-[12.5px] font-bold leading-snug" role="status">
-              {status}
-            </p>
-            <button
-              type="button"
-              onClick={() => setAlarmMuteVoice(!alarm.muteVoice)}
-              className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold"
-              aria-pressed={alarm.muteVoice}
-            >
-              {alarm.muteVoice ? t(COPY.muteOff, locale) : t(COPY.muteOn, locale)}
-            </button>
-            <button
-              type="button"
-              onClick={cancelArrivalAlarm}
-              className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-[12px] font-bold"
-            >
-              {t(alarm.stage === "arrived" ? COPY.close : COPY.cancel, locale)}
-            </button>
-          </div>
-        </div>
-      )}
-    </>
+  return (
+    <div
+      role="alertdialog"
+      aria-labelledby="arrival-alarm-title"
+      className="fixed inset-0 z-[130] flex items-start justify-center bg-black/45 px-4 pt-20"
+    >
+      <div className={`w-full max-w-[361px] rounded-3xl border-2 p-4 shadow-2xl ${bannerTone}`}>
+        <p className="text-[11px] font-bold opacity-60">{t(COPY.appName, locale)}</p>
+        <p id="arrival-alarm-title" className="mt-1 text-[18px] font-extrabold tracking-tight">
+          {banner.tone === "pre" ? "⚠️ " : "🚨 "}
+          {banner.title}
+        </p>
+        <p className="mt-1.5 text-[14px] font-semibold leading-snug opacity-90">{banner.body}</p>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="mt-3.5 w-full rounded-xl bg-[#f5b800] py-2.5 text-[14px] font-extrabold text-neutral-900 transition active:scale-[0.98]"
+        >
+          {t(COPY.ok, locale)}
+        </button>
+      </div>
+    </div>
   );
 }
 

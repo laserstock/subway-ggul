@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { LANGUAGES, t, type Locale, type Localized } from "../_lib/i18n";
 import { setLocale, useLocale, useMessages } from "../_lib/locale";
 import { useApplyTheme } from "../_lib/theme";
+import AlarmTickerBar from "./AlarmTickerBar";
 import { TrainLogo } from "./icons";
 import LanguageSelector from "./LanguageSelector";
 import SideDrawer from "./SideDrawer";
@@ -30,6 +31,7 @@ export default function AppHeader({
 }) {
   const locale = useLocale();
   const m = useMessages();
+  const router = useRouter();
   const drawerId = useId();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
@@ -45,65 +47,73 @@ export default function AppHeader({
     setLocale(next);
   }
 
+  function goBack() {
+    router.push(backHref || "/");
+  }
+
   return (
-    <header className="flex items-center justify-between gap-2 bg-app px-4 pb-2 pt-3">
-      <div className="flex min-w-0 items-center gap-2">
-        {backHref ? (
-          <Link
-            href={backHref}
-            aria-label={m.header.home}
-            className="-ml-1 flex h-9 w-7 items-center justify-center text-neutral-700"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M15 5l-7 7 7 7"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </Link>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => setIsDrawerOpen(true)}
-          aria-label={m.header.openMenu}
-          aria-haspopup="dialog"
-          aria-expanded={isDrawerOpen}
-          aria-controls={drawerId}
-          className="shrink-0 rounded-[10px] transition-transform active:scale-95"
-        >
-          {icon}
-        </button>
-        <div className="min-w-0">
-          <h1
-            className={`break-words leading-tight tracking-tight ${
-              title ? "font-bold text-ink" : "font-extrabold text-honey-strong"
-            } ${subtitle ? "text-[16px] leading-tight" : title ? "text-[18px]" : "text-[21px]"} ${
-              titlePrefix ? "flex items-center gap-1.5" : ""
-            }`}
-          >
-            {titlePrefix}
-            {titlePrefix ? (
-              <span className="min-w-0 break-words">{title ? t(title, locale) : m.app.name}</span>
-            ) : title ? (
-              t(title, locale)
-            ) : (
-              m.app.name
-            )}
-          </h1>
-          {subtitle ? (
-            <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 break-words text-[12px] font-semibold leading-tight text-neutral-500">
-              {subtitle}
-            </div>
+    <header className="sticky top-0 z-40 shrink-0 bg-app">
+      <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
+        <div className="flex min-w-0 items-center gap-2">
+          {backHref ? (
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label={m.header.home}
+              className="-ml-1 flex h-10 w-10 items-center justify-center rounded-full p-2 text-neutral-700 transition active:scale-95"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M15 5l-7 7 7 7"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            aria-label={m.header.openMenu}
+            aria-haspopup="dialog"
+            aria-expanded={isDrawerOpen}
+            aria-controls={drawerId}
+            className="shrink-0 rounded-[10px] transition-transform active:scale-95"
+          >
+            {icon}
+          </button>
+          <div className="min-w-0">
+            <h1
+              className={`break-words leading-tight tracking-tight ${
+                title ? "font-bold text-ink" : "font-extrabold text-honey-strong"
+              } ${subtitle ? "text-[16px] leading-tight" : title ? "text-[18px]" : "text-[21px]"} ${
+                titlePrefix ? "flex items-center gap-1.5" : ""
+              }`}
+            >
+              {titlePrefix}
+              {titlePrefix ? (
+                <span className="min-w-0 break-words">{title ? t(title, locale) : m.app.name}</span>
+              ) : title ? (
+                t(title, locale)
+              ) : (
+                m.app.name
+              )}
+            </h1>
+            {subtitle ? (
+              <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 break-words text-[12px] font-semibold leading-tight text-neutral-500">
+                {subtitle}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {action}
+          <LanguageSelector current={locale} label={m.header.changeLanguage} onSelect={changeLocale} />
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">
-        {action}
-        <LanguageSelector current={locale} label={m.header.changeLanguage} onSelect={changeLocale} />
-      </div>
+      <AlarmTickerBar />
       <SideDrawer id={drawerId} isOpen={isDrawerOpen} onClose={closeDrawer} />
     </header>
   );

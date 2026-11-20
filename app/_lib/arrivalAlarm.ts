@@ -144,7 +144,37 @@ export function setAlarmMuteVoice(muteVoice: boolean) {
 export function cancelArrivalAlarm() {
   if (hasNativeArrivalAlarm()) stopNativeArrivalAlarm();
   stopAlarmSpeech();
+  setAlarmProgress({ remainingStops: 0, etaSeconds: 0, atStation: null });
   save(null);
+}
+
+/** Live hop countdown for the slim ticker — kept out of sessionStorage to avoid write thrash. */
+export type AlarmProgress = { remainingStops: number; etaSeconds: number; atStation: string | null };
+
+let progress: AlarmProgress = { remainingStops: 0, etaSeconds: 0, atStation: null };
+const progressListeners = new Set<() => void>();
+
+export function setAlarmProgress(next: AlarmProgress) {
+  if (
+    progress.remainingStops === next.remainingStops &&
+    progress.etaSeconds === next.etaSeconds &&
+    progress.atStation === next.atStation
+  ) {
+    return;
+  }
+  progress = next;
+  for (const listener of progressListeners) listener();
+}
+
+function subscribeProgress(listener: () => void) {
+  progressListeners.add(listener);
+  return () => {
+    progressListeners.delete(listener);
+  };
+}
+
+export function useAlarmProgress(): AlarmProgress {
+  return useSyncExternalStore(subscribeProgress, () => progress, () => progress);
 }
 
 let audio: AudioContext | null = null;
