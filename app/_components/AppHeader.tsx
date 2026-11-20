@@ -52,8 +52,8 @@ export default function AppHeader({
   }
 
   return (
-    <header className="sticky top-0 z-40 shrink-0 bg-app">
-      <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
+    <header className="sticky top-0 z-40 shrink-0 bg-app pt-[env(safe-area-inset-top,0px)]">
+      <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-2">
         <div className="flex min-w-0 items-center gap-2">
           {backHref ? (
             <button

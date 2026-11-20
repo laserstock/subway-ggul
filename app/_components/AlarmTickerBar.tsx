@@ -6,9 +6,10 @@ import {
   useAlarmProgress,
   useArrivalAlarm,
 } from "../_lib/arrivalAlarm";
+import { restroomText, restroomTip } from "../_lib/arrivalTips";
 import { useLocale } from "../_lib/locale";
 import { currentAlarmLeg } from "../_lib/multiLegAlarm";
-import { t, type Localized } from "../_lib/stations";
+import { restoreStation, t, type Localized } from "../_lib/stations";
 
 const COPY = {
   transferring: {
@@ -30,13 +31,11 @@ const COPY = {
     ja: "{station}に到着",
   },
   ticker: {
-    ko: "{station}까지 {n}정거장 (약 {m}분 남음)  •  화장실: {gate}  •  {tip}",
-    en: "{n} stops to {station} (~{m} min)  •  Restroom: {gate}  •  {tip}",
-    zh: "距{station}还有{n}站（约{m}分钟）  •  洗手间：{gate}  •  {tip}",
-    ja: "{station}まで{n}駅（約{m}分）  •  トイレ: {gate}  •  {tip}",
+    ko: "{station}까지 {n}정거장 (약 {m}분 남음)  •  🚻 화장실: {gate}  •  🛗 추천 출구/환승: {tip}",
+    en: "{n} stops to {station} (~{m} min)  •  🚻 Restroom: {gate}  •  🛗 Exit/transfer: {tip}",
+    zh: "距{station}还有{n}站（约{m}分钟）  •  🚻 洗手间：{gate}  •  🛗 出口/换乘：{tip}",
+    ja: "{station}まで{n}駅（約{m}分）  •  🚻 トイレ: {gate}  •  🛗 出口/乗換: {tip}",
   },
-  gateInside: { ko: "개찰구 안", en: "inside gates", zh: "检票口内", ja: "改札内" },
-  gateOutside: { ko: "개찰구 밖", en: "outside gates", zh: "检票口外", ja: "改札外" },
   gateUnknown: { ko: "개찰구 안·밖 확인", en: "check near gates", zh: "请查看检票口附近", ja: "改札付近を確認" },
   tipTransfer: { ko: "빠른환승 {tip}", en: "Fast transfer {tip}", zh: "快速换乘 {tip}", ja: "快速乗換 {tip}" },
   tipDefault: {
@@ -62,14 +61,11 @@ export default function AlarmTickerBar() {
   if (!alarm) return null;
 
   const leg = currentAlarmLeg(alarm.legs, alarm.legIndex);
-  const stationName = t(alarm.station.name, locale);
+  const station = restoreStation(alarm.station);
+  const stationName = t(station.name, locale);
   const minutes = Math.max(1, Math.round(progress.etaSeconds / 60));
-  const gate =
-    leg?.restroomGate === "inside"
-      ? t(COPY.gateInside, locale)
-      : leg?.restroomGate === "outside"
-        ? t(COPY.gateOutside, locale)
-        : t(COPY.gateUnknown, locale);
+  const toilet = restroomTip(station, leg?.line ?? alarm.line);
+  const gate = toilet ? restroomText(station, toilet, locale) : t(COPY.gateUnknown, locale);
   const tip = leg?.transferTip
     ? fill(t(COPY.tipTransfer, locale), { tip: leg.transferTip })
     : t(COPY.tipDefault, locale);
@@ -95,16 +91,32 @@ export default function AlarmTickerBar() {
       aria-live="polite"
       className="flex h-9 w-full items-center gap-1.5 border-b border-amber-200 bg-[#FEF9C3] px-2 text-[#78350F]"
     >
-      <span className="shrink-0 text-[13px]" aria-hidden>
+      <style>{`
+        @keyframes ksub-marquee {
+          0% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .ksub-marquee-viewport:hover .ksub-marquee-track,
+        .ksub-marquee-viewport:active .ksub-marquee-track {
+          animation-play-state: paused;
+        }
+        .ksub-marquee-track {
+          display: flex;
+          width: max-content;
+          animation: ksub-marquee 16s linear infinite;
+          will-change: transform;
+        }
+      `}</style>
+      <span className="shrink-0 text-[13px] leading-none" aria-hidden>
         🔔
       </span>
-      <div className="alarm-marquee min-w-0 flex-1 overflow-hidden">
-        <p className="alarm-marquee-track whitespace-nowrap text-[13px] font-semibold leading-9">
-          <span className="inline-block pr-10">{message}</span>
-          <span className="inline-block pr-10" aria-hidden>
+      <div className="ksub-marquee-viewport relative flex min-w-0 flex-1 items-center overflow-hidden">
+        <div className="ksub-marquee-track text-[13px] font-semibold leading-9 text-[#1F2937]">
+          <span className="whitespace-nowrap pr-12">{message}</span>
+          <span className="whitespace-nowrap pr-12" aria-hidden="true">
             {message}
           </span>
-        </p>
+        </div>
       </div>
       <button
         type="button"
