@@ -120,6 +120,11 @@ export function currentAlarmLeg(legs: AlarmLeg[], legIndex: number): AlarmLeg | 
   return legs[legIndex] ?? null;
 }
 
+/** Final destination of the armed trip (last leg target). */
+export function finalAlarmStation(legs: AlarmLeg[]): SavedStation | null {
+  return legs.at(-1)?.station ?? legs[0]?.station ?? null;
+}
+
 export function remainingStopsOnLeg(leg: AlarmLeg, atBareName: string | null): number {
   if (!atBareName) return Math.max(0, leg.stations.length - 1);
   const index = leg.stations.findIndex((name) => bareStationName(name) === atBareName);
@@ -132,4 +137,21 @@ export function etaSecondsOnLeg(leg: AlarmLeg, atBareName: string | null): numbe
   const index = leg.stations.findIndex((name) => bareStationName(name) === atBareName);
   if (index < 0) return leg.hopSeconds.reduce((sum, hop) => sum + hop, 0);
   return leg.hopSeconds.slice(index).reduce((sum, hop) => sum + hop, 0);
+}
+
+/** Remaining stops/seconds from the current leg onward (full trip ETA for the ticker). */
+export function remainingRouteProgress(legs: AlarmLeg[], legIndex: number, atBareName: string | null) {
+  let remainingStops = 0;
+  let etaSeconds = 0;
+  for (let index = legIndex; index < legs.length; index += 1) {
+    const leg = legs[index];
+    if (index === legIndex) {
+      remainingStops += remainingStopsOnLeg(leg, atBareName);
+      etaSeconds += etaSecondsOnLeg(leg, atBareName);
+    } else {
+      remainingStops += Math.max(0, leg.stations.length - 1);
+      etaSeconds += leg.hopSeconds.reduce((sum, hop) => sum + hop, 0);
+    }
+  }
+  return { remainingStops, etaSeconds };
 }

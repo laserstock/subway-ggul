@@ -9,7 +9,7 @@ import {
 } from "../_lib/arrivalAlarm";
 import { restroomText, restroomTip } from "../_lib/arrivalTips";
 import { useLocale } from "../_lib/locale";
-import { currentAlarmLeg } from "../_lib/multiLegAlarm";
+import { currentAlarmLeg, finalAlarmStation } from "../_lib/multiLegAlarm";
 import { restoreStation, t, type Localized } from "../_lib/stations";
 import { ElevatorIcon, RestroomIcon } from "./icons";
 
@@ -132,9 +132,11 @@ export default function AlarmTickerBar() {
   if (!alarm) return null;
 
   const leg = currentAlarmLeg(alarm.legs, alarm.legIndex);
-  const station = restoreStation(alarm.station);
+  const final = finalAlarmStation(alarm.legs);
+  const station = restoreStation(final ?? alarm.station);
   const stationName = t(station.name, locale);
-  const minutes = Math.max(1, Math.round(progress.etaSeconds / 60));
+  const minutes = Math.max(1, Math.round((progress.etaSeconds || 60) / 60));
+  const stops = Math.max(progress.remainingStops, 0);
   const toilet = restroomTip(station, leg?.line ?? alarm.line);
   const gate = toilet ? restroomText(station, toilet, locale) : t(COPY.gateUnknown, locale);
   const tip = leg?.transferTip
@@ -150,7 +152,7 @@ export default function AlarmTickerBar() {
       fill(t(COPY.arrived, locale), { station: stationName })
     ) : (
       <>
-        {fill(t(COPY.until, locale), { station: stationName, n: progress.remainingStops, m: minutes })}
+        {fill(t(COPY.until, locale), { station: stationName, n: stops, m: minutes })}
         <Dot />
         <Label icon={<RestroomIcon size={13} />}>
           {t(COPY.restroom, locale)}: {gate}

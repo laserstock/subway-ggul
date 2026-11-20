@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { ArrivalAlarm } from "./arrivalAlarm";
 import { bareStationName } from "./arrivalTips";
-import { currentAlarmLeg, etaSecondsOnLeg, remainingStopsOnLeg, type AlarmLeg } from "./multiLegAlarm";
+import { currentAlarmLeg, remainingRouteProgress, type AlarmLeg } from "./multiLegAlarm";
 import { distanceMeters, restoreStation } from "./stations";
 import { useStationTracker } from "./useStationTracker";
 
@@ -31,9 +31,18 @@ type Options = {
 export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
   const leg = currentAlarmLeg(alarm.legs, alarm.legIndex);
   const target = restoreStation(alarm.station);
-  const [remainingStops, setRemainingStops] = useState(() => (leg ? remainingStopsOnLeg(leg, null) : 0));
-  const [etaSeconds, setEtaSeconds] = useState(() => (leg ? etaSecondsOnLeg(leg, null) : 0));
-  const [atStation, setAtStation] = useState<string | null>(null);
+  const [remainingStops, setRemainingStops] = useState(() => {
+    const at = alarm.from ? bareStationName(alarm.from) : null;
+    return remainingRouteProgress(alarm.legs, alarm.legIndex, at).remainingStops;
+  });
+  const [etaSeconds, setEtaSeconds] = useState(() => {
+    const at = alarm.from ? bareStationName(alarm.from) : null;
+    return remainingRouteProgress(alarm.legs, alarm.legIndex, at).etaSeconds;
+  });
+
+  const [atStation, setAtStation] = useState<string | null>(
+    alarm.from ? bareStationName(alarm.from) : null,
+  );
 
   const progressRef = useRef(0);
   const lastHopAtRef = useRef(Date.now());
@@ -68,16 +77,18 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
     firedPreRef.current = false;
     firedArriveRef.current = false;
     firedWrongRef.current = false;
-    setAtStation(null);
-    if (leg) {
-      setRemainingStops(remainingStopsOnLeg(leg, null));
-      setEtaSeconds(etaSecondsOnLeg(leg, null));
-    }
-  }, [alarm.legIndex, alarm.station.key, leg]);
+    setAtStation(alarm.from ? bareStationName(alarm.from) : null);
+    const seeded = remainingRouteProgress(alarm.legs, alarm.legIndex, alarm.from ? bareStationName(alarm.from) : null);
+    setRemainingStops(seeded.remainingStops);
+    setEtaSeconds(seeded.etaSeconds);
+  }, [alarm.legIndex, alarm.station.key, alarm.legs, alarm.from, leg]);
 
-  function publishProgress(nextAt: string | null, nextLeg: AlarmLeg) {
-    const stops = remainingStopsOnLeg(nextLeg, nextAt);
-    const eta = etaSecondsOnLeg(nextLeg, nextAt);
+  function publishProgress(nextAt: string | null) {
+    const { remainingStops: stops, etaSeconds: eta } = remainingRouteProgress(
+      legsRef.current,
+      legIndexRef.current,
+      nextAt,
+    );
     setRemainingStops(stops);
     setEtaSeconds(eta);
     setAtStation(nextAt);
@@ -102,7 +113,7 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
     if (distanceToTarget <= ARRIVED_METERS || bare === targetBare || index >= nextLeg.stations.length - 1) {
       if (!firedArriveRef.current) {
         firedArriveRef.current = true;
-        publishProgress(targetBare, nextLeg);
+        publishProgress(targetBare);
         emit({ type: "arrival", leg: nextLeg });
       }
       return;
@@ -130,7 +141,7 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
       }
       progressRef.current = Math.max(progressRef.current, index);
       lastHopAtRef.current = Date.now();
-      publishProgress(bare, nextLeg);
+      publishProgress(bare);
       if (index === nextLeg.stations.length - 2 && !firedPreRef.current) {
         firedPreRef.current = true;
         emit({ type: "preArrival", leg: nextLeg, currentStation: bare });
@@ -144,7 +155,7 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
         progressRef.current = Math.max(progressRef.current, expectedIndex);
         lastHopAtRef.current = Date.now();
       }
-      publishProgress(bare, nextLeg);
+      publishProgress(bare);
     }
   }
 
@@ -177,17 +188,18 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
       const due = hops[idx] ?? hops[hops.length - 1] ?? 90;
 
       if (!weak && !stale) {
-        const eta = Math.max(0, Math.round(etaSecondsOnLeg(active, atStation) - Math.min(elapsed, due) * 0.15));
+        const base = remainingRouteProgress(legsRef.current, legIndexRef.current, atStation).etaSeconds;
+        const eta = Math.max(0, Math.round(base - Math.min(elapsed, due) * 0.15));
         setEtaSeconds(eta);
         return;
       }
 
       if (elapsed < due * 0.9) {
-        const stops = Math.max(0, active.stations.length - 1 - idx);
-        const eta = Math.max(0, Math.round(hops.slice(idx).reduce((sum, hop) => sum + hop, 0) - elapsed));
-        setRemainingStops(stops);
+        const base = remainingRouteProgress(legsRef.current, legIndexRef.current, atStation);
+        const eta = Math.max(0, Math.round(base.etaSeconds - elapsed));
+        setRemainingStops(base.remainingStops);
         setEtaSeconds(eta);
-        emit({ type: "progress", remainingStops: stops, etaSeconds: eta, atStation });
+        emit({ type: "progress", remainingStops: base.remainingStops, etaSeconds: eta, atStation });
         return;
       }
 
@@ -195,12 +207,7 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
       progressRef.current = nextIdx;
       lastHopAtRef.current = Date.now();
       const name = bareStationName(active.stations[nextIdx] ?? "");
-      setAtStation(name);
-      const stops = Math.max(0, active.stations.length - 1 - nextIdx);
-      const eta = hops.slice(nextIdx).reduce((sum, hop) => sum + hop, 0);
-      setRemainingStops(stops);
-      setEtaSeconds(eta);
-      emit({ type: "progress", remainingStops: stops, etaSeconds: eta, atStation: name });
+      publishProgress(name);
 
       if (nextIdx === active.stations.length - 2 && !firedPreRef.current) {
         firedPreRef.current = true;

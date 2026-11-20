@@ -6,6 +6,7 @@ import { PinIcon, RouteIcon } from "./icons";
 import LineBadges from "./LineBadges";
 import { armArrivalAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { bareStationName } from "../_lib/arrivalTips";
+import { finalAlarmStation } from "../_lib/multiLegAlarm";
 import { isNativeApp } from "../_lib/native";
 import { distanceMeters, formatDistance, kakaoOption, restoreStation, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { lineNeighbors, loadLineStations, sameLine, stationLines } from "../_lib/subwayLine";
@@ -138,7 +139,11 @@ export default function DestinationAlarm({
   onChange: () => void;
 }) {
   const alarm = useArrivalAlarm();
-  const alarmStation = useMemo(() => (alarm ? restoreStation(alarm.station) : null), [alarm]);
+  const alarmStation = useMemo(() => {
+    if (!alarm) return null;
+    const final = finalAlarmStation(alarm.legs);
+    return restoreStation(final ?? alarm.station);
+  }, [alarm]);
   const destination = alarmStation ?? target;
   const on = alarm !== null;
   const routeKey = destination ? `${destination.key}|${current?.key ?? ""}` : "";
@@ -161,7 +166,7 @@ export default function DestinationAlarm({
   function toggle() {
     if (!destination) onChange();
     else if (on) cancelArrivalAlarm();
-    else void armArrivalAlarm(destination);
+    else void armArrivalAlarm(destination, current);
   }
 
   const name = destination ? t(destination.name, locale) : "";

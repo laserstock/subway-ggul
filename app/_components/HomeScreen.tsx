@@ -142,7 +142,7 @@ export default function HomeScreen() {
   function pickDestination(next: StationOption) {
     setDestinationStation(next);
     setSearchOpen(false);
-    if (alarm) void armArrivalAlarm(next);
+    if (alarm) void armArrivalAlarm(next, station);
   }
 
   function actionHref(href: string) {

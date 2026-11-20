@@ -2,7 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 import { unlockAlarmSpeech, stopAlarmSpeech } from "./alarmSpeech";
-import { buildAlarmLegs, type AlarmLeg } from "./multiLegAlarm";
+import { bareStationName } from "./arrivalTips";
+import { buildAlarmLegs, remainingRouteProgress, type AlarmLeg } from "./multiLegAlarm";
 import {
   hasNativeArrivalAlarm,
   isNativeApp,
@@ -10,7 +11,7 @@ import {
   sendNativeAlert,
   stopNativeArrivalAlarm,
 } from "./native";
-import type { Route } from "./routeFinder";
+import { findRoute, networkStationId, type Route } from "./routeFinder";
 import { serializeStation, type SavedStation, type StationOption } from "./stations";
 
 export type AlarmStage = "armed" | "approaching" | "arrived" | "transferring" | "wrong_way";
@@ -211,9 +212,16 @@ function notificationsGranted() {
   return typeof Notification !== "undefined" && Notification.permission === "granted";
 }
 
+function seedProgress(legs: AlarmLeg[], fromKo: string | null) {
+  const at = fromKo ? bareStationName(fromKo) : null;
+  const { remainingStops, etaSeconds } = remainingRouteProgress(legs, 0, at);
+  setAlarmProgress({ remainingStops, etaSeconds, atStation: at });
+}
+
 async function finishArming(armed: ArrivalAlarm) {
   unlockSound();
   unlockAlarmSpeech();
+  seedProgress(armed.legs, armed.from);
   if (isNativeApp()) {
     save({ ...armed, systemAlerts: await prepareNativeAlerts("하차 알림 · Arrival alerts") });
     return;
@@ -226,25 +234,39 @@ async function finishArming(armed: ArrivalAlarm) {
   if (state?.armedAt === armed.armedAt) updateArrivalAlarm({ systemAlerts: permission === "granted" });
 }
 
+/** Build alarm legs from origin → destination via the route finder when both are known. */
+function legsForTrip(from: StationOption | null | undefined, destination: StationOption): AlarmLeg[] {
+  if (!from || bareStationName(from.name.ko) === bareStationName(destination.name.ko)) {
+    return [asSingleLeg(serializeStation(destination), null)];
+  }
+  const fromId = networkStationId(from.name.ko, from.center);
+  const toId = networkStationId(destination.name.ko, destination.center);
+  if (fromId === null || toId === null) return [asSingleLeg(serializeStation(destination), null)];
+  const route = findRoute(fromId, toId, "fastest");
+  if (!route) return [asSingleLeg(serializeStation(destination), null)];
+  const legs = buildAlarmLegs(route);
+  return legs.length ? legs : [asSingleLeg(serializeStation(destination), null)];
+}
+
 /**
  * Must run inside the tap that sets the alarm: it unlocks sound and asks for notification permission.
- * Android Chrome only shows notifications through a service worker, so one is registered here.
+ * Pass `from` (current/boarding station) so the ticker can show remaining stops and ETA immediately.
  */
-export async function armArrivalAlarm(station: StationOption) {
+export async function armArrivalAlarm(station: StationOption, from?: StationOption | null) {
   const armedAt = Date.now();
-  const saved = serializeStation(station);
-  const leg = asSingleLeg(saved, null);
+  const legs = legsForTrip(from, station);
+  const first = legs[0];
   await finishArming({
-    station: saved,
+    station: first.station,
     stage: "armed",
     armedAt,
-    from: null,
-    line: leg.line || null,
+    from: from?.name.ko ?? null,
+    line: first.line || null,
     systemAlerts: false,
-    legs: [leg],
+    legs,
     legIndex: 0,
     muteVoice: false,
-    mode: "single",
+    mode: from ? "route" : "single",
   });
 }
 
