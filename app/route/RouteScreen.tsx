@@ -449,7 +449,7 @@ function RouteResult({
           </Fragment>
         ))}
       </ol>
-      <div className="sticky bottom-0 -mx-4 mt-3 border-t border-neutral-100 bg-white/95 px-4 py-3 backdrop-blur">
+      <div className="mt-4 border-t border-neutral-100 pt-4 pb-2">
         {routeArmed ? (
           <p className="mb-2 text-center text-[12px] font-bold text-emerald-700">{t(COPY.alarmOn, locale)}</p>
         ) : null}
