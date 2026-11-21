@@ -72,6 +72,9 @@ function lineFromStation(station: StationOption): string {
   return station.lines.ko.split(/[·,|/]/)[0]?.trim() ?? "";
 }
 
+/** Fixed sample timestamp (2026-11-21 UTC) — avoid live `Date.now()` during prerender. */
+const SAMPLE_CREATED_AT = 1_795_212_800_000;
+
 function SampleCard({ locale }: { locale: Locale }) {
   const meta = LOG_TAGS.cafe;
   return (
@@ -93,7 +96,7 @@ function SampleCard({ locale }: { locale: Locale }) {
         </div>
       </div>
       <p className="mt-3 text-[14px] font-semibold leading-relaxed text-[#374151]">{t(COPY.sampleContent, locale)}</p>
-      <p className="mt-2 text-[11px] font-medium text-[#9CA3AF]">{formatLogDate(Date.now(), locale)}</p>
+      <p className="mt-2 text-[11px] font-medium text-[#9CA3AF]">{formatLogDate(SAMPLE_CREATED_AT, locale)}</p>
     </article>
   );
 }
