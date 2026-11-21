@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import { GoogleTagManager } from "@next/third-parties/google";
 import Script from "next/script";
+import AndroidBackHandler from "./_components/AndroidBackHandler";
 import ArrivalAlarmRunner from "./_components/ArrivalAlarmRunner";
 import BadgeCelebration from "./_components/BadgeCelebration";
 import PreloadResources from "./_components/PreloadResources";
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className={`${notoSansKr.className} min-h-full flex flex-col`}>
         <PreloadResources />
         {children}
+        <AndroidBackHandler />
         <ArrivalAlarmRunner />
         <ServerErrorToast />
         <BadgeCelebration />
