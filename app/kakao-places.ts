@@ -21,8 +21,8 @@ export type NearbyPlace = {
   position: LatLng;
 };
 
-/** Kakao category groups: pharmacy, cafe, convenience store, hospital, bank, restaurant. */
-export type KakaoCategory = "PM9" | "CE7" | "CS2" | "HP8" | "BK9" | "FD6";
+/** Kakao category groups used around stations (food, cafe, culture, tourism, amenities). */
+export type KakaoCategory = "PM9" | "CE7" | "CS2" | "HP8" | "BK9" | "FD6" | "CT1" | "AT4";
 
 export type NearbyQuery =
   | { kind: "category"; code: KakaoCategory; radius: number }
@@ -229,7 +229,7 @@ export function searchNearby(query: NearbyQuery, center: LatLng): Promise<Nearby
       location: new kakao.maps.LatLng(center.lat, center.lng),
       radius: query.radius,
       sort: kakao.maps.services.SortBy.DISTANCE,
-      size: query.kind === "keyword" && query.size ? Math.min(query.size, 15) : 10,
+      size: query.kind === "keyword" && query.size ? Math.min(query.size, 15) : 15,
     };
     if (query.kind === "category") {
       places().categorySearch(query.code, callback, options);

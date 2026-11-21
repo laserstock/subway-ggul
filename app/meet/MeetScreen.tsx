@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
+import BottomSheet from "../_components/BottomSheet";
 import LineBadges from "../_components/LineBadges";
 import StationSearch from "../_components/StationSearch";
 import { Toast, useToast } from "../_components/Toast";
@@ -29,6 +30,12 @@ import {
   type StationCourse,
 } from "../_lib/meetCourses";
 import { findOptimalMidpoints, type MidpointCandidate } from "../_lib/meetMidpoint";
+import {
+  applyLivePlaces,
+  fetchMeetPlacePack,
+  naverMapSearchUrl,
+  uniquifyCourseImages,
+} from "../_lib/meetPlaces";
 import { useMyStations } from "../_lib/myStations";
 import { t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import { MEET_TITLE, MeetHeaderIcon } from "./header";
@@ -80,6 +87,12 @@ const COPY = {
     zh: "每一步选一个地点，组成你的行程",
     ja: "各ステップで場所を選んでコースを作りましょう",
   },
+  loadingPlaces: {
+    ko: "역 주변 맛집·카페·명소를 불러오는 중…",
+    en: "Loading nearby places…",
+    zh: "正在加载附近地点…",
+    ja: "周辺スポットを読み込み中…",
+  },
   rating: { ko: "★ {n}", en: "★ {n}", zh: "★ {n}", ja: "★ {n}" },
   walk: {
     ko: "{exit}번 출구 도보 {min}분",
@@ -87,6 +100,47 @@ const COPY = {
     zh: "{exit}号出口步行{min}分",
     ja: "{exit}番出口から徒歩{min}分",
   },
+  walkDetail: {
+    ko: "{station} {exit}번 출구에서 약 {m}m · 도보 {min}분",
+    en: "~{m} m · {min} min walk from {station} Exit {exit}",
+    zh: "从{station}{exit}号出口约{m}m · 步行{min}分钟",
+    ja: "{station}{exit}番出口から約{m}m · 徒歩{min}分",
+  },
+  copyAddr: { ko: "주소 복사", en: "Copy address", zh: "复制地址", ja: "住所コピー" },
+  copiedAddr: { ko: "복사됨", en: "Copied", zh: "已复制", ja: "コピー済み" },
+  noPhone: {
+    ko: "등록된 전화번호 없음",
+    en: "No phone listed",
+    zh: "无登记电话",
+    ja: "電話番号なし",
+  },
+  addCourse: {
+    ko: "이 장소를 내 코스에 담기",
+    en: "Add to my course",
+    zh: "加入我的行程",
+    ja: "コースに入れる",
+  },
+  inCourse: {
+    ko: "코스에 담김 · 다시 누르면 해제",
+    en: "In course · tap to remove",
+    zh: "已加入 · 再点取消",
+    ja: "コース入り · 再タップで解除",
+  },
+  kakaoOpen: {
+    ko: "카카오맵에서 사진·리뷰 보기",
+    en: "Photos & reviews on Kakao Map",
+    zh: "在Kakao地图看照片评论",
+    ja: "カカオマップで写真・レビュー",
+  },
+  naverOpen: {
+    ko: "네이버지도에서 검색",
+    en: "Search on Naver Map",
+    zh: "在Naver地图搜索",
+    ja: "네이버地図で検索",
+  },
+  selectPlace: { ko: "코스에 담기", en: "Select", zh: "选入行程", ja: "コースに入れる" },
+  deselectPlace: { ko: "선택 해제", en: "Deselect", zh: "取消选择", ja: "選択解除" },
+  openDetail: { ko: "매장 상세", en: "Place details", zh: "店铺详情", ja: "店舗詳細" },
   alarm: { ko: "하차 알람 켜기", en: "Arm alarm", zh: "开启下车提醒", ja: "降車アラーム" },
   share: { ko: "코스 복사", en: "Copy course", zh: "复制行程", ja: "コースコピー" },
   alarmOn: { ko: "하차 알람을 켰어요", en: "Arrival alarm armed", zh: "已开启下车提醒", ja: "降車アラームをオンにしました" },
@@ -122,7 +176,6 @@ function fill(template: string, values: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
 }
 
-/** Soft tip card — cream, not loud orange. */
 function TipBanner({ course, locale }: { course: StationCourse; locale: Locale }) {
   return (
     <div className="mt-3 space-y-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-900">
@@ -146,10 +199,6 @@ function TipBanner({ course, locale }: { course: StationCourse; locale: Locale }
   );
 }
 
-/**
- * Whole-row station control. Travelpayouts sometimes wraps station names in Klook links —
- * button + affiliate-guard CSS keep clicks inside the app.
- */
 function StationPicker({
   label,
   station,
@@ -298,46 +347,66 @@ function PlaceCard({
   place,
   selected,
   locale,
-  onSelect,
+  onToggleSelect,
+  onOpenDetail,
 }: {
   place: CoursePlace;
   selected: boolean;
   locale: Locale;
-  onSelect: () => void;
+  onToggleSelect: () => void;
+  onOpenDetail: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`relative flex min-w-[148px] max-w-[180px] flex-1 flex-col overflow-hidden rounded-2xl text-left transition active:scale-[0.98] ${
+    <div
+      className={`relative flex min-w-[148px] max-w-[180px] flex-1 flex-col overflow-hidden rounded-2xl ${
         selected
           ? "border-2 border-amber-500 bg-amber-50/40 shadow-[0_4px_14px_rgba(245,158,11,0.12)]"
           : "border border-amber-200/80 bg-white"
       }`}
     >
-      <div className="relative h-24 w-full overflow-hidden bg-[#FEF3C7]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={place.image} alt="" className="h-24 w-full object-cover" />
-        {selected ? (
-          <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#CA8A04] text-[11px] font-black text-white">
-            ✓
+      <button
+        type="button"
+        onClick={onOpenDetail}
+        aria-label={`${t(COPY.openDetail, locale)}: ${t(place.name, locale)}`}
+        className="flex flex-1 flex-col text-left transition active:scale-[0.99]"
+      >
+        <div className="relative h-24 w-full overflow-hidden bg-[#FEF3C7]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={place.image} alt="" className="h-24 w-full object-cover" />
+        </div>
+        <div className="flex flex-1 flex-col p-2.5 pr-8">
+          <span className="w-fit rounded-full bg-[#FFFBEB] px-2 py-[2px] text-[10px] font-extrabold text-[#78350F] ring-1 ring-amber-200">
+            {t(place.category, locale)}
           </span>
-        ) : null}
-      </div>
-      <div className="flex flex-1 flex-col p-2.5">
-        <span className="w-fit rounded-full bg-[#FFFBEB] px-2 py-[2px] text-[10px] font-extrabold text-[#78350F] ring-1 ring-amber-200">
-          {t(place.category, locale)}
-        </span>
-        <p className="mt-1.5 text-[13px] font-extrabold leading-snug text-[#1F2937]">{t(place.name, locale)}</p>
-        <p className="mt-1 text-[11px] font-semibold leading-snug text-neutral-500">{t(place.feature, locale)}</p>
-        <p className="mt-auto pt-2 text-[11px] font-bold text-[#92400E]">
-          {fill(t(COPY.rating, locale), { n: place.rating.toFixed(1) })}
-        </p>
-        <p className="text-[10px] font-semibold text-neutral-400">
-          {fill(t(COPY.walk, locale), { exit: place.exit, min: place.walkMin })}
-        </p>
-      </div>
-    </button>
+          <p className="mt-1.5 text-[13px] font-extrabold leading-snug text-[#1F2937]">{t(place.name, locale)}</p>
+          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-neutral-500">{t(place.feature, locale)}</p>
+          <p className="mt-auto pt-2 text-[11px] font-bold text-[#92400E]">
+            {fill(t(COPY.rating, locale), { n: place.rating.toFixed(1) })}
+          </p>
+          <p className="text-[10px] font-semibold text-neutral-400">
+            {place.distanceM
+              ? `${place.distanceM}m · ${fill(t(COPY.walk, locale), { exit: place.exit, min: place.walkMin })}`
+              : fill(t(COPY.walk, locale), { exit: place.exit, min: place.walkMin })}
+          </p>
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleSelect();
+        }}
+        aria-label={selected ? t(COPY.deselectPlace, locale) : t(COPY.selectPlace, locale)}
+        aria-pressed={selected}
+        className={`absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-black shadow-sm ring-1 transition active:scale-95 ${
+          selected
+            ? "bg-[#CA8A04] text-white ring-[#CA8A04]"
+            : "bg-white/95 text-[#92400E] ring-amber-200"
+        }`}
+      >
+        {selected ? "✓" : ""}
+      </button>
+    </div>
   );
 }
 
@@ -380,14 +449,16 @@ function CourseTimeline({
   picks,
   filters,
   locale,
-  onPick,
+  onTogglePick,
+  onOpenDetail,
   onFilter,
 }: {
   course: StationCourse;
   picks: Record<CourseStepId, string>;
   filters: Record<"food" | "cafe", PlaceChip>;
   locale: Locale;
-  onPick: (step: CourseStep, placeId: string) => void;
+  onTogglePick: (step: CourseStep, placeId: string) => void;
+  onOpenDetail: (step: CourseStep, place: CoursePlace) => void;
   onFilter: (stepId: "food" | "cafe", chip: PlaceChip) => void;
 }) {
   return (
@@ -427,7 +498,8 @@ function CourseTimeline({
                       place={place}
                       selected={picks[stepItem.id] === place.id}
                       locale={locale}
-                      onSelect={() => onPick(stepItem, place.id)}
+                      onToggleSelect={() => onTogglePick(stepItem, place.id)}
+                      onOpenDetail={() => onOpenDetail(stepItem, place)}
                     />
                   ))}
                 </div>
@@ -437,6 +509,120 @@ function CourseTimeline({
         })}
       </ol>
     </div>
+  );
+}
+
+function MeetPlaceSheet({
+  place,
+  station,
+  selected,
+  locale,
+  onClose,
+  onToggleSelect,
+}: {
+  place: CoursePlace;
+  station: StationOption;
+  selected: boolean;
+  locale: Locale;
+  onClose: () => void;
+  onToggleSelect: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const address = place.address ?? "";
+  const meters = place.distanceM ?? place.walkMin * 80;
+  const kakaoUrl = place.placeUrl || `https://map.kakao.com/link/search/${encodeURIComponent(t(place.name, locale))}`;
+  const naverUrl = naverMapSearchUrl(t(place.name, "ko"));
+
+  function copyAddress() {
+    if (!address) return;
+    void navigator.clipboard?.writeText(address).then(
+      () => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      },
+      () => {},
+    );
+  }
+
+  return (
+    <BottomSheet title={t(place.name, locale)} onClose={onClose}>
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-3">
+        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-[#FFFBEB]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={place.image} alt="" className="h-36 w-full object-cover" />
+          <div className="px-3 py-2.5">
+            <span className="inline-flex rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#78350F] ring-1 ring-amber-200">
+              {t(place.category, locale)}
+            </span>
+            {place.kakaoCategory ? (
+              <p className="mt-1.5 text-[11px] font-semibold text-neutral-500">{place.kakaoCategory}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <p className="mt-3 text-[13px] font-bold leading-snug text-[#1F2937]">
+          {fill(t(COPY.walkDetail, locale), {
+            station: t(station.name, locale),
+            exit: place.exit,
+            m: meters,
+            min: place.walkMin,
+          })}
+        </p>
+
+        {address ? (
+          <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-white px-3 py-2.5">
+            <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-[#1F2937]">{address}</p>
+            <button
+              type="button"
+              onClick={copyAddress}
+              className="shrink-0 rounded-lg bg-[#FEF3C7] px-2.5 py-1 text-[11px] font-extrabold text-[#78350F] ring-1 ring-amber-200 active:scale-95"
+            >
+              {t(copied ? COPY.copiedAddr : COPY.copyAddr, locale)}
+            </button>
+          </div>
+        ) : null}
+
+        <div className="mt-2.5 rounded-2xl border border-amber-200 bg-white px-3 py-2.5">
+          {place.phone ? (
+            <a href={`tel:${place.phone}`} className="text-[13px] font-bold text-[#1F2937] underline-offset-2 active:underline">
+              {place.phone}
+            </a>
+          ) : (
+            <p className="text-[13px] font-semibold text-neutral-400">{t(COPY.noPhone, locale)}</p>
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onToggleSelect}
+            className={`inline-flex h-[44px] items-center justify-center gap-1.5 rounded-xl text-[13px] font-extrabold active:scale-[0.98] ${
+              selected
+                ? "border border-amber-300 bg-[#FEF3C7] text-[#78350F]"
+                : "bg-[#1F2937] text-white"
+            }`}
+          >
+            ✓ {t(selected ? COPY.inCourse : COPY.addCourse, locale)}
+          </button>
+          <a
+            href={kakaoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-[42px] items-center justify-center rounded-xl bg-[#FEE500] text-[13px] font-extrabold text-[#191919] active:scale-[0.98]"
+          >
+            {t(COPY.kakaoOpen, locale)}
+          </a>
+          <a
+            href={naverUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-[42px] items-center justify-center rounded-xl bg-[#03C75A] text-[13px] font-extrabold text-white active:scale-[0.98]"
+          >
+            {t(COPY.naverOpen, locale)}
+          </a>
+        </div>
+      </div>
+    </BottomSheet>
   );
 }
 
@@ -484,17 +670,54 @@ export default function MeetScreen() {
   const [startB, setStartB] = useState<StationOption | null>(favorites[1] ?? null);
   const [midpoints, setMidpoints] = useState<MidpointCandidate[]>([]);
   const [activeMidIndex, setActiveMidIndex] = useState(0);
-  const [picks, setPicks] = useState<Record<CourseStepId, string>>(() =>
-    defaultPicks(courseForStation((favorites[0] ?? lastStation)?.name.ko ?? "성수역")),
-  );
+  const [picks, setPicks] = useState<Record<CourseStepId, string>>({ food: "", cafe: "", fun: "" });
   const [filters, setFilters] = useState<Record<"food" | "cafe", PlaceChip>>({ food: "all", cafe: "all" });
+  const [liveCourse, setLiveCourse] = useState<StationCourse | null>(null);
+  const [placesLoading, setPlacesLoading] = useState(false);
+  const [detail, setDetail] = useState<{ stepId: CourseStepId; place: CoursePlace } | null>(null);
 
   const activeHub = mode === "meet" ? midpoints[activeMidIndex]?.station ?? null : dest;
-  const course = useMemo(() => (activeHub ? courseForStation(activeHub.name.ko) : null), [activeHub]);
+  const baseCourse = useMemo(
+    () => (activeHub ? uniquifyCourseImages(courseForStation(activeHub.name.ko)) : null),
+    [activeHub],
+  );
+  const course = liveCourse ?? baseCourse;
+
+  useEffect(() => {
+    if (!activeHub || !baseCourse) {
+      setLiveCourse(null);
+      return;
+    }
+    let alive = true;
+    setPlacesLoading(true);
+    setLiveCourse(null);
+    fetchMeetPlacePack(activeHub.center)
+      .then((pack) => {
+        if (!alive) return;
+        const next = applyLivePlaces(baseCourse, pack);
+        setLiveCourse(next);
+        setPicks(defaultPicks(next));
+        setFilters({ food: "all", cafe: "all" });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setLiveCourse(null);
+        setPicks(defaultPicks(baseCourse));
+      })
+      .finally(() => {
+        if (alive) setPlacesLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [activeHub?.key, baseCourse]);
 
   function applyCourseStation(station: StationOption) {
-    setPicks(defaultPicks(courseForStation(station.name.ko)));
+    const next = uniquifyCourseImages(courseForStation(station.name.ko));
+    setPicks(defaultPicks(next));
     setFilters({ food: "all", cafe: "all" });
+    setLiveCourse(null);
+    setDetail(null);
   }
 
   function runMeet() {
@@ -515,6 +738,13 @@ export default function MeetScreen() {
     setMidpoints(found);
     setActiveMidIndex(0);
     applyCourseStation(found[0].station);
+  }
+
+  function togglePick(stepId: CourseStepId, placeId: string) {
+    setPicks((prev) => ({
+      ...prev,
+      [stepId]: prev[stepId] === placeId ? "" : placeId,
+    }));
   }
 
   async function onAlarm() {
@@ -545,6 +775,8 @@ export default function MeetScreen() {
     }
     showToast(t(COPY.copied, locale));
   }
+
+  const detailSelected = detail ? picks[detail.stepId] === detail.place.id : false;
 
   return (
     <div className="flex min-h-dvh justify-center bg-frame">
@@ -700,13 +932,19 @@ export default function MeetScreen() {
                 <h3 className="text-[15px] font-extrabold text-[#1F2937]">{t(COPY.courseTitle, locale)}</h3>
               </div>
               <p className="mt-0.5 text-[12px] text-neutral-500">{t(COPY.courseHint, locale)}</p>
+              {placesLoading ? (
+                <p className="mt-2 rounded-xl border border-amber-200 bg-[#FFFBEB] px-3 py-2 text-[11px] font-semibold text-[#92400E]">
+                  {t(COPY.loadingPlaces, locale)}
+                </p>
+              ) : null}
               {mode === "course" ? <TipBanner course={course} locale={locale} /> : null}
               <CourseTimeline
                 course={course}
                 picks={picks}
                 filters={filters}
                 locale={locale}
-                onPick={(stepItem, placeId) => setPicks((prev) => ({ ...prev, [stepItem.id]: placeId }))}
+                onTogglePick={(stepItem, placeId) => togglePick(stepItem.id, placeId)}
+                onOpenDetail={(stepItem, place) => setDetail({ stepId: stepItem.id, place })}
                 onFilter={(stepId, chip) => setFilters((prev) => ({ ...prev, [stepId]: chip }))}
               />
 
@@ -734,6 +972,17 @@ export default function MeetScreen() {
 
         <BottomNav active="meet" onReselect={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })} />
         <Toast message={toast} />
+
+        {detail && activeHub ? (
+          <MeetPlaceSheet
+            place={detail.place}
+            station={activeHub}
+            selected={detailSelected}
+            locale={locale}
+            onClose={() => setDetail(null)}
+            onToggleSelect={() => togglePick(detail.stepId, detail.place.id)}
+          />
+        ) : null}
       </div>
     </div>
   );

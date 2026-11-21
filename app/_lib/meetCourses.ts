@@ -18,6 +18,15 @@ export type CoursePlace = {
   filter: PlaceChip;
   /** Representative preview image path (planner asset mapped by category). */
   image: string;
+  /** Meters from the hub station when sourced from Kakao Places. */
+  distanceM?: number;
+  address?: string;
+  phone?: string;
+  /** Kakao Map place detail URL (`place_url`). */
+  placeUrl?: string;
+  /** Full Kakao category path, e.g. `음식점 > 한식 > 육류,고기`. */
+  kakaoCategory?: string;
+  position?: { lat: number; lng: number };
 };
 
 export type CourseStepId = "food" | "cafe" | "fun";
