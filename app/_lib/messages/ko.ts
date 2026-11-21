@@ -11,6 +11,7 @@ const ko = {
   nav: {
     home: "홈",
     spot: "꿀수다",
+    meet: "약속",
     station: "My 역",
     me: "마이",
   },

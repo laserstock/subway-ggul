@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useMessages } from "../_lib/locale";
 
-export type NavTab = "home" | "spot" | "station" | "me";
+export type NavTab = "home" | "spot" | "meet" | "station" | "me";
 
-const NAV_TABS: { tab: NavTab; href: "/" | "/spot" | "/my" | "/me" }[] = [
+const NAV_TABS: { tab: NavTab; href: "/" | "/spot" | "/meet" | "/my" | "/me" }[] = [
   { tab: "home", href: "/" },
   { tab: "spot", href: "/spot" },
+  { tab: "meet", href: "/meet" },
   { tab: "station", href: "/my" },
   { tab: "me", href: "/me" },
 ];
@@ -32,6 +33,22 @@ export function HoneyPotIcon({ size = 24 }: { size?: number }) {
   );
 }
 
+function MeetNavIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="8" cy="8.5" r="2.6" stroke="currentColor" strokeWidth={active ? 2.2 : 1.9} />
+      <circle cx="16" cy="8.5" r="2.6" stroke="currentColor" strokeWidth={active ? 2.2 : 1.9} />
+      <path
+        d="M3.8 18.5c.8-3 3-4.7 6.2-4.7M20.2 18.5c-.8-3-3-4.7-6.2-4.7"
+        stroke="currentColor"
+        strokeWidth={active ? 2.2 : 1.9}
+        strokeLinecap="round"
+      />
+      <path d="M10.4 13.4c1.1.75 2.1.75 3.2 0" stroke="currentColor" strokeWidth={active ? 2.2 : 1.9} strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function NavIcon({ name, active }: { name: NavTab; active: boolean }) {
   const common = {
     stroke: "currentColor",
@@ -41,6 +58,7 @@ function NavIcon({ name, active }: { name: NavTab; active: boolean }) {
     fill: "none",
   };
   if (name === "spot") return <HoneyPotIcon />;
+  if (name === "meet") return <MeetNavIcon active={active} />;
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden>
       {name === "home" ? <path {...common} d="M4 10.8l8-6.8 8 6.8v8.7a1 1 0 0 1-1 1h-4.6v-5.8H9.6v5.8H5a1 1 0 0 1-1-1z" /> : null}
@@ -65,7 +83,7 @@ function NavIcon({ name, active }: { name: NavTab; active: boolean }) {
 export default function BottomNav({ active, onReselect }: { active?: NavTab; onReselect?: () => void }) {
   const m = useMessages();
   return (
-    <nav className="grid shrink-0 grid-cols-4 border-t border-line bg-surface pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5">
+    <nav className="grid shrink-0 grid-cols-5 border-t border-line bg-surface pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5">
       {NAV_TABS.map(({ tab, href }) => {
         const isActive = tab === active;
         return (
@@ -78,12 +96,12 @@ export default function BottomNav({ active, onReselect }: { active?: NavTab; onR
               onReselect();
             }}
             aria-current={isActive ? "page" : undefined}
-            className={`flex flex-col items-center gap-0.5 py-1 text-[11px] transition-colors ${
+            className={`flex flex-col items-center gap-0.5 py-1 text-[10px] transition-colors ${
               isActive ? "font-extrabold text-ink" : "font-semibold text-neutral-400"
             }`}
           >
             <NavIcon name={tab} active={isActive} />
-            <span className="max-w-full break-words px-1 text-center leading-tight">{m.nav[tab]}</span>
+            <span className="max-w-full break-words px-0.5 text-center leading-tight">{m.nav[tab]}</span>
           </Link>
         );
       })}

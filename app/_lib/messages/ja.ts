@@ -13,6 +13,7 @@ const ja: Messages = {
   nav: {
     home: "ホーム",
     spot: "ハニートーク",
+    meet: "約束",
     station: "My 駅",
     me: "マイ",
   },

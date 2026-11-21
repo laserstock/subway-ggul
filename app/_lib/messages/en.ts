@@ -13,6 +13,7 @@ const en: Messages = {
   nav: {
     home: "Home",
     spot: "Honey Talk",
+    meet: "Meet",
     station: "My Station",
     me: "Me",
   },
