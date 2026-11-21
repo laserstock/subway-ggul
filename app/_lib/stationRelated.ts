@@ -43,6 +43,19 @@ export type RelatedStation = {
   blurb: string;
 };
 
+/** Seoul hub stations for crawl-depth internal links (홍대입구·명동·서울역·강남·성수·잠실). */
+export const SEO_HUB_KOS = ["홍대입구역", "명동역", "서울역", "강남역", "성수역", "잠실역"] as const;
+
+/** Unique previous/next neighbours across all lines at this station. */
+export function adjacentStations(detail: GuideDetail): GuideStation[] {
+  return [...new Map(detail.neighbors.flatMap((group) => group.stations).map((next) => [next.slug, next])).values()];
+}
+
+/** Major hub shortcuts for the station page footer, excluding the current station. */
+export function hubStations(station: GuideStation): GuideStation[] {
+  return fromKoList([...SEO_HUB_KOS]).filter((hub) => hub.slug !== station.slug);
+}
+
 function blurbFor(station: GuideStation, locale: GuideLocale): string {
   const base = contentLocale(locale);
   const guide = STATION_LOCAL_GUIDES[station.ko];

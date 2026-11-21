@@ -31,6 +31,7 @@ import {
   stationMetaTitle,
   stationOgDescription,
   stationOgTitle,
+  stationSeoSummary,
   stationSummary,
   stationTitle,
   tc,
@@ -47,7 +48,7 @@ import RelatedStations from "../../_guide/RelatedStations";
 import StationFaq from "../../_guide/StationFaq";
 import { OverviewLead, TravelerTips } from "../../_guide/StationOverview";
 import StationSeoSchema from "../../_guide/StationSeoSchema";
-import { relatedStations } from "../../../_lib/stationRelated";
+import { adjacentStations, hubStations, relatedStations } from "../../../_lib/stationRelated";
 
 export function generateStaticParams() {
   return GUIDE_STATIONS.map((station) => ({ slug: station.slug }));
@@ -309,6 +310,9 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
   const faq = stationFaq(station, detail, lang);
   const overview = stationOverview(station, detail, lang);
   const related = relatedStations(station, detail, lang);
+  const adjacent = adjacentStations(detail);
+  const hubs = hubStations(station);
+  const seoSummary = stationSeoSummary(station, detail, lang);
   const checked = overview.checked
     ? tc("localChecked", lang, {
         date: new Intl.DateTimeFormat(GUIDE_LANGUAGES[lang].htmlLang, { dateStyle: "long" }).format(
@@ -548,6 +552,39 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
       {faq.length ? (
         <Section id="faq" title={tc("faq", lang)}>
           <StationFaq items={faq} sectionLabel={tc("faq", lang)} />
+        </Section>
+      ) : null}
+
+      <Section id="guide-summary" title={tc("seoSummaryHeading", lang)}>
+        <p className="max-w-3xl text-[15px] leading-relaxed text-ink-muted lg:text-[16px]">{seoSummary}</p>
+      </Section>
+
+      {adjacent.length ? (
+        <Section id="adjacent-stations" title={tc("adjacentHeading", lang)}>
+          <ul className="flex flex-wrap gap-2 lg:gap-3">
+            {adjacent.map((next) => (
+              <li key={next.slug}>
+                <StationLink station={next} locale={lang} large />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+
+      {hubs.length ? (
+        <Section id="hub-stations" title={tc("hubHeading", lang)}>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:gap-3">
+            {hubs.map((hub) => (
+              <li key={hub.slug}>
+                <Link
+                  href={`/${lang}/stations/${hub.slug}`}
+                  className="flex min-h-12 items-center justify-center rounded-2xl border border-line bg-surface px-3 py-3 text-center text-[14px] font-bold text-ink transition hover:-translate-y-0.5 hover:border-honey/45 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] active:scale-[0.99] lg:min-h-14 lg:text-[15px]"
+                >
+                  {gt(hub.name, lang)}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </Section>
       ) : null}
 
