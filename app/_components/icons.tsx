@@ -386,3 +386,100 @@ export function CopyIcon({ size = 16, className = "" }: { size?: number; classNa
     </svg>
   );
 }
+
+/** Category glyph for Meet typography place cards (no emoji). */
+export function PlaceKindIcon({
+  kind,
+  size = 22,
+  className = "",
+}: {
+  kind:
+    | "salad"
+    | "korean"
+    | "japanese"
+    | "chinese"
+    | "western"
+    | "cafe"
+    | "dessert"
+    | "roastery"
+    | "bar"
+    | "walk"
+    | "gallery"
+    | "shop"
+    | "fun";
+  size?: number;
+  className?: string;
+}) {
+  const props = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", className, "aria-hidden": true as const };
+  if (kind === "salad") {
+    return (
+      <svg {...props}>
+        <path d="M4.5 14.5c0 3.2 3.2 5 7.5 5s7.5-1.8 7.5-5c0-2.2-1.8-3.4-4.2-4.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M8 11.2c.8-2.2 2.2-3.7 4-4.4M12.2 6.5c1.4.4 2.8 1.5 3.6 3.2M11.5 5.2c.2-1.2 1-2.2 2.2-2.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (kind === "cafe" || kind === "roastery") {
+    return (
+      <svg {...props}>
+        <path d="M6.5 9.5h9.2a2.3 2.3 0 0 1 0 4.6H6.5V9.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M6.5 14.1v1.6c0 2 2.2 3.3 5.5 3.3s5.5-1.3 5.5-3.3v-.4M16.2 10.6c1.4.1 2.5 1 2.5 2.2s-1.1 2-2.5 2.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M9.2 6.2c.3 1 .3 1.8 0 2.6M12 5.6c.3 1 .3 2 0 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (kind === "dessert") {
+    return (
+      <svg {...props}>
+        <path d="M6.2 14.8h11.6L16.4 9.2H7.6L6.2 14.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M8.2 9.2c.8-2 2-3.4 3.8-3.4s3 1.4 3.8 3.4M7.5 17.5h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (kind === "bar") {
+    return (
+      <svg {...props}>
+        <path d="M7 6.5h10l-1.8 5.2a3.2 3.2 0 0 1-6.4 0L7 6.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M12 14.8V18M9 18h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (kind === "korean" || kind === "japanese" || kind === "chinese" || kind === "western") {
+    return (
+      <svg {...props}>
+        <path d="M5.5 10.5h13v1.2c0 3.4-2.8 5.8-6.5 5.8s-6.5-2.4-6.5-5.8V10.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M8.2 10.5V8.8c0-1.2.8-2.2 2-2.5M15.8 10.5V8.8c0-1.2-.8-2.2-2-2.5M7 18.2h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (kind === "walk") {
+    return (
+      <svg {...props}>
+        <circle cx="13.2" cy="5.8" r="1.6" stroke="currentColor" strokeWidth="1.8" />
+        <path d="m10.2 10.2 2.2-1.6 2.4 2.2-1.4 3.4 2.6 3.6M9.2 18.2l2.2-4.2-2.4-2.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (kind === "gallery") {
+    return (
+      <svg {...props}>
+        <rect x="4.5" y="6" width="15" height="12.5" rx="2.2" stroke="currentColor" strokeWidth="1.8" />
+        <path d="m7.2 15.2 3.2-3.4 2.4 2.2 2.6-3 3.2 4.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="9.2" cy="9.4" r="1.1" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (kind === "shop") {
+    return (
+      <svg {...props}>
+        <path d="M5.5 9.5 7 6.5h10l1.5 3v8.2a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2V9.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M5.5 9.5h13M10 12.2v5M14 12.2v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...props}>
+      <path d="M12 4.5 13.3 9.2 18 10.4 13.3 11.6 12 16.3 10.7 11.6 6 10.4l4.7-1.2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  );
+}

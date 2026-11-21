@@ -10,57 +10,10 @@ import {
   type PlaceChip,
   type StationCourse,
 } from "./meetCourses";
-import { plannerImageSrc, type PlannerImage } from "./plannerImages";
 import type { Localized } from "./stations";
 
 const RADIUS_M = 800;
 const PER_STEP = 6;
-
-const ALL_IMAGES: PlannerImage[] = [
-  "food-korean",
-  "food-street",
-  "kbbq",
-  "market",
-  "cafe",
-  "bakery",
-  "shopping-street",
-  "mall",
-  "popup",
-  "variety",
-  "beauty",
-  "palace",
-  "hanok",
-  "park",
-  "skyline",
-  "photobooth",
-  "exchange",
-  "locker",
-  "station",
-];
-
-const FOOD_POOLS: Record<FoodChip, PlannerImage[]> = {
-  korean: ["food-korean", "kbbq", "market"],
-  japanese: ["food-street", "market", "hanok"],
-  chinese: ["food-street", "kbbq", "variety"],
-  western: ["food-street", "mall", "skyline"],
-  other: ["market", "variety", "station"],
-};
-
-const CAFE_POOLS: Record<CafeChip, PlannerImage[]> = {
-  mood: ["cafe", "hanok", "park"],
-  dessert: ["bakery", "cafe", "popup"],
-  roastery: ["cafe", "market", "station"],
-  rooftop: ["skyline", "park", "mall"],
-};
-
-const FUN_POOLS: Record<string, PlannerImage[]> = {
-  walk: ["park", "shopping-street", "hanok"],
-  gallery: ["popup", "palace", "skyline"],
-  shop: ["mall", "shopping-street", "variety"],
-  photo: ["photobooth", "popup", "beauty"],
-  tourist: ["palace", "skyline", "hanok"],
-  other: ["station", "locker", "exchange"],
-};
 
 function L(ko: string, en: string, zh = en, ja = en): Localized {
   return { ko, en, zh, ja };
@@ -72,48 +25,11 @@ function hashSeed(text: string) {
   return value;
 }
 
-/** Pick from a category pool by index, skipping images already used on this screen. */
-export function assignUniqueImage(pool: PlannerImage[], index: number, used: Set<string>): string {
-  const ordered = [...pool, ...ALL_IMAGES.filter((key) => !pool.includes(key))];
-  for (let offset = 0; offset < ordered.length; offset++) {
-    const key = ordered[(index + offset) % ordered.length];
-    const src = plannerImageSrc(key);
-    if (!used.has(src)) {
-      used.add(src);
-      return src;
-    }
-  }
-  const fallback = plannerImageSrc(ordered[index % ordered.length] ?? ALL_IMAGES[0]);
-  used.add(fallback);
-  return fallback;
-}
-
-export function poolForStep(stepId: CourseStepId, filter: PlaceChip, categoryKo: string): PlannerImage[] {
-  if (stepId === "food") {
-    if (filter === "korean" || filter === "japanese" || filter === "chinese" || filter === "western" || filter === "other") {
-      return FOOD_POOLS[filter];
-    }
-    return FOOD_POOLS.other;
-  }
-  if (stepId === "cafe") {
-    if (filter === "mood" || filter === "dessert" || filter === "roastery" || filter === "rooftop") {
-      return CAFE_POOLS[filter];
-    }
-    return CAFE_POOLS.mood;
-  }
-  if (/산책|공원|하천|숲/.test(categoryKo)) return FUN_POOLS.walk;
-  if (/전시|문화|갤러리|미술관|박물관|공연/.test(categoryKo)) return FUN_POOLS.gallery;
-  if (/쇼핑|백화점|몰|시장|상점/.test(categoryKo)) return FUN_POOLS.shop;
-  if (/포토|인생네컷|스튜디오/.test(categoryKo)) return FUN_POOLS.photo;
-  if (/관광|명소|궁|타워|전망/.test(categoryKo)) return FUN_POOLS.tourist;
-  return FUN_POOLS.other;
-}
-
 function foodFilter(category: string, name: string): FoodChip {
   const blob = `${category} ${name}`;
   if (/일식|일본|라멘|스시|우동|돈카츠|이자카야|사시미/.test(blob)) return "japanese";
   if (/중식|중국|짜장|짬뽕|마라|딤섬|양꼬치/.test(blob)) return "chinese";
-  if (/양식|이탈|프렌|미식|파스타|피자|스테이크|버거|브런치|샐러드|멕시|타코/.test(blob)) return "western";
+  if (/양식|이탈|프렌|미식|파스타|피자|스테이크|버거|브런치|샐러드|샐러디|멕시|타코/.test(blob)) return "western";
   if (/한식|한정식|국밥|고기|갈비|삼겹|곱창|분식|떡볶|닭|비빔|설렁|백반|육류/.test(blob)) return "korean";
   return "other";
 }
@@ -124,6 +40,18 @@ function cafeFilter(category: string, name: string): CafeChip {
   if (/로스터|스페셜티|핸드드립|브루잉|싱글오리진|커피전문/.test(blob)) return "roastery";
   if (/디저트|베이커|제과|빵|케이크|마카롱|크로아상|도넛|아이스크림|빙수|휘낭/.test(blob)) return "dessert";
   return "mood";
+}
+
+/** Kakao CE7 paths only — blocks pubs / restaurants leaking into the cafe step. */
+export function isStrictCafePlace(place: NearbyPlace) {
+  const blob = `${place.category} ${place.name}`;
+  if (!/카페|커피|디저트|베이커|제과|도넛|아이스크림|빙수|찻집|다방|테라스카페|브런치카페/.test(blob)) {
+    return false;
+  }
+  if (/주점|술집|호프|요리주점|맥주|와인바|이자카야|포차|횟집|고깃집|한식|중식|일식|분식|치킨|피자|패스트푸드|육류|해물|국밥/.test(blob)) {
+    if (!/카페|커피|디저트|베이커|제과/.test(place.category)) return false;
+  }
+  return true;
 }
 
 function foodCategoryLabel(filter: FoodChip): Localized {
@@ -162,13 +90,7 @@ function softRating(id: string) {
   return 4.4 + ((hashSeed(id) % 6) + 1) / 10;
 }
 
-function toCoursePlace(
-  place: NearbyPlace,
-  stepId: CourseStepId,
-  meetExit: number,
-  index: number,
-  usedImages: Set<string>,
-): CoursePlace {
+function toCoursePlace(place: NearbyPlace, stepId: CourseStepId, meetExit: number): CoursePlace {
   const filter: PlaceChip =
     stepId === "food"
       ? foodFilter(place.category, place.name)
@@ -192,7 +114,7 @@ function toCoursePlace(
     exit: meetExit,
     walkMin: walkMinutes(meters),
     filter,
-    image: assignUniqueImage(poolForStep(stepId, filter, category.ko), index, usedImages),
+    image: null,
     distanceM: meters,
     address: place.roadAddress || place.address,
     phone: place.phone || undefined,
@@ -218,7 +140,12 @@ export async function fetchMeetPlacePack(center: LatLng): Promise<MeetPlacePack>
     searchNearby({ kind: "category", code: "CT1", radius: RADIUS_M }, center),
     searchNearby({ kind: "category", code: "AT4", radius: RADIUS_M }, center),
   ]);
-  return { food, cafe, culture, tourism };
+  return {
+    food,
+    cafe: cafe.filter(isStrictCafePlace),
+    culture,
+    tourism,
+  };
 }
 
 function dedupeById(places: NearbyPlace[]) {
@@ -230,18 +157,31 @@ function dedupeById(places: NearbyPlace[]) {
   });
 }
 
-/** Replace step options with Kakao results; keep preset tips. Images stay unique across the course. */
+/** Clear any leftover stock preview paths so cards never show unrelated food photos. */
+export function clearStockImages(course: StationCourse): StationCourse {
+  return {
+    ...course,
+    steps: course.steps.map((step) => ({
+      ...step,
+      options: step.options.map((option) => ({ ...option, image: null })),
+    })),
+  };
+}
+
+/** @deprecated use clearStockImages — kept as alias for MeetScreen imports. */
+export const uniquifyCourseImages = clearStockImages;
+
+/** Replace step options with Kakao results; keep preset tips. No stock thumbnails. */
 export function applyLivePlaces(course: StationCourse, pack: MeetPlacePack): StationCourse {
-  const used = new Set<string>();
   const food = dedupeById(pack.food)
     .slice(0, PER_STEP)
-    .map((place, index) => toCoursePlace(place, "food", course.meetExit, index, used));
-  const cafe = dedupeById(pack.cafe)
+    .map((place) => toCoursePlace(place, "food", course.meetExit));
+  const cafe = dedupeById(pack.cafe.filter(isStrictCafePlace))
     .slice(0, PER_STEP)
-    .map((place, index) => toCoursePlace(place, "cafe", course.meetExit, index, used));
+    .map((place) => toCoursePlace(place, "cafe", course.meetExit));
   const fun = dedupeById([...pack.culture, ...pack.tourism])
     .slice(0, PER_STEP)
-    .map((place, index) => toCoursePlace(place, "fun", course.meetExit, index, used));
+    .map((place) => toCoursePlace(place, "fun", course.meetExit));
 
   return {
     ...course,
@@ -251,30 +191,52 @@ export function applyLivePlaces(course: StationCourse, pack: MeetPlacePack): Sta
       if (step.id === "fun" && fun.length) return { ...step, options: fun };
       return {
         ...step,
-        options: step.options.map((option, index) => ({
-          ...option,
-          image: assignUniqueImage(poolForStep(step.id, option.filter, option.category.ko), index, used),
-        })),
+        options: step.options.map((option) => ({ ...option, image: null })),
       };
     }),
   };
 }
 
-/** Fallback when Kakao is unavailable — still force unique thumbnails on screen. */
-export function uniquifyCourseImages(course: StationCourse): StationCourse {
-  const used = new Set<string>();
-  return {
-    ...course,
-    steps: course.steps.map((step) => ({
-      ...step,
-      options: step.options.map((option, index) => ({
-        ...option,
-        image: assignUniqueImage(poolForStep(step.id, option.filter, option.category.ko), index, used),
-      })),
-    })),
-  };
-}
-
 export function naverMapSearchUrl(placeName: string) {
   return `https://m.map.naver.com/search2/search.naver?query=${encodeURIComponent(placeName)}`;
+}
+
+export function placeThumbnailQuery(place: CoursePlace) {
+  const params = new URLSearchParams();
+  if (place.placeUrl) params.set("place_url", place.placeUrl);
+  params.set("place_name", place.name.ko);
+  return `/api/place-thumbnail?${params.toString()}`;
+}
+
+/** Visual kind for refined category glyphs on typography cards. */
+export type PlaceVisualKind =
+  | "salad"
+  | "korean"
+  | "japanese"
+  | "chinese"
+  | "western"
+  | "cafe"
+  | "dessert"
+  | "roastery"
+  | "bar"
+  | "walk"
+  | "gallery"
+  | "shop"
+  | "fun";
+
+export function placeVisualKind(place: CoursePlace): PlaceVisualKind {
+  const blob = `${place.category.ko} ${place.name.ko} ${place.kakaoCategory ?? ""} ${place.filter}`;
+  if (/샐러드|샐러디|salad/i.test(blob)) return "salad";
+  if (/주점|술집|호프|바|맥주|draft|드래프트/i.test(blob)) return "bar";
+  if (place.filter === "dessert" || /디저트|베이커|제과/.test(blob)) return "dessert";
+  if (place.filter === "roastery" || /로스터|커피전문/.test(blob)) return "roastery";
+  if (place.filter === "korean" || /한식/.test(blob)) return "korean";
+  if (place.filter === "japanese" || /일식/.test(blob)) return "japanese";
+  if (place.filter === "chinese" || /중식/.test(blob)) return "chinese";
+  if (place.filter === "western" || /양식|파스타|브런치/.test(blob)) return "western";
+  if (/카페|커피|루프탑|감성/.test(blob) || place.filter === "mood" || place.filter === "rooftop") return "cafe";
+  if (/산책|공원/.test(blob)) return "walk";
+  if (/전시|갤러리|문화|박물관/.test(blob)) return "gallery";
+  if (/쇼핑|몰|시장/.test(blob)) return "shop";
+  return "fun";
 }
