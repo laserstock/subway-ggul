@@ -41,6 +41,7 @@ import {
 } from "../_lib/meetPlaces";
 import { useMyStations } from "../_lib/myStations";
 import { t, type Locale, type Localized, type StationOption } from "../_lib/stations";
+import { useAutoTranslation } from "../_lib/translate";
 import { MEET_TITLE, MeetHeaderIcon } from "./header";
 
 type Mode = "course" | "meet";
@@ -441,12 +442,16 @@ function PlaceCard({
   place,
   selected,
   locale,
+  nameLabel,
+  featureLabel,
   onToggleSelect,
   onOpenDetail,
 }: {
   place: CoursePlace;
   selected: boolean;
   locale: Locale;
+  nameLabel: string;
+  featureLabel: string;
   onToggleSelect: () => void;
   onOpenDetail: () => void;
 }) {
@@ -461,7 +466,7 @@ function PlaceCard({
       <button
         type="button"
         onClick={onOpenDetail}
-        aria-label={`${t(COPY.openDetail, locale)}: ${t(place.name, locale)}`}
+        aria-label={`${t(COPY.openDetail, locale)}: ${nameLabel}`}
         className="flex flex-1 flex-col text-left transition active:scale-[0.99]"
       >
         <PlaceHero place={place} locale={locale} />
@@ -469,8 +474,8 @@ function PlaceCard({
           <span className="w-fit rounded-full bg-[#FFFBEB] px-2 py-[2px] text-[10px] font-extrabold text-[#78350F] ring-1 ring-amber-200">
             {t(place.category, locale)}
           </span>
-          <p className="mt-1.5 text-[13px] font-extrabold leading-snug text-[#1F2937]">{t(place.name, locale)}</p>
-          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-neutral-500">{t(place.feature, locale)}</p>
+          <p className="mt-1.5 text-[13px] font-extrabold leading-snug text-[#1F2937]">{nameLabel}</p>
+          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug text-neutral-500">{featureLabel}</p>
           <p className="mt-auto pt-2 text-[11px] font-bold text-[#92400E]">
             {fill(t(COPY.rating, locale), { n: place.rating.toFixed(1) })}
           </p>
@@ -552,6 +557,15 @@ function CourseTimeline({
   onOpenDetail: (step: CourseStep, place: CoursePlace) => void;
   onFilter: (stepId: "food" | "cafe", chip: PlaceChip) => void;
 }) {
+  const translateTexts = useMemo(
+    () =>
+      course.steps.flatMap((step) =>
+        step.options.flatMap((place) => [place.name.ko, place.feature.ko, place.kakaoCategory ?? ""]),
+      ),
+    [course],
+  );
+  const tr = useAutoTranslation(translateTexts, locale);
+
   return (
     <div className="relative mt-3 pl-3">
       <div className="absolute bottom-4 left-[7px] top-4 w-px bg-gradient-to-b from-[#FDE68A] via-[#FCD34D] to-[#FEF3C7]" aria-hidden />
@@ -589,6 +603,8 @@ function CourseTimeline({
                       place={place}
                       selected={picks[stepItem.id] === place.id}
                       locale={locale}
+                      nameLabel={tr(place.name.ko, t(place.name, locale))}
+                      featureLabel={tr(place.feature.ko, t(place.feature, locale))}
                       onToggleSelect={() => onTogglePick(stepItem, place.id)}
                       onOpenDetail={() => onOpenDetail(stepItem, place)}
                     />
@@ -621,8 +637,18 @@ function MeetPlaceSheet({
   const [copied, setCopied] = useState(false);
   const address = place.address ?? "";
   const meters = place.distanceM ?? place.walkMin * 80;
-  const kakaoUrl = place.placeUrl || `https://map.kakao.com/link/search/${encodeURIComponent(t(place.name, locale))}`;
-  const naverUrl = naverMapSearchUrl(t(place.name, "ko"));
+  const sheetTexts = useMemo(
+    () => [place.name.ko, place.feature.ko, place.kakaoCategory ?? "", address],
+    [place.name.ko, place.feature.ko, place.kakaoCategory, address],
+  );
+  const tr = useAutoTranslation(sheetTexts, locale);
+  const nameLabel = tr(place.name.ko, t(place.name, locale));
+  const featureLabel = tr(place.feature.ko, t(place.feature, locale));
+  const categoryPath = place.kakaoCategory ? tr(place.kakaoCategory, place.kakaoCategory) : null;
+  const addressLabel = address ? tr(address, address) : "";
+  // Keep Korean for map search so Kakao/Naver find the real listing.
+  const kakaoUrl = place.placeUrl || `https://map.kakao.com/link/search/${encodeURIComponent(place.name.ko)}`;
+  const naverUrl = naverMapSearchUrl(place.name.ko);
 
   function copyAddress() {
     if (!address) return;
@@ -636,7 +662,7 @@ function MeetPlaceSheet({
   }
 
   return (
-    <BottomSheet title={t(place.name, locale)} onClose={onClose}>
+    <BottomSheet title={nameLabel} onClose={onClose}>
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-3">
         <div className="overflow-hidden rounded-2xl border border-amber-200 bg-[#FFFBEB]">
           <PlaceHero place={place} locale={locale} tall />
@@ -644,8 +670,9 @@ function MeetPlaceSheet({
             <span className="inline-flex rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#78350F] ring-1 ring-amber-200">
               {t(place.category, locale)}
             </span>
-            {place.kakaoCategory ? (
-              <p className="mt-1.5 text-[11px] font-semibold text-neutral-500">{place.kakaoCategory}</p>
+            {categoryPath ? <p className="mt-1.5 text-[11px] font-semibold text-neutral-500">{categoryPath}</p> : null}
+            {featureLabel && featureLabel !== categoryPath ? (
+              <p className="mt-1 text-[11px] font-semibold text-neutral-500">{featureLabel}</p>
             ) : null}
           </div>
         </div>
@@ -661,7 +688,7 @@ function MeetPlaceSheet({
 
         {address ? (
           <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-white px-3 py-2.5">
-            <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-[#1F2937]">{address}</p>
+            <p className="min-w-0 flex-1 text-[13px] font-semibold leading-snug text-[#1F2937]">{addressLabel || address}</p>
             <button
               type="button"
               onClick={copyAddress}

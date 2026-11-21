@@ -15,7 +15,7 @@ import { HomeIcon, TrainLogo } from "./icons";
 import ThemePicker from "./ThemePicker";
 import { WebGuideMenuLink } from "./WebGuideEntry";
 
-export const APP_VERSION = "1.0.1";
+export const APP_VERSION = "1.0.2";
 
 type DrawerView = "menu" | "notices" | "myReports" | "feedback";
 type ShareStatus = "copied" | "failed" | null;
