@@ -332,3 +332,57 @@ export function CameraIcon({ size = 16, className = "" }: { size?: number; class
     </svg>
   );
 }
+
+export function CompassIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="12" cy="12" r="8.2" stroke="currentColor" strokeWidth="2" />
+      <path d="m14.8 9.2-1.6 4.6-4.6 1.6 1.6-4.6z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function HandshakeIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M8.2 11.2 6 9l2.8-2.8a2 2 0 0 1 2.8 0L14 8.4M15.8 11.2 18 9l-2.8-2.8a2 2 0 0 0-2.8 0"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.5 12.5c1.8 1.7 3.4 2.6 5.2 2.6 1.2 0 2-.5 2.8-1.2.8.7 1.6 1.2 2.8 1.2 1.8 0 3.4-.9 5.2-2.6"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M9.2 15.2c.7.9 1.6 1.5 2.8 1.5s2.1-.6 2.8-1.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function SparkleIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M12 3.5 13.4 9.2 19 10.5 13.4 11.8 12 17.5 10.6 11.8 5 10.5l5.6-1.3z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M18.2 4.8v2.8M17 6.2h2.4M6.2 16.5v2M5.2 17.5h2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function CopyIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2.2" stroke="currentColor" strokeWidth="2" />
+      <path d="M6.5 15.5H5.8A2.3 2.3 0 0 1 3.5 13.2V5.8A2.3 2.3 0 0 1 5.8 3.5h7.4A2.3 2.3 0 0 1 15.5 5.8v.7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}

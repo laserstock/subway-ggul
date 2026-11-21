@@ -1,5 +1,10 @@
+import { plannerImageSrc, type PlannerImage } from "./plannerImages";
 import type { Localized } from "./stations";
 import { stationByKoName } from "./meetMidpoint";
+
+export type FoodChip = "korean" | "japanese" | "chinese" | "western" | "other";
+export type CafeChip = "mood" | "dessert" | "roastery" | "rooftop";
+export type PlaceChip = FoodChip | CafeChip | "all";
 
 export type CoursePlace = {
   id: string;
@@ -9,6 +14,10 @@ export type CoursePlace = {
   rating: number;
   exit: number;
   walkMin: number;
+  /** Cuisine / cafe style chip id for filtering. */
+  filter: PlaceChip;
+  /** Representative preview image path (planner asset mapped by category). */
+  image: string;
 };
 
 export type CourseStepId = "food" | "cafe" | "fun";
@@ -17,7 +26,7 @@ export type CourseStep = {
   id: CourseStepId;
   time: string;
   title: Localized;
-  options: [CoursePlace, CoursePlace];
+  options: CoursePlace[];
 };
 
 export type StationCourse = {
@@ -44,6 +53,41 @@ const STEP_META: Record<CourseStepId, { time: string; title: Localized }> = {
   },
 };
 
+function inferFoodFilter(category: Localized, name: Localized, feature: Localized): FoodChip {
+  const blob = `${category.ko} ${name.ko} ${feature.ko}`;
+  if (/일식|라멘|스시|우동|이자카야|돈코츠|사시미/.test(blob)) return "japanese";
+  if (/중식|짜장|짬뽕|마라/.test(blob)) return "chinese";
+  if (/양식|파스타|이탈|브런치|샐러드|뷔페|그릴|스테이크|타코|피자/.test(blob)) return "western";
+  if (/한식|고기|국밥|곱창|갈비|삼겹|정식|분식|떡볶|닭갈비|비빔|설렁/.test(blob)) return "korean";
+  return "other";
+}
+
+function inferCafeFilter(category: Localized, name: Localized, feature: Localized): CafeChip {
+  const blob = `${category.ko} ${name.ko} ${feature.ko}`;
+  if (/루프탑|뷰|호수|한강|테라스|전망|창가/.test(blob)) return "rooftop";
+  if (/로스터|브루잉|스페셜티|핸드드립|싱글오리진/.test(blob)) return "roastery";
+  if (/디저트|베이커|크로플|마카롱|케이크|빙수|빵|휘낭|타르트|젤라토|크로아상|소금빵/.test(blob)) return "dessert";
+  return "mood";
+}
+
+function imageFor(stepId: CourseStepId, filter: PlaceChip, seed: string): string {
+  let key: PlannerImage = "cafe";
+  if (stepId === "food") {
+    if (filter === "korean") key = seed.includes("bbq") || seed.includes("고기") ? "kbbq" : "food-korean";
+    else if (filter === "japanese" || filter === "chinese") key = "food-street";
+    else if (filter === "western") key = "food-street";
+    else key = "market";
+  } else if (stepId === "cafe") {
+    if (filter === "dessert") key = "bakery";
+    else if (filter === "rooftop") key = "skyline";
+    else if (filter === "roastery") key = "cafe";
+    else key = "cafe";
+  } else {
+    key = filter === "mood" ? "park" : "mall";
+  }
+  return plannerImageSrc(key);
+}
+
 function place(
   id: string,
   category: Localized,
@@ -52,12 +96,32 @@ function place(
   rating: number,
   exit: number,
   walkMin: number,
+  stepId: CourseStepId = "food",
 ): CoursePlace {
-  return { id, category, name, feature, rating, exit, walkMin };
+  const filter =
+    stepId === "cafe"
+      ? inferCafeFilter(category, name, feature)
+      : stepId === "fun"
+        ? "all"
+        : inferFoodFilter(category, name, feature);
+  return {
+    id,
+    category,
+    name,
+    feature,
+    rating,
+    exit,
+    walkMin,
+    filter,
+    image: imageFor(stepId, filter, `${id} ${name.ko}`),
+  };
 }
 
-function step(id: CourseStepId, a: CoursePlace, b: CoursePlace): CourseStep {
-  return { id, time: STEP_META[id].time, title: STEP_META[id].title, options: [a, b] };
+function step(id: CourseStepId, ...options: CoursePlace[]): CourseStep {
+  const tagged = options.map((option) =>
+    place(option.id, option.category, option.name, option.feature, option.rating, option.exit, option.walkMin, id),
+  );
+  return { id, time: STEP_META[id].time, title: STEP_META[id].title, options: tagged };
 }
 
 function L(ko: string, en: string, zh = en, ja = en): Localized {
@@ -700,9 +764,118 @@ function templateCourse(stationKo: string): StationCourse {
   };
 }
 
+const FOOD_FILLERS: { chip: FoodChip; category: Localized; name: Localized; feature: Localized; image: PlannerImage }[] = [
+  {
+    chip: "korean",
+    category: L("한식", "Korean", "韩餐", "韓国料理"),
+    name: L("동네 한정식", "Local hansik", "本地韩定食", "地元韓定食"),
+    feature: L("정갈한 집밥 코스", "Home-style set", "家常套餐", "家庭的な定食"),
+    image: "food-korean",
+  },
+  {
+    chip: "japanese",
+    category: L("일식", "Japanese", "日料", "和食"),
+    name: L("사케·라멘 바", "Ramen & sake bar", "拉面清酒吧", "ラーメン＆日本酒"),
+    feature: L("진한 국물 라멘", "Rich broth ramen", "浓汤拉面", "濃いスープのラーメン"),
+    image: "food-street",
+  },
+  {
+    chip: "chinese",
+    category: L("중식", "Chinese", "中餐", "中華"),
+    name: L("수타면 전문", "Hand-pulled noodles", "手打面专卖", "手打ち麺"),
+    feature: L("짜장·짬뽕 세트", "Jjajang & jjamppong", "炸酱炒码套餐", "ジャージャー・チャンポン"),
+    image: "market",
+  },
+  {
+    chip: "western",
+    category: L("양식", "Western", "西餐", "洋食"),
+    name: L("파스타·스테이크", "Pasta & steak", "意面牛排", "パスタ＆ステーキ"),
+    feature: L("런치 플레이트", "Lunch plate", "午餐拼盘", "ランチプレート"),
+    image: "food-street",
+  },
+  {
+    chip: "other",
+    category: L("기타", "Other", "其他", "その他"),
+    name: L("로컬 분식·포차", "Local snacks", "本地小吃摊", "ローカル屋台"),
+    feature: L("가볍게 한잔·안주", "Light bites", "轻食小酌", "気軽なおつまみ"),
+    image: "food-street",
+  },
+];
+
+const CAFE_FILLERS: { chip: CafeChip; category: Localized; name: Localized; feature: Localized; image: PlannerImage }[] = [
+  {
+    chip: "mood",
+    category: L("감성카페", "Vibe cafe", "氛围咖啡", "雰囲気カフェ"),
+    name: L("감성 브런치 카페", "Brunch vibe cafe", "早午餐氛围咖啡", "ブランチカフェ"),
+    feature: L("라떼·인테리어 포토존", "Latte & photo corner", "拿铁打卡角", "ラテとフォトスポット"),
+    image: "cafe",
+  },
+  {
+    chip: "dessert",
+    category: L("디저트/베이커리", "Dessert / bakery", "甜品/烘焙", "デザート/ベーカリー"),
+    name: L("시그니처 디저트", "Signature dessert", "招牌甜品", "シグネチャーデザート"),
+    feature: L("케이크·소금빵", "Cake & salt bread", "蛋糕盐面包", "ケーキと塩パン"),
+    image: "bakery",
+  },
+  {
+    chip: "roastery",
+    category: L("로스터리", "Roastery", "烘焙咖啡", "ロースタリー"),
+    name: L("스페셜티 로스터리", "Specialty roastery", "精品烘焙", "スペシャルティ"),
+    feature: L("싱글오리진 핸드드립", "Single-origin drip", "单一产地手冲", "シングルオリジン"),
+    image: "cafe",
+  },
+  {
+    chip: "rooftop",
+    category: L("루프탑/뷰", "Rooftop / view", "屋顶/景观", "ルーフトップ/ビュー"),
+    name: L("루프탑 뷰 카페", "Rooftop view cafe", "屋顶景观咖啡", "ルーフトップカフェ"),
+    feature: L("테라스 시티뷰", "Terrace city view", "露台城市景", "テラスの街並み"),
+    image: "skyline",
+  },
+];
+
+function expandStep(stepItem: CourseStep, stationKo: string): CourseStep {
+  const bare = stationKo.replace(/역$/, "");
+  const exit = stepItem.options[0]?.exit ?? 1;
+  if (stepItem.id === "food") {
+    const have = new Set(stepItem.options.map((opt) => opt.filter));
+    const extras = FOOD_FILLERS.filter((row) => !have.has(row.chip)).map((row, index) => ({
+      id: `${bare}-xf-${row.chip}`,
+      category: row.category,
+      name: L(`${bare} ${row.name.ko}`, `${bare} ${row.name.en}`, `${bare} ${row.name.zh}`, `${bare} ${row.name.ja}`),
+      feature: row.feature,
+      rating: 4.4 + ((index + hashSeed(bare)) % 4) / 10,
+      exit: ((exit + index) % 9) + 1,
+      walkMin: 3 + (index % 5),
+      filter: row.chip,
+      image: plannerImageSrc(row.image),
+    }));
+    return { ...stepItem, options: [...stepItem.options, ...extras].slice(0, 6) };
+  }
+  if (stepItem.id === "cafe") {
+    const have = new Set(stepItem.options.map((opt) => opt.filter));
+    const extras = CAFE_FILLERS.filter((row) => !have.has(row.chip)).map((row, index) => ({
+      id: `${bare}-xc-${row.chip}`,
+      category: row.category,
+      name: L(`${bare} ${row.name.ko}`, `${bare} ${row.name.en}`, `${bare} ${row.name.zh}`, `${bare} ${row.name.ja}`),
+      feature: row.feature,
+      rating: 4.5 + ((index + hashSeed(bare)) % 3) / 10,
+      exit: ((exit + index) % 9) + 1,
+      walkMin: 2 + (index % 6),
+      filter: row.chip,
+      image: plannerImageSrc(row.image),
+    }));
+    return { ...stepItem, options: [...stepItem.options, ...extras].slice(0, 6) };
+  }
+  return stepItem;
+}
+
 export function courseForStation(stationKo: string): StationCourse {
   const bare = stationKo.replace(/역$/, "");
-  return PRESET_MAP.get(bare) ?? templateCourse(stationKo);
+  const base = PRESET_MAP.get(bare) ?? templateCourse(stationKo);
+  return {
+    ...base,
+    steps: base.steps.map((stepItem) => expandStep(stepItem, base.stationKo)),
+  };
 }
 
 export function courseStationOption(stationKo: string) {
@@ -710,3 +883,20 @@ export function courseStationOption(stationKo: string) {
 }
 
 export const CURATED_COURSE_COUNT = PRESETS.length;
+
+export const FOOD_CHIPS: { id: PlaceChip; label: Localized }[] = [
+  { id: "all", label: L("전체", "All", "全部", "すべて") },
+  { id: "korean", label: L("한식", "Korean", "韩餐", "韓国料理") },
+  { id: "japanese", label: L("일식", "Japanese", "日料", "和食") },
+  { id: "chinese", label: L("중식", "Chinese", "中餐", "中華") },
+  { id: "western", label: L("양식", "Western", "西餐", "洋食") },
+  { id: "other", label: L("기타", "Other", "其他", "その他") },
+];
+
+export const CAFE_CHIPS: { id: PlaceChip; label: Localized }[] = [
+  { id: "all", label: L("전체", "All", "全部", "すべて") },
+  { id: "mood", label: L("감성카페", "Vibe cafe", "氛围咖啡", "雰囲気カフェ") },
+  { id: "dessert", label: L("디저트/베이커리", "Dessert / bakery", "甜品/烘焙", "デザート/ベーカリー") },
+  { id: "roastery", label: L("로스터리", "Roastery", "烘焙咖啡", "ロースタリー") },
+  { id: "rooftop", label: L("루프탑/뷰", "Rooftop / view", "屋顶/景观", "ルーフトップ/ビュー") },
+];
