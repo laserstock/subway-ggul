@@ -377,22 +377,28 @@ export const COPY = {
     ja: "{station}の駅ガイドを開く",
   },
   adjacentHeading: {
-    ko: "인접 역 가이드 (이전 역 · 다음 역)",
-    en: "Adjacent station guides (previous · next)",
-    zh: "相邻车站指南（上一站 · 下一站）",
-    ja: "隣接駅ガイド（前の駅・次の駅）",
+    ko: "같은 노선 인접 역",
+    en: "Adjacent stations on the same line",
+    zh: "同线路相邻车站",
+    ja: "同じ路線の隣の駅",
   },
   hubHeading: {
-    ko: "서울 주요 거점역 바로가기",
-    en: "Popular Seoul hub stations",
-    zh: "首尔主要枢纽站快捷入口",
-    ja: "ソウル主要ハブ駅への近道",
+    ko: "외국인·한국인 인기 TOP 15 역 바로가기",
+    en: "Top 15 stations travelers search most",
+    zh: "旅客热搜 TOP 15 车站快捷入口",
+    ja: "人気TOP15駅への近道",
   },
   seoSummaryHeading: {
-    ko: "이 역 한눈에 요약",
-    en: "Station guide summary",
-    zh: "本站指南摘要",
-    ja: "この駅のガイド要約",
+    ko: "이 역 현지 가이드 요약",
+    en: "Local station guide",
+    zh: "本站本地指南",
+    ja: "この駅のローカルガイド",
+  },
+  deepGuideLabel: {
+    ko: "심층 이용 가이드",
+    en: "In-depth station guide",
+    zh: "深度车站指南",
+    ja: "詳しい駅ガイド",
   },
   browseLines: { ko: "노선별로 보기", en: "Browse by line", zh: "按线路浏览", ja: "路線から探す" },
   lineHeading: {
@@ -1007,10 +1013,10 @@ export function stationMetaTitle(station: GuideStation, _detail: GuideDetail, lo
   return inScript(
     locale,
     {
-      en: `${enName} Station Seoul: Best Exits, Lockers, Restrooms & Elevator Guide | K-SUB`,
-      ja: `${name} トイレ（改札内外）・コインロッカー・エレベーター出口・乗換ガイド | K-SUB`,
-      zh: `${name}厕所（闸机内外）·投币储物柜·电梯出口·快速换乘总整理 | K-SUB`,
-      ko: `${name} 화장실(개찰구 안/밖)·코인락커·엘리베이터 출구·빠른환승 총정리 | 지하철꿀정보`,
+      en: `${enName} Station Seoul: Luggage Lockers, Restrooms & Best Exit Guide | K-SUB`,
+      ja: `${name} コインロッカー・トイレ(改札内外)・エレベーター出口完全ガイド | K-SUB`,
+      zh: `${name}寄物柜・厕所(闸门内外)・电梯出口完整指南 | K-SUB`,
+      ko: `${name} 화장실(개찰구 안/밖)·물품보관함·엘리베이터 출구·빠른환승 총정리 | 지하철꿀정보`,
     }[base],
   );
 }

@@ -4,6 +4,7 @@ import { ALL_LINES, GUIDE_STATIONS, lineSlug } from "./_lib/guide";
 import { GUIDE_ARTICLES } from "./_lib/guideArticles";
 import { GUIDE_LOCALES } from "./_lib/guideLocale";
 import { LEGAL_UPDATED } from "./_lib/legal";
+import { stationSitemapPriority } from "./_lib/seoHubs";
 import { GUIDE_UPDATED, guideLanguagePaths, SITE_URL } from "./_lib/site";
 import { TRUST_UPDATED } from "./_lib/trustPages";
 
@@ -43,7 +44,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...GUIDE_ARTICLES.flatMap((article) => guideEntries(`/guides/${article.slug}`, 0.8)),
     ...guideEntries("/stations", 0.8),
     ...ALL_LINES.flatMap((line) => guideEntries(`/lines/${lineSlug(line)}`, 0.8)),
-    ...GUIDE_STATIONS.flatMap((station) => guideEntries(`/stations/${station.slug}`, 0.7)),
+    ...GUIDE_STATIONS.flatMap((station) =>
+      guideEntries(`/stations/${station.slug}`, stationSitemapPriority(station.slug)),
+    ),
     ...guideEntries("/planner", 0.8),
     ...["/about", "/editorial-policy"].flatMap((path) =>
       guideEntries(path, 0.5).map((entry) => ({ ...entry, lastModified: TRUST_UPDATED, changeFrequency: "yearly" as const })),

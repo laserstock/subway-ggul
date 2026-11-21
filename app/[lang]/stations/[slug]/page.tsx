@@ -31,7 +31,6 @@ import {
   stationMetaTitle,
   stationOgDescription,
   stationOgTitle,
-  stationSeoSummary,
   stationSummary,
   stationTitle,
   tc,
@@ -39,6 +38,7 @@ import {
 } from "../../../_lib/guideCopy";
 import { GUIDE_LANGUAGES, isGuideLocale, contentLocale, type GuideLocale } from "../../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
+import { stationDeepGuide } from "../../../_lib/stationDeepGuide";
 import { stationOverview } from "../../../_lib/stationOverview";
 import { Icon, IconTile, type IconName } from "../../_guide/icons";
 import { DesktopWide } from "../../_guide/desktop";
@@ -312,7 +312,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
   const related = relatedStations(station, detail, lang);
   const adjacent = adjacentStations(detail);
   const hubs = hubStations(station);
-  const seoSummary = stationSeoSummary(station, detail, lang);
+  const deepGuide = stationDeepGuide(station, detail, lang);
   const checked = overview.checked
     ? tc("localChecked", lang, {
         date: new Intl.DateTimeFormat(GUIDE_LANGUAGES[lang].htmlLang, { dateStyle: "long" }).format(
@@ -549,15 +549,37 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         </Section>
       ) : null}
 
+      <section id="local-guide" aria-label={tc("deepGuideLabel", lang)} className="mt-10 scroll-mt-24 lg:mt-16">
+        <h2 className="text-[20px] font-extrabold tracking-tight text-ink lg:text-[26px]">{tc("seoSummaryHeading", lang)}</h2>
+        <div className="mt-4 space-y-8 lg:mt-6 lg:space-y-10">
+          <div>
+            <h3 className="text-[17px] font-extrabold tracking-tight text-ink lg:text-[20px]">
+              {deepGuide.keySummary.heading}
+            </h3>
+            <div className="mt-3 max-w-3xl space-y-3 text-[15px] leading-relaxed text-ink-muted lg:mt-4 lg:space-y-4 lg:text-[16px]">
+              {deepGuide.keySummary.paragraphs.map((paragraph) => (
+                <p key={paragraph.slice(0, 48)}>{paragraph}</p>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-[17px] font-extrabold tracking-tight text-ink lg:text-[20px]">
+              {deepGuide.exitRoutes.heading}
+            </h3>
+            <div className="mt-3 max-w-3xl space-y-3 text-[15px] leading-relaxed text-ink-muted lg:mt-4 lg:space-y-4 lg:text-[16px]">
+              {deepGuide.exitRoutes.paragraphs.map((paragraph) => (
+                <p key={paragraph.slice(0, 48)}>{paragraph}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {faq.length ? (
         <Section id="faq" title={tc("faq", lang)}>
           <StationFaq items={faq} sectionLabel={tc("faq", lang)} />
         </Section>
       ) : null}
-
-      <Section id="guide-summary" title={tc("seoSummaryHeading", lang)}>
-        <p className="max-w-3xl text-[15px] leading-relaxed text-ink-muted lg:text-[16px]">{seoSummary}</p>
-      </Section>
 
       {adjacent.length ? (
         <Section id="adjacent-stations" title={tc("adjacentHeading", lang)}>
@@ -573,12 +595,12 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
 
       {hubs.length ? (
         <Section id="hub-stations" title={tc("hubHeading", lang)}>
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:gap-3">
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-3">
             {hubs.map((hub) => (
               <li key={hub.slug}>
                 <Link
                   href={`/${lang}/stations/${hub.slug}`}
-                  className="flex min-h-12 items-center justify-center rounded-2xl border border-line bg-surface px-3 py-3 text-center text-[14px] font-bold text-ink transition hover:-translate-y-0.5 hover:border-honey/45 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] active:scale-[0.99] lg:min-h-14 lg:text-[15px]"
+                  className="flex min-h-12 items-center justify-center rounded-2xl border border-line bg-surface px-3 py-3 text-center text-[13px] font-bold text-ink transition hover:-translate-y-0.5 hover:border-honey/45 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] active:scale-[0.99] lg:min-h-14 lg:text-[14px]"
                 >
                   {gt(hub.name, lang)}
                 </Link>

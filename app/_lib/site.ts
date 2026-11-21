@@ -20,7 +20,7 @@ export const APP_RELEASED = false;
 export const APP_SCREEN_ROBOTS: Metadata["robots"] = { index: false, follow: true };
 
 /** Bump when the guide pages' data or copy change, for the sitemap's lastmod. */
-export const GUIDE_UPDATED = "2026-11-16";
+export const GUIDE_UPDATED = "2026-11-21";
 
 /** Server-rendered, crawlable station guides live under /ko, /en, /zh, /zh-tw and /ja; returns the app locale. */
 export function guideLocale(pathname: string | null): Locale | null {

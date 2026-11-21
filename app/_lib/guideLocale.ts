@@ -27,7 +27,8 @@ export const GUIDE_LANGUAGES: Record<GuideLocale, GuideLanguageInfo> = {
 export const GUIDE_HREFLANGS: Record<GuideLocale, readonly string[]> = {
   ko: ["ko"],
   en: ["en"],
-  zh: ["zh-CN"],
+  /** Plain `zh` + regional tags so Search Console and AI crawlers resolve Chinese unambiguously. */
+  zh: ["zh", "zh-CN"],
   ja: ["ja"],
   "zh-tw": ["zh-TW", "zh-HK"],
 };
