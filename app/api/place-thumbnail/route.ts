@@ -1,9 +1,8 @@
 /**
  * Resolves a real store hero image from a Kakao Place detail page (`place_url`).
  * Default Kakao logos / placeholders are filtered to null so the client can show a typography card.
+ * (No `runtime` export — incompatible with `cacheComponents`.)
  */
-
-export const runtime = "nodejs";
 
 type CacheEntry = { image: string | null; at: number };
 
@@ -93,7 +92,7 @@ async function fetchHtml(target: string): Promise<string | null> {
         Accept: "text/html,application/xhtml+xml",
         "Accept-Language": "ko-KR,ko;q=0.9",
       },
-      next: { revalidate: 86400 },
+      cache: "force-cache",
     });
     if (!response.ok) return null;
     return await response.text();
