@@ -29,9 +29,9 @@ export const TAGLINE: Localized = {
   ja: "ソウル地下鉄ガイド",
 };
 
-/** The English title ends in the short "K-SUB" mark searchers see in results; other languages keep BRAND. */
+/** Brand + domain so navigational queries for “k-sub com” resolve to www.k-sub.com. */
 export function homeMetaTitle(locale: GuideLocale) {
-  return `${gt(COPY.homeTitle, locale)} | ${locale === "en" ? "K-SUB" : gt(BRAND, locale)}`;
+  return `${gt(COPY.homeTitle, locale)} | K-SUB (k-sub.com)`;
 }
 
 export const HOME_KEYWORDS = [
@@ -75,10 +75,10 @@ export const COPY = {
     ja: "ソウル・首都圏の全{n}駅の出口、トイレ、コインロッカー、最速乗り換えドアをまとめてチェック。",
   },
   homeDescription: {
-    ko: "서울·수도권 지하철 모든 역의 출구 위치, 화장실, 물품보관함, 빠른환승 칸과 실시간 도착 정보를 한눈에.",
-    en: "The ultimate Seoul subway guide for travelers. Find real-time exit maps, luggage storage (T-Locker) locations, inside-gate restrooms, and elevator routes in Seoul.",
-    zh: "免费首尔地铁中文指南：各站出口地图、洗手间、投币储物柜、最快换乘车门及实时列车到站信息。",
-    ja: "無料のソウル地下鉄日本語ガイド。全駅の出口マップ、トイレ、コインロッカー、最速乗り換えドア、リアルタイム列車到着情報。",
+    ko: "k-sub com(www.k-sub.com) 공식 K-SUB 가이드 — 서울·수도권 지하철 출구·화장실·물품보관함·여행 코스 플래너를 www.k-sub.com에서 확인하세요.",
+    en: "k-sub com (www.k-sub.com) — the official K-SUB Seoul Subway Guide. Exit maps, T-Locker storage, restrooms, elevators and a travel course planner at www.k-sub.com.",
+    zh: "k-sub com（www.k-sub.com）官方 K-SUB 首尔地铁指南：出口地图、洗手间、投币储物柜与旅行路线规划，尽在 www.k-sub.com。",
+    ja: "k-sub com（www.k-sub.com）公式K-SUBソウル地下鉄ガイド。出口マップ・トイレ・コインロッカー・旅行コースプランナーは www.k-sub.com で。",
   },
   searchLabel: { ko: "역 검색", en: "Search a station", zh: "搜索车站", ja: "駅を検索" },
   searchPlaceholder: {

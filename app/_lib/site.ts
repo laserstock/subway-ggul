@@ -4,6 +4,16 @@ import type { Locale } from "./i18n";
 
 export const SITE_URL = "https://www.k-sub.com";
 
+/** Display name Google should show for brand / navigational queries (k-sub com vs ksub.com). */
+export const SITE_BRAND_NAME = "K-SUB";
+export const SITE_BRAND_DISPLAY = "K-SUB (k-sub.com)";
+export const SITE_BRAND_TITLE =
+  "K-SUB (k-sub.com) | 서울 지하철 편의시설 & 여행 코스 플래너 - Seoul Subway Guide";
+export const SITE_BRAND_DESCRIPTION =
+  "k-sub com (www.k-sub.com) is the official K-SUB Seoul Subway Guide — station facilities, travel course planner, lockers, restrooms and exits at www.k-sub.com.";
+/** WebSite JSON-LD alternate names so “k-sub com” maps to this domain, not ksub.com. */
+export const SITE_BRAND_ALTERNATE_NAMES = ["k-sub.com", "k-sub com", "케이서브", "지하철꿀정보", "K-SUB (k-sub.com)"] as const;
+
 /** AdSense publisher id (public: it appears in every page and in ads.txt). */
 export const ADSENSE_CLIENT_ID = "ca-pub-5995977562355838";
 export const ADSENSE_SCRIPT_URL = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`;

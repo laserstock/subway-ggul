@@ -15,16 +15,24 @@ export function GuideHeader({ locale }: { locale: GuideLocale }) {
       <div className="mx-auto flex w-full max-w-[760px] items-center justify-between gap-3 px-4 py-2.5 lg:max-w-[min(1024px,calc(100vw-64px))] lg:px-0 lg:py-3">
         <Link
           href={`/${locale}`}
+          aria-label="k-sub.com — K-SUB home"
+          title="k-sub.com"
           className="flex min-w-0 items-center gap-2.5 rounded-xl hover:opacity-80 lg:-mx-2 lg:px-2 lg:py-1 lg:transition-all lg:duration-200"
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-honey-soft text-honey">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-honey-soft text-honey"
+            role="img"
+            aria-label="k-sub.com"
+          >
             <TrainMark size={24} />
           </span>
           <span className="min-w-0">
             <span className="block text-[16px] font-extrabold leading-tight tracking-tight text-honey-strong">
               {gt(BRAND_SHORT, locale)}
             </span>
-            <span className="block break-words text-[11px] font-semibold text-ink-muted">{gt(TAGLINE, locale)}</span>
+            <span className="block break-words text-[11px] font-semibold text-ink-muted">
+              {gt(TAGLINE, locale)} · k-sub.com
+            </span>
           </span>
         </Link>
         <LanguageSelector current={locale} label={tc("language", locale)} />

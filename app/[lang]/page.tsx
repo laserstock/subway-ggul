@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ALL_LINES, GUIDE_STATIONS, POPULAR_GUIDES } from "../_lib/guide";
@@ -6,13 +7,22 @@ import GoogleSeoSchema from "../_components/GoogleSeoSchema";
 import { BRAND, COPY, gt, HOME_FAQ_EN, HOME_KEYWORDS, homeMetaTitle, tc } from "../_lib/guideCopy";
 import { GUIDE_LANGUAGES, isGuideLocale } from "../_lib/guideLocale";
 import { pt } from "../_lib/plannerText";
-import { APP_RELEASED, guideAlternates, OG_LOCALES, PLAY_STORE_URL, SITE_URL } from "../_lib/site";
+import {
+  APP_RELEASED,
+  guideAlternates,
+  OG_LOCALES,
+  PLAY_STORE_URL,
+  SITE_BRAND_DISPLAY,
+  SITE_URL,
+} from "../_lib/site";
 import GuideSearch from "./_guide/GuideSearch";
 import { Icon, IconTile } from "./_guide/icons";
 import { DesktopWide } from "./_guide/desktop";
 import { AppPromo, JsonLd, LineLink, searchItems, StationLink } from "./_guide/parts";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
+  "use cache";
+  cacheLife("max");
   const { lang } = await params;
   if (!isGuideLocale(lang)) return {};
   const title = homeMetaTitle(lang);
@@ -22,7 +32,15 @@ export async function generateMetadata({ params }: PageProps<"/[lang]">): Promis
     description,
     ...(lang === "en" ? { keywords: HOME_KEYWORDS } : {}),
     alternates: guideAlternates("", lang),
-    openGraph: { type: "website", siteName: gt(BRAND, lang), title, description, locale: OG_LOCALES[lang], url: `/${lang}` },
+    openGraph: {
+      type: "website",
+      siteName: SITE_BRAND_DISPLAY,
+      title,
+      description,
+      locale: OG_LOCALES[lang],
+      url: `/${lang}`,
+    },
+    twitter: { card: "summary_large_image", title, description, site: SITE_BRAND_DISPLAY },
   };
 }
 
@@ -35,6 +53,8 @@ const FEATURES = [
 ] as const;
 
 export default async function GuideHome({ params }: PageProps<"/[lang]">) {
+  "use cache";
+  cacheLife("max");
   const { lang } = await params;
   if (!isGuideLocale(lang)) notFound();
   const faq = lang === "en" ? HOME_FAQ_EN : [];

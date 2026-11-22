@@ -1,8 +1,16 @@
 import { JsonLd } from "../[lang]/_guide/parts";
+import {
+  SITE_BRAND_ALTERNATE_NAMES,
+  SITE_BRAND_NAME,
+  SITE_URL,
+} from "../_lib/site";
 
 type Faq = { question: string; answer: string };
 
-/** WebSite data (Google's site name comes from the home page) plus an optional FAQPage. */
+/**
+ * Site-wide WebSite identity (brand / navigational queries) plus an optional FAQPage.
+ * `url` stays the canonical homepage so “k-sub com” resolves to www.k-sub.com, not ksub.com.
+ */
 export default function GoogleSeoSchema({
   url,
   inLanguage,
@@ -20,11 +28,12 @@ export default function GoogleSeoSchema({
         {
           "@context": "https://schema.org",
           "@type": "WebSite",
-          name: "K-Sub",
-          alternateName: ["K-SUB Seoul Subway Guide", "지하철꿀정보", "k-sub.com"],
-          url,
+          name: SITE_BRAND_NAME,
+          alternateName: [...SITE_BRAND_ALTERNATE_NAMES],
+          url: `${SITE_URL}/`,
           inLanguage,
           ...(publisherId ? { publisher: { "@id": publisherId } } : {}),
+          ...(url !== `${SITE_URL}/` ? { mainEntityOfPage: url } : {}),
         },
         ...(faq.length
           ? [

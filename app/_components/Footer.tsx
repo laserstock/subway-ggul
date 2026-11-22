@@ -62,6 +62,7 @@ export default function Footer({ locale, className = "" }: { locale: GuideLocale
         <div className="flex flex-col gap-0.5 leading-relaxed">
           <p lang="en">© 2026 K-SUB. All rights reserved. K-SUB is a subway guide app for Seoul travelers.</p>
           <p lang="ko">© 2026 K-SUB(지하철꿀정보). K-SUB는 서울을 여행하는 사람들을 위한 지하철 안내 앱입니다.</p>
+          <p lang="en">Official Domain: www.k-sub.com (k-sub com)</p>
         </div>
       </div>
     </footer>

@@ -9,7 +9,15 @@ import PreloadResources from "./_components/PreloadResources";
 import ServerErrorToast from "./_components/ServerErrorToast";
 import SplashScreen from "./_components/SplashScreen";
 import { ADSENSE_LOADER, BOOT_SCRIPT, THEME_COLORS } from "./_lib/bootScript";
-import { ADSENSE_CLIENT_ID, SITE_URL } from "./_lib/site";
+import {
+  ADSENSE_CLIENT_ID,
+  SITE_BRAND_ALTERNATE_NAMES,
+  SITE_BRAND_DESCRIPTION,
+  SITE_BRAND_DISPLAY,
+  SITE_BRAND_NAME,
+  SITE_BRAND_TITLE,
+  SITE_URL,
+} from "./_lib/site";
 import "./globals.css";
 
 const notoSansKr = Noto_Sans_KR({
@@ -18,21 +26,32 @@ const notoSansKr = Noto_Sans_KR({
   weight: ["400", "500", "600", "700"],
 });
 
-const DESCRIPTION = "역 주변과 동선 상의 시설을 가장 빠르게 찾아보세요.";
-
-const TITLE = "지하철꿀정보 · K-Sub Seoul Subway Guide";
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: SITE_BRAND_NAME,
+  alternateName: [...SITE_BRAND_ALTERNATE_NAMES],
+  url: `${SITE_URL}/`,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: TITLE,
-  description: DESCRIPTION,
-  applicationName: "지하철꿀정보",
+  title: SITE_BRAND_TITLE,
+  description: SITE_BRAND_DESCRIPTION,
+  applicationName: SITE_BRAND_DISPLAY,
   openGraph: {
     type: "website",
-    siteName: "지하철꿀정보",
-    title: TITLE,
-    description: DESCRIPTION,
+    siteName: SITE_BRAND_DISPLAY,
+    title: SITE_BRAND_TITLE,
+    description: SITE_BRAND_DESCRIPTION,
     locale: "ko_KR",
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_BRAND_TITLE,
+    description: SITE_BRAND_DESCRIPTION,
+    site: SITE_BRAND_DISPLAY,
   },
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION,
@@ -60,6 +79,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: ADSENSE_LOADER }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSON_LD).replace(/</g, "\\u003c") }}
+        />
         <Script
           id="travelpayouts"
           src="https://emrldtp.cc/NjAzMTU3.js?t=603157"
