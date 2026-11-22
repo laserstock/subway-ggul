@@ -46,18 +46,6 @@ const COPY = {
     zh: "现在下车！已到{target}",
     ja: "今降りて！{target}到着",
   },
-  wrongTitle: {
-    ko: "주의! 반대 방향 열차입니다",
-    en: "Warning! Wrong-direction train",
-    zh: "注意！坐反方向了",
-    ja: "注意！逆方向の電車です",
-  },
-  wrongBody: {
-    ko: "다음 역에서 내려 반대편 승강장으로 이동하세요.",
-    en: "Get off at the next stop and cross to the opposite platform.",
-    zh: "请在下一站下车并前往对侧站台。",
-    ja: "次の駅で降りて反対ホームへ移動してください。",
-  },
   preSpeech: {
     ko: "이번 역은 {current}입니다. 다음 역인 {target}에서 {action}하셔야 합니다.",
     en: "This stop is {current}. {action} at the next stop, {target}.",
@@ -87,12 +75,6 @@ const COPY = {
   gateInside: { ko: "안", en: "inside", zh: "内", ja: "内" },
   gateOutside: { ko: "밖", en: "outside", zh: "外", ja: "外" },
   gateUnknown: { ko: "안·밖", en: "nearby", zh: "附近", ja: "付近" },
-  wrongSpeech: {
-    ko: "주의! 반대 방향 열차를 타셨습니다. 다음 역에서 내려 반대편 승강장으로 이동하세요.",
-    en: "Caution! You boarded the wrong direction. Get off next and cross platforms.",
-    zh: "注意！您坐反了。请在下一站下车并前往对侧站台。",
-    ja: "注意！逆方向の電車です。次駅で降りて反対ホームへ移動してください。",
-  },
   missedTitle: {
     ko: "환승역을 지나쳤습니다",
     en: "You passed the transfer stop",
@@ -167,7 +149,7 @@ function useWakeLock(enabled: boolean) {
 }
 
 type Banner = {
-  tone: "pre" | "arrive" | "wrong" | "missed";
+  tone: "pre" | "arrive" | "missed";
   title: string;
   body: string;
   speech: string;
@@ -337,19 +319,6 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     );
   }
 
-  function onWrongWay(stationName: string) {
-    updateArrivalAlarm({ stage: "wrong_way", from: stationName + "역" });
-    showBanner(
-      {
-        tone: "wrong",
-        title: t(COPY.wrongTitle, locale),
-        body: t(COPY.wrongBody, locale),
-        speech: t(COPY.wrongSpeech, locale),
-      },
-      VIBE.wrongWay,
-    );
-  }
-
   function onMissedTransfer(stationName: string) {
     updateArrivalAlarm({ stage: "missed_transfer", from: stationName + "역" });
     const speech = t(COPY.missedSpeech, locale);
@@ -376,7 +345,6 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     }
     if (event.type === "preArrival") onPreArrival(event.leg, event.currentStation);
     else if (event.type === "arrival") onArrival(event.leg);
-    else if (event.type === "wrongWay") onWrongWay(event.station);
     else if (event.type === "missedTransfer") onMissedTransfer(event.station);
     else if (event.type === "boardNextLeg") {
       setBanner(null);
@@ -435,13 +403,13 @@ function ActiveAlarm({ alarm }: { alarm: ArrivalAlarm }) {
     setBanner(null);
     const current = alarmRef.current;
     if (current.stage === "arrived") cancelArrivalAlarm();
-    else if (current.stage === "wrong_way" || current.stage === "missed_transfer") {
+    else if (current.stage === "missed_transfer") {
       updateArrivalAlarm({ stage: "armed" });
     }
   }
 
   const bannerTone =
-    banner?.tone === "wrong" || banner?.tone === "missed"
+    banner?.tone === "missed"
       ? "border-red-500 bg-red-50 text-red-900"
       : banner?.tone === "arrive"
         ? "border-emerald-500 bg-emerald-50 text-emerald-950"

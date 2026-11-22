@@ -41,12 +41,6 @@ const COPY = {
     ja: "{station}乗換中 · {line}（{toward}）ホームへ",
   },
   towardFallback: { ko: "다음 방면", en: "next direction", zh: "下一方向", ja: "次方面" },
-  wrongWay: {
-    ko: "주의! 반대 방향입니다 · 다음 역에서 갈아타세요",
-    en: "Wrong direction · change at the next stop",
-    zh: "注意！反方向 · 请在下一站换乘",
-    ja: "注意！逆方向 · 次駅で乗換えて",
-  },
   missed: {
     ko: "환승역을 지나쳤습니다 · 다음 역에서 내려 반대편 열차를 이용하세요",
     en: "Passed the transfer · get off next and take the opposite train",
@@ -275,7 +269,7 @@ export default function AlarmTickerBar() {
   const transfers = transferLegCount(alarm.legs);
   const transferN = currentTransferOrdinal(alarm.legs, alarm.legIndex);
   const ratio = routeProgressRatio(alarm.legs, alarm.legIndex, at);
-  const warning = alarm.stage === "wrong_way" || alarm.stage === "missed_transfer";
+  const warning = alarm.stage === "missed_transfer";
   const targetName = leg ? stationLabel(leg.station, locale) : finalName;
   const toilet = restroomTip(finalStation, leg?.line ?? alarm.line);
   const gate = toilet ? restroomText(finalStation, toilet, locale) : t(COPY.gateUnknown, locale);
@@ -289,8 +283,6 @@ export default function AlarmTickerBar() {
     content = (
       <Label icon={<TransferIcon size={13} />}>{t(COPY.missed, locale)}</Label>
     );
-  } else if (alarm.stage === "wrong_way") {
-    content = t(COPY.wrongWay, locale);
   } else if (alarm.stage === "arrived") {
     content = fill(t(COPY.arrived, locale), { station: finalName });
   } else if (alarm.stage === "transferring") {

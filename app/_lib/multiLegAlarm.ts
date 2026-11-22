@@ -25,8 +25,6 @@ export type AlarmLeg = {
   afterTransferSeconds: number;
   /** Correct-direction stations after boarding (bare names). */
   expectedNextStations: string[];
-  /** Opposite-direction stations from the boarding stop (bare names). */
-  oppositeStations: string[];
   /** Stations past this leg's target on the same line (missed-transfer detection). */
   beyondStations: string[];
   /** Fast-transfer car/door tip for TTS / marquee, if known. */
@@ -55,40 +53,6 @@ function hopSecondsForLeg(leg: RouteLeg): number[] {
   const base = Math.floor(leg.seconds / hops);
   const rem = leg.seconds - base * hops;
   return Array.from({ length: hops }, (_, index) => Math.max(1, base + (index < rem ? 1 : 0)));
-}
-
-/** Stations reachable the wrong way from the leg's boarding stop on the same line. */
-function oppositeStationsForLeg(leg: RouteLeg): string[] {
-  const start = leg.stationIds[0];
-  const next = leg.stationIds[1];
-  if (start === undefined || next === undefined) return [];
-  const neighbors = new Set<number>();
-  for (const [service, a, b] of NETWORK_EDGES) {
-    const svc = NETWORK_SERVICES[service];
-    if (!svc || svc.express || svc.line !== leg.line) continue;
-    if (a === start) neighbors.add(b);
-    if (b === start) neighbors.add(a);
-  }
-  neighbors.delete(next);
-  const names: string[] = [];
-  const queue: { id: number; depth: number }[] = [...neighbors].map((id) => ({ id, depth: 0 }));
-  const seen = new Set<number>([start, next]);
-  while (queue.length) {
-    const { id, depth } = queue.shift()!;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    const name = NETWORK_STATIONS[id]?.[0];
-    if (name) names.push(bareStationName(name));
-    if (depth >= 5) continue;
-    for (const [service, a, b] of NETWORK_EDGES) {
-      const svc = NETWORK_SERVICES[service];
-      if (!svc || svc.express || svc.line !== leg.line) continue;
-      const other = a === id ? b : b === id ? a : null;
-      if (other === null || seen.has(other)) continue;
-      queue.push({ id: other, depth: depth + 1 });
-    }
-  }
-  return names;
 }
 
 /** Stations past the alighting stop continuing on the same line (rider missed the transfer). */
@@ -178,7 +142,6 @@ export function buildAlarmLegs(route: Route): AlarmLeg[] {
       hopSeconds: hopSecondsForLeg(leg),
       afterTransferSeconds: transfer ? transfer.walkSeconds + transfer.waitSeconds : 0,
       expectedNextStations: expected,
-      oppositeStations: oppositeStationsForLeg(leg),
       beyondStations: isLast ? [] : beyondStationsForLeg(leg),
       transferTip: transferMeta?.tip ?? null,
       nextLine: next?.line ?? null,

@@ -14,7 +14,6 @@ const STALE_FIX_MS = 12_000;
 export type AlarmEngineEvent =
   | { type: "preArrival"; leg: AlarmLeg; currentStation: string }
   | { type: "arrival"; leg: AlarmLeg }
-  | { type: "wrongWay"; station: string }
   | { type: "missedTransfer"; station: string }
   | { type: "boardNextLeg" }
   | { type: "progress"; remainingStops: number; etaSeconds: number; atStation: string | null };
@@ -50,7 +49,6 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
   const lastNearestAtRef = useRef(0);
   const firedPreRef = useRef(false);
   const firedArriveRef = useRef(false);
-  const firedWrongRef = useRef(false);
   const firedMissedRef = useRef(false);
   const legKeyRef = useRef(`${alarm.legIndex}:${alarm.station.key}`);
   const stageRef = useRef(alarm.stage);
@@ -78,7 +76,6 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
     lastHopAtRef.current = Date.now();
     firedPreRef.current = false;
     firedArriveRef.current = false;
-    firedWrongRef.current = false;
     firedMissedRef.current = false;
     setAtStation(alarm.from ? bareStationName(alarm.from) : null);
     const seeded = remainingRouteProgress(alarm.legs, alarm.legIndex, alarm.from ? bareStationName(alarm.from) : null);
@@ -134,26 +131,9 @@ export function useSubwayAlarmEngine({ alarm, background, onEvent }: Options) {
       return;
     }
 
-    const originBare = bareStationName(nextLeg.stations[0] ?? "");
-    const onOpposite =
-      nextLeg.oppositeStations.includes(bare) &&
-      index < 0 &&
-      bare !== targetBare &&
-      bare !== originBare &&
-      !nextLeg.expectedNextStations.includes(bare);
-
-    if (onOpposite && !firedWrongRef.current) {
-      firedWrongRef.current = true;
-      emit({ type: "wrongWay", station: bare });
-      return;
-    }
-
     if (index >= 0) {
-      if (index < progressRef.current && index < nextLeg.stations.length - 1 && !firedWrongRef.current) {
-        firedWrongRef.current = true;
-        emit({ type: "wrongWay", station: bare });
-        return;
-      }
+      // Ignore brief GPS blips that look "behind" on the line — never warn about opposite direction.
+      if (index < progressRef.current && index < nextLeg.stations.length - 1) return;
       progressRef.current = Math.max(progressRef.current, index);
       lastHopAtRef.current = Date.now();
       publishProgress(bare);

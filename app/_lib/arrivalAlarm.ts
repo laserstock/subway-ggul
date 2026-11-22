@@ -19,7 +19,6 @@ export type AlarmStage =
   | "approaching"
   | "arrived"
   | "transferring"
-  | "wrong_way"
   | "missed_transfer";
 
 export type ArrivalAlarm = {
@@ -43,7 +42,6 @@ export type ArrivalAlarm = {
 export const VIBE = {
   preArrival: [200, 100, 200] as number[],
   arrival: [500, 200, 500, 200, 500] as number[],
-  wrongWay: [400, 100, 400, 100, 400] as number[],
   missedTransfer: [600, 120, 600, 120, 600, 120, 800] as number[],
   legacy: [300, 150, 300, 150, 600] as number[],
 };
@@ -76,7 +74,6 @@ function asSingleLeg(station: SavedStation, line: string | null): AlarmLeg {
     hopSeconds: [],
     afterTransferSeconds: 0,
     expectedNextStations: [],
-    oppositeStations: [],
     beyondStations: [],
     transferTip: null,
     nextLine: null,
@@ -104,8 +101,11 @@ function normalize(raw: ArrivalAlarm): ArrivalAlarm {
   const legs =
     (raw.legs?.length > 0 ? raw.legs : [asSingleLeg(raw.station, raw.line)]).map(normalizeLeg);
   const legIndex = Math.min(Math.max(0, raw.legIndex ?? 0), legs.length - 1);
+  // Drop the retired wrong-direction stage from older saved alarms.
+  const stage = (raw.stage as string) === "wrong_way" ? "armed" : raw.stage;
   return {
     ...raw,
+    stage,
     legs,
     legIndex,
     muteVoice: Boolean(raw.muteVoice),
