@@ -4,16 +4,21 @@ export type LocalNoteKind = "route" | "luggage" | "access" | "timing";
 
 export type LocalNote = { kind: LocalNoteKind; text: Localized };
 
+/** Compact chips shown under the essentials grid on the station page. */
+export type StationHighlight = { label: Localized };
+
 export type StationLocalGuide = {
   /** Set when two stations share the Korean name (신촌역 on Line 2 and on the Gyeongui–Jungang Line). */
   line?: string;
   /** Why travelers come here; opens the station overview right after the line facts. */
   intro: Localized;
   notes: LocalNote[];
+  /** Optional field-verified badges for the header summary. */
+  highlights?: StationHighlight[];
 };
 
 /** When the notes below were last reviewed against official operator and venue information. */
-export const LOCAL_GUIDES_CHECKED = "2026-11-16";
+export const LOCAL_GUIDES_CHECKED = "2026-11-22";
 
 const AREX_TICKETS: LocalNote = {
   kind: "route",
@@ -106,37 +111,80 @@ export const STATION_LOCAL_GUIDES: Record<string, StationLocalGuide> = {
   },
   홍대입구역: {
     intro: {
-      ko: "홍대입구역은 인디 패션숍과 라이브 클럽, 거리 버스킹으로 유명한 홍대 상권의 관문이고, 공항철도도 정차해요.",
-      en: "Hongik University Station is the gateway to Hongdae's indie shops, live-music clubs and street busking, and the airport railroad stops here too.",
-      zh: "弘大入口站是弘大商圈的门户，以独立时装店、现场音乐俱乐部和街头表演闻名，机场铁路也在此停靠。",
-      ja: "弘大入口駅はインディーズ系ショップやライブハウス、路上ライブで知られる弘大エリアの玄関口で、空港鉄道も停車します。",
+      ko: "홍대입구역은 인디 패션숍과 라이브 클럽, 거리 버스킹으로 유명한 홍대 상권의 관문이고, 공항철도(AREX)·경의중앙선도 정차해요.",
+      en: "Hongik University Station is the gateway to Hongdae's indie shops, live-music clubs and street busking, with AREX and the Gyeongui–Jungang Line calling here too.",
+      zh: "弘大入口站是弘大商圈的门户，以独立时装店、现场音乐俱乐部和街头表演闻名，机场铁路（AREX）与京义·中央线也在此停靠。",
+      ja: "弘大入口駅はインディーズ系ショップやライブハウス、路上ライブで知られる弘大エリアの玄関口で、空港鉄道（AREX）と京義・中央線も停車します。",
     },
-    notes: [
+    highlights: [
       {
-        kind: "route",
-        text: {
-          ko: "공항철도 일반열차가 이곳에 서기 때문에 서울역을 거치지 않고 인천공항까지 한 번에 갈 수 있어요.",
-          en: "AREX all-stop trains call here, so you can ride straight to Incheon Airport without going through Seoul Station.",
-          zh: "机场铁路普通列车在此停靠，无需经过首尔站即可直达仁川机场。",
-          ja: "空港鉄道の一般列車が停まるので、ソウル駅を経由せずに仁川空港まで乗り換えなしで行けます。",
+        label: {
+          ko: "개찰구 밖 화장실",
+          en: "Outside-gate restrooms",
+          zh: "闸机外洗手间",
+          ja: "改札外トイレ",
         },
       },
       {
-        kind: "timing",
+        label: {
+          ko: "8번 출구 엘베",
+          en: "Exit 8 elevator",
+          zh: "8号出口电梯",
+          ja: "8番出口エレベーター",
+        },
+      },
+      {
+        label: {
+          ko: "AREX 환승 끝칸 1-1·10-4",
+          en: "AREX transfer: cars 1-1 / 10-4",
+          zh: "机场铁路换乘：1-1·10-4车厢",
+          ja: "AREX乗換は1-1・10-4号車",
+        },
+      },
+      {
+        label: {
+          ko: "홍대거리→8번 출구",
+          en: "Walking Street → Exit 8",
+          zh: "弘大街 → 8号出口",
+          ja: "歩きたい通り → 8番出口",
+        },
+      },
+    ],
+    notes: [
+      {
+        kind: "access",
         text: {
-          ko: "버스킹은 주말 저녁에 가장 활발하고, 쇼핑은 사람이 적은 평일 오후가 편해요.",
-          en: "Buskers are out in force on weekend evenings; weekday afternoons are calmer for shopping.",
-          zh: "街头表演在周末傍晚最热闹，想安静购物可以选工作日下午。",
-          ja: "路上ライブは週末の夕方がいちばん盛り上がり、買い物なら人の少ない平日の午後がおすすめです。",
+          ko: "2호선 구역 화장실은 개찰구 밖이에요(2·3번 출구 방향 대합실, 8·9번 출구 방향 대합실). 급하면 교통카드를 태그하고 나가야 해요. 공항철도(AREX) 구역은 개찰구 안과 환승 통로 근처 화장실을 쓸 수 있어요.",
+          en: "Line 2 restrooms are outside the fare gates (concourses toward Exits 2·3 and 8·9) — tap out if you need them mid-ride. In the AREX area you can use restrooms inside the AREX gates and near the transfer corridor.",
+          zh: "2号线区域洗手间在闸机外（2·3号出口方向大厅、8·9号出口方向大厅），着急时需刷卡出站。机场铁路（AREX）区域可使用闸机内及换乘通道附近的洗手间。",
+          ja: "2号線エリアのトイレは改札外です（2・3番出口方面コンコース、8・9番出口方面コンコース）。急ぐときは交通カードをタッチして出る必要があります。空港鉄道（AREX）エリアは改札内と乗換通路付近のトイレが使えます。",
         },
       },
       {
         kind: "access",
         text: {
-          ko: "2호선·공항철도·경의중앙선 환승 통로가 길어서, 캐리어가 있으면 환승에 여유 시간을 두세요.",
-          en: "Transfers among Line 2, AREX and the Gyeongui–Jungang Line are long corridors — allow extra time with a suitcase.",
-          zh: "2号线、机场铁路、京义·中央线换乘通道较长，带行李箱请预留时间。",
-          ja: "2号線・空港鉄道・京義・中央線の乗り換え通路は長いので、スーツケースがある場合は余裕を見てください。",
+          ko: "캐리어·유모차는 원스톱 엘리베이터를 쓰세요. 홍대 걷고싶은거리 방면은 8번 출구 엘베 추천(9번은 퇴근·주말에 계단 정체가 심해요). 연남동·경의선숲길은 3번 출구 인근 엘베, 인천·김포공항 AREX는 4·5번 출구 방향 엘베가 공항철도 대합실과 가장 빨라요.",
+          en: "With luggage or a stroller, use a street-to-platform elevator. For Hongdae Walking Street prefer Exit 8 (Exit 9 stairs jam at rush hour and weekends). For Yeonnam-dong / Gyeongui Line Forest Park use the lift near Exit 3. For AREX to Incheon or Gimpo, Exits 4·5 connect fastest to the AREX concourse.",
+          zh: "带行李箱或婴儿车请走贯通电梯。去弘大步行街优先8号出口电梯（9号出口下班和周末楼梯极易拥堵）。去延南洞·京义线森林步道用3号出口附近电梯。去仁川/金浦机场坐AREX时，4·5号出口方向电梯通往机场铁路大厅最快。",
+          ja: "キャリーやベビーカーは地上〜ホームのエレベーターを。歩きたい通り方面は8番出口のEVがおすすめ（9番は退勤・週末に階段が大混雑）。延南洞・京義線森の道は3番出口付近のEV、仁川・金浦方面のAREXは4・5番出口方面のEVが空港鉄道コンコースへ最短です。",
+        },
+      },
+      {
+        kind: "route",
+        text: {
+          ko: "2호선→공항철도 환승 통로는 도보 약 6~8분으로 길어요. 2호선에서는 1-1 또는 10-4 끝칸에 타면 환승 에스컬레이터와 가장 가까워요. 공항철도 일반열차로 서울역을 거치지 않고 인천공항까지 갈 수 있어요.",
+          en: "The Line 2 → AREX transfer walk takes about 6–8 minutes. On Line 2, ride in car 1 door 1 or car 10 door 4 to stay nearest the transfer escalators. AREX all-stop trains also go straight to Incheon Airport without changing at Seoul Station.",
+          zh: "2号线换乘机场铁路通道步行约6～8分钟，较长。在2号线请尽量乘坐1车厢1门或10车厢4门，离换乘扶梯最近。机场铁路普通列车也可不经首尔站直达仁川机场。",
+          ja: "2号線→空港鉄道の乗換通路は徒歩約6〜8分と長めです。2号線では1-1または10-4の端の車両に乗ると乗換エスカレータに一番近いです。空港鉄道の一般列車ならソウル駅を経由せず仁川空港まで行けます。",
+        },
+      },
+      {
+        kind: "timing",
+        text: {
+          ko: "약속이 홍대입구 사거리·걷고싶은거리 쪽이면 9번보다 8번 출구로 나오는 편이 훨씬 빨라요. 버스킹은 주말 저녁에 가장 붐비고, 쇼핑은 평일 오후가 한산해요.",
+          en: "If you're meeting near Hongdae Intersection or the Walking Street, Exit 8 is much faster than the crowded Exit 9 stairs. Busking peaks on weekend evenings; weekday afternoons are calmer for shopping.",
+          zh: "若约在弘大十字路口或步行街一带，走8号出口比拥堵的9号出口楼梯快得多。街头表演周末傍晚最热闹，购物则工作日下午更轻松。",
+          ja: "待ち合わせが弘大入口交差点・歩きたい通り方面なら、混む9番より8番出口の方が断然早いです。路上ライブは週末夕方がいちばん賑わい、買い物は平日午後が空いています。",
         },
       },
     ],

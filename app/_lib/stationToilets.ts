@@ -245,7 +245,11 @@ export const STATION_TOILETS: Record<string, readonly StationToilet[]> = {
   "합정역": [{"line":"2호선","floor":"B1","gate":"inside","exit":"1","detail":"대합실, 1,2번출구"},{"line":"6호선","floor":"B1","gate":"outside","exit":"8","detail":"대합실 8번출구 앞"}],
   "행당역": [{"line":"5호선","floor":"B3","gate":"outside","exit":"1·2·3·4","detail":"E/S 옆(고객상담실 및만남의장소 앞)"}],
   "혜화역": [{"line":"4호선","floor":"B1","gate":"outside","exit":"3","detail":"3번출구 방면"}],
-  "홍대입구역": [{"line":"2호선","floor":"B1","gate":"outside","exit":"2","detail":"대합실, 2번출구 옆"}],
+  "홍대입구역": [
+    {"line":"2호선","floor":"B1","gate":"outside","exit":"2","detail":"2·3번 출구 방향 대합실(개찰구 밖)"},
+    {"line":"2호선","floor":"B1","gate":"outside","exit":"8","detail":"8·9번 출구 방향 대합실(개찰구 밖)"},
+    {"line":"공항철도","floor":"B1","gate":"inside","exit":null,"detail":"공항철도 개찰구 안·환승통로 인근"},
+  ],
   "홍제역": [{"line":"3호선","floor":"B2","gate":"outside","exit":"2","detail":"대합실 다게이트 앞"},{"line":"3호선","floor":"B1","gate":"outside","exit":"2","detail":"대합실 상가(다이소) 옆"}],
   "화곡역": [{"line":"5호선","floor":"B1","gate":"outside","exit":"7·8","detail":"대합실 7,8번 출구 앞"}],
   "화랑대역": [{"line":"6호선","floor":"B1","gate":"outside","exit":"6·7","detail":"대합실"}],

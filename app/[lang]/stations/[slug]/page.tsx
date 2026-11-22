@@ -383,6 +383,18 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
           </div>
         ) : null}
         <UtilityChips station={station} detail={detail} locale={lang} />
+        {overview.highlights.length ? (
+          <ul className="mt-3 flex flex-wrap gap-1.5 lg:mt-4 lg:gap-2" aria-label={tc("localNotes", lang)}>
+            {overview.highlights.map((label) => (
+              <li
+                key={label}
+                className="inline-flex items-center rounded-full border border-honey/35 bg-honey-soft px-2.5 py-1 text-[12px] font-bold text-honey-strong lg:px-3 lg:text-[13px]"
+              >
+                {label}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2 lg:mt-6">
           {station.lines.map((line) => (
             <LineLink key={line} line={line} locale={lang} large />

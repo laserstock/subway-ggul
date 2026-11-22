@@ -571,16 +571,25 @@ export const LINE2_MAPS: Record<string, StepFreeMap> = {
   홍대입구역: main("239", "hongik", [N.hapjeong, N.sinchon], UNDER, {
     platformEv: 0.52,
     gate: 0.6,
-    exitEv: 0.52,
-    exit: exitNo("2·8"),
+    exitEv: 0.78,
+    exit: exitNo("8"),
     notes: [
-      note("🛗", "엘리베이터 하나로 승강장 ↔ 대합실 ↔ 지상(2·8번 출구 쪽)이 이어져요.", "One lift links the platform, concourse and street (Exits 2·8)."),
+      note(
+        "🛗",
+        "홍대 걷고싶은거리 방면은 8번 출구 엘리베이터 추천(9번은 퇴근·주말 계단 정체). 연남동·경의선숲길은 3번 출구 인근 엘베.",
+        "For Walking Street use Exit 8 elevator (Exit 9 stairs jam at rush/weekends). For Yeonnam-dong / forest park use the lift near Exit 3.",
+      ),
+      note(
+        "✈️",
+        "인천·김포공항 AREX는 4·5번 출구 방향 엘리베이터가 공항철도 대합실과 가장 빨라요. 2호선→AREX 환승은 도보 6~8분, 1-1·10-4 끝칸이 유리해요.",
+        "For AREX to Incheon/Gimpo, Exits 4·5 lifts reach the AREX concourse fastest. Line 2→AREX walk is 6–8 min — ride cars 1-1 or 10-4.",
+      ),
       note(
         "🔁",
-        "공항철도·경의중앙선: B1 대합실 신촌 방면 '갈아타는 곳' (5~7번 출구 방면)",
-        "AREX / Gyeongui–Jungang: transfer point at the Sinchon end of B1 (toward Exits 5–7)",
+        "공항철도·경의중앙선: B1 대합실 신촌 방면 '갈아타는 곳' (4~7번 출구 방면)",
+        "AREX / Gyeongui–Jungang: transfer point at the Sinchon end of B1 (toward Exits 4–7)",
       ),
-      toilet("B1 대합실", "B1 concourse"),
+      toilet("개찰구 밖 B1(2·3·8·9번 출구 대합실) · AREX 개찰구 안", "Outside gates on B1 (Exits 2·3·8·9) · inside AREX gates"),
     ],
   }),
   신촌역: main("240", "sinchon", [N.hongik, N.ewha], UNDER, {

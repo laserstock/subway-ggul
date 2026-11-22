@@ -24,6 +24,8 @@ export type StationOverview = {
   tips: string[];
   /** Hand-written local notes; empty outside the stations in STATION_LOCAL_GUIDES. */
   notes: { kind: LocalNoteKind; text: string }[];
+  /** Compact field tips shown as header badges under the essentials grid. */
+  highlights: string[];
   checked: string | null;
 };
 
@@ -584,6 +586,7 @@ export function stationOverview(station: GuideStation, detail: GuideDetail, loca
     overview: text.overview.filter((sentence): sentence is string => !!sentence).map(write),
     tips: [paragraph(text.care, base), paragraph(text.moving, base)].filter(Boolean).map(write),
     notes: (guide?.notes ?? []).map((note) => ({ kind: note.kind, text: inScript(locale, t(note.text, base)) })),
+    highlights: (guide?.highlights ?? []).map((row) => inScript(locale, t(row.label, base))),
     checked: guide ? LOCAL_GUIDES_CHECKED : null,
   };
 }
