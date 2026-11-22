@@ -9,6 +9,7 @@ import { buildPlanner, plannerStations, routeSummary, type Plan, type PlanSpot, 
 import { clockLabel, parsePlannerQuery, plannerHref, type PlannerQuery } from "../../../_lib/plannerParams";
 import { categoryText, plannerCopy, pt, type PlannerCopy } from "../../../_lib/plannerText";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
+import WebOnlyAffiliateBanner from "../../../_components/WebOnlyAffiliateBanner";
 import { AppPromo, JsonLd } from "../../_guide/parts";
 import { CATEGORY_ICONS, LineBadge, PIN_COLORS } from "../plannerIcons";
 import PlannerFormModal, { PlannerForm } from "../PlannerFormModal";
@@ -295,6 +296,9 @@ async function Itinerary({ params, searchParams }: PageProps<"/[lang]/planner/ro
         }
         footer={
           <>
+            <div className="mt-8">
+              <WebOnlyAffiliateBanner locale={lang} />
+            </div>
             <div className="mt-8">
               <AppPromo locale={lang} />
             </div>

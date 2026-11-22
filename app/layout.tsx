@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import { GoogleTagManager } from "@next/third-parties/google";
-import Script from "next/script";
 import AndroidBackHandler from "./_components/AndroidBackHandler";
 import ArrivalAlarmRunner from "./_components/ArrivalAlarmRunner";
 import BadgeCelebration from "./_components/BadgeCelebration";
@@ -82,12 +81,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSON_LD).replace(/</g, "\\u003c") }}
-        />
-        <Script
-          id="travelpayouts"
-          src="https://emrldtp.cc/NjAzMTU3.js?t=603157"
-          strategy="afterInteractive"
-          data-cmp-ab="2"
         />
       </head>
       <GoogleTagManager gtmId="GTM-5RW9WQZH" />

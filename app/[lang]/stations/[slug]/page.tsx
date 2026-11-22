@@ -6,6 +6,7 @@ import { Fragment, type ReactNode } from "react";
 import AdSense from "../../../_components/AdSense";
 import ShareButtons from "../../../_components/ShareButtons";
 import StationFaqSchema from "../../../_components/StationFaqSchema";
+import WebOnlyAffiliateBanner from "../../../_components/WebOnlyAffiliateBanner";
 import {
   appStationHref,
   GUIDE_STATIONS,
@@ -615,6 +616,10 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
           <RelatedStations items={related} locale={lang} />
         </Section>
       ) : null}
+
+      <div className="mt-8 lg:mt-12">
+        <WebOnlyAffiliateBanner locale={lang} />
+      </div>
 
       <div className="mt-8 lg:mt-14">
         <ShareButtons
