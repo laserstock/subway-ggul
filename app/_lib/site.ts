@@ -8,11 +8,11 @@ export const SITE_URL = "https://www.k-sub.com";
 export const SITE_BRAND_NAME = "K-SUB";
 export const SITE_BRAND_DISPLAY = "K-SUB (k-sub.com)";
 export const SITE_BRAND_TITLE =
-  "K-SUB (k-sub.com) | 서울 지하철 편의시설 & 여행 코스 플래너 - Seoul Subway Guide";
+  "K-SUB (k-sub.com) | Seoul Subway Guide, Restrooms, Elevators & Trip Planner";
 export const SITE_BRAND_DESCRIPTION =
-  "k-sub com (www.k-sub.com) is the official K-SUB Seoul Subway Guide — station facilities, travel course planner, lockers, restrooms and exits at www.k-sub.com.";
+  "k-sub com (www.k-sub.com) is the official K-SUB Seoul Subway Guide — restrooms, elevators, luggage lockers and a trip planner for every station at www.k-sub.com.";
 /** WebSite JSON-LD alternate names so “k-sub com” maps to this domain, not ksub.com. */
-export const SITE_BRAND_ALTERNATE_NAMES = ["k-sub.com", "k-sub com", "케이서브", "지하철꿀정보", "K-SUB (k-sub.com)"] as const;
+export const SITE_BRAND_ALTERNATE_NAMES = ["k-sub.com", "k-sub com", "케이서브"] as const;
 
 /** AdSense publisher id (public: it appears in every page and in ads.txt). */
 export const ADSENSE_CLIENT_ID = "ca-pub-5995977562355838";
@@ -30,7 +30,7 @@ export const APP_RELEASED = false;
 export const APP_SCREEN_ROBOTS: Metadata["robots"] = { index: false, follow: true };
 
 /** Bump when the guide pages' data or copy change, for the sitemap's lastmod. */
-export const GUIDE_UPDATED = "2026-11-21";
+export const GUIDE_UPDATED = "2026-11-22";
 
 /** Server-rendered, crawlable station guides live under /ko, /en, /zh, /zh-tw and /ja; returns the app locale. */
 export function guideLocale(pathname: string | null): Locale | null {

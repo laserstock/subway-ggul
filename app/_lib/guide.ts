@@ -304,16 +304,9 @@ export const POPULAR_GUIDES: readonly GuideStation[] = POPULAR_KO.map((ko) => gu
   (station): station is GuideStation => station !== null,
 );
 
-/** The interactive app page for a station, opened in the guide's language. */
+/** The interactive app page for a station — clean SEO path `/station/[slug]`. */
 export function appStationHref(station: GuideStation, locale: Locale) {
-  const params = new URLSearchParams({
-    station: station.ko,
-    lat: String(station.lat),
-    lng: String(station.lng),
-    lines: station.lines.join(" · "),
-    lang: locale,
-  });
-  return `/station?${params}`;
+  return locale && locale !== "en" ? `/station/${station.slug}?lang=${locale}` : `/station/${station.slug}`;
 }
 
 export function googleMapsHref(lat: number, lng: number) {

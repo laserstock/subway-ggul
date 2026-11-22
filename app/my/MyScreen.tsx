@@ -30,6 +30,7 @@ import {
   useSeatSuccessStore,
 } from "../_lib/seatSuccess";
 import { setDestinationStation, useDestinationStation } from "../_lib/selectedStation";
+import { stationAppPath } from "../_lib/stationAppPath";
 import { stationName, stationParams, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
 import type { StationToilet } from "../_lib/stationToilets";
 import { routeHref } from "../route/params";
@@ -550,7 +551,7 @@ export default function MyScreen() {
   function openDashboard(station: StationOption) {
     setDestinationStation(station);
     addRecentStation(station);
-    router.push(`/station?${stationParams(station)}`);
+    router.push(stationAppPath(station));
   }
 
   function filterToPlace(place: MyPlace) {

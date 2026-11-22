@@ -47,6 +47,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...GUIDE_STATIONS.flatMap((station) =>
       guideEntries(`/stations/${station.slug}`, stationSitemapPriority(station.slug)),
     ),
+    // Clean English app station URLs (`/station/myeongdong`, …)
+    ...GUIDE_STATIONS.map((station) => ({
+      url: `${SITE_URL}/station/${station.slug}`,
+      lastModified: GUIDE_UPDATED,
+      changeFrequency: "monthly" as const,
+      priority: stationSitemapPriority(station.slug),
+    })),
     ...guideEntries("/planner", 0.8),
     ...["/about", "/editorial-policy"].flatMap((path) =>
       guideEntries(path, 0.5).map((entry) => ({ ...entry, lastModified: TRUST_UPDATED, changeFrequency: "yearly" as const })),
@@ -56,6 +63,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: LEGAL_UPDATED,
       changeFrequency: "yearly" as const,
       priority: 0.2,
+    })),
+    // Feature landing screens (still may carry noindex; listed for discovery of deep links)
+    ...["/urgent", "/luggage", "/transfer", "/meet"].map((path) => ({
+      url: `${SITE_URL}${path}`,
+      lastModified: GUIDE_UPDATED,
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
     })),
   ];
 }

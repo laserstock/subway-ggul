@@ -244,13 +244,7 @@ function StationPanel({
   actions?: MapPickAction[];
   onClose: () => void;
 }) {
-  const live = `/station?${new URLSearchParams({
-    station: station.ko,
-    lat: String(station.lat),
-    lng: String(station.lng),
-    lines: station.lines.map((index) => lines[index].ko).join(" · "),
-    lang: appLang,
-  })}`;
+  const live = appLang && appLang !== "en" ? `/station/${station.slug}?lang=${appLang}` : `/station/${station.slug}`;
   const lockers = [station.lockers ? fill(copy.lockersCount, { n: station.lockers }) : null, station.desk ? copy.desk : null].filter(
     (part): part is string => part !== null,
   );

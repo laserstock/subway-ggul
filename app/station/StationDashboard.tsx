@@ -15,6 +15,7 @@ import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import { useStationReports } from "../_lib/reports";
 import { setDestinationStation } from "../_lib/selectedStation";
+import { stationAppPath } from "../_lib/stationAppPath";
 import { stationParams, t, type Localized, type StationOption } from "../_lib/stations";
 import { loadUrgent, type StationUrgent } from "../_lib/urgent";
 import AlarmBanner from "./AlarmBanner";
@@ -83,7 +84,7 @@ export default function StationDashboard({ station }: { station: StationOption |
 
   function selectStation(next: StationOption) {
     setSearchOpen(false);
-    router.push(`/station?${stationParams(next)}`);
+    router.push(stationAppPath(next));
   }
 
   const liveTip = reports[0];

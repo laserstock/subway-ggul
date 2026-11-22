@@ -3,9 +3,8 @@ import { cacheLife } from "next/cache";
 import { SITE_URL } from "./_lib/site";
 
 /**
- * Guide station URLs under /{lang}/stations/* must stay crawlable.
- * Only block machine/API surfaces — account screens use noindex instead of Disallow
- * so Google can still read their robots meta.
+ * Allow all crawlers on public HTML. Block only API/admin.
+ * Clean `/station/[slug]` paths and multilingual `/…/stations/` guides stay crawlable.
  */
 export default async function robots(): Promise<MetadataRoute.Robots> {
   "use cache";
@@ -14,14 +13,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     rules: [
       {
         userAgent: "*",
-        allow: [
-          "/",
-          "/ko/stations/",
-          "/en/stations/",
-          "/ja/stations/",
-          "/zh/stations/",
-          "/zh-tw/stations/",
-        ],
+        allow: "/",
         disallow: ["/api/", "/admin/"],
       },
     ],

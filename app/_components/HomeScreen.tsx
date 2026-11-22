@@ -31,6 +31,7 @@ import {
   useSelectedStation,
 } from "../_lib/selectedStation";
 import { useStationTracker } from "../_lib/useStationTracker";
+import { stationAppPath } from "../_lib/stationAppPath";
 import { distanceMeters, stationParams, t, type StationOption } from "../_lib/stations";
 
 const COPY = {
@@ -136,7 +137,7 @@ export default function HomeScreen() {
   function openDashboard(next: StationOption) {
     setDestinationStation(next);
     setSearchOpen(false);
-    router.push(`/station?${stationParams(next)}`);
+    router.push(stationAppPath(next));
   }
 
   function pickDestination(next: StationOption) {

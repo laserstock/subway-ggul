@@ -1,21 +1,31 @@
 import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
 import AppHeader from "../_components/AppHeader";
+import { guideByKo } from "../_lib/guide";
 import { APP_SCREEN_ROBOTS } from "../_lib/site";
 import { stationFromParams } from "../_lib/stations";
 import { DASHBOARD_TITLE } from "./header";
 import StationDashboard from "./StationDashboard";
 
 export const metadata: Metadata = {
-  title: "역 꿀정보 · 지하철꿀정보",
+  title: "Station Guide · K-SUB (k-sub.com)",
   robots: APP_SCREEN_ROBOTS,
 };
 
 type SearchParams = PageProps<"/station">["searchParams"];
 
+/**
+ * Legacy `/station?station=…&lat=…` URLs redirect to the clean `/station/[slug]` path when the
+ * station is in the guide index; otherwise keep the query dashboard (noindex).
+ */
 async function DashboardContent({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const station = stationFromParams(params);
+  if (station) {
+    const guide = guideByKo(station.name.ko, station.center);
+    if (guide) permanentRedirect(`/station/${guide.slug}`);
+  }
   return <StationDashboard key={station?.key ?? "none"} station={station} />;
 }
 
