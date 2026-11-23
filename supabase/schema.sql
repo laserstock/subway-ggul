@@ -1,5 +1,7 @@
--- 지하철꿀정보 · Supabase schema
+-- 지하철꿀정보 · Supabase schema (UGC: reports / 꿀스팟 / facility votes)
 -- Run once in Supabase Dashboard → SQL Editor (safe to re-run).
+-- Catalog hub (stations, facilities, transfers, POIs, AI cache) lives in
+-- migrations/20261123_catalog_hub.sql — apply that file separately; do not merge into this one.
 -- Every visitor gets an anonymous per-device account (Authentication → Sign In / Providers → Anonymous sign-ins: ON).
 -- The browser only ever holds the publishable/anon key; row level security below is what protects the data.
 

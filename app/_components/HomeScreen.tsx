@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from "react";
 import { flushSync } from "react-dom";
+import AIConciergeModal from "./AIConciergeModal";
 import AppHeader from "./AppHeader";
 import BottomNav from "./BottomNav";
 import DestinationAlarm from "./DestinationAlarm";
 import DragScroll from "./DragScroll";
-import { SearchIcon, StarIcon } from "./icons";
+import { SearchIcon, SparkleIcon, StarIcon } from "./icons";
 import LineBadges from "./LineBadges";
 import LiveFeed from "./LiveFeed";
 import LocationSheet from "./LocationSheet";
@@ -36,10 +37,17 @@ import { distanceMeters, stationParams, t, type StationOption } from "../_lib/st
 
 const COPY = {
   search: {
-    ko: "어느 역으로 가시나요? (예: 광화문역, 서울역)",
-    en: "Where are you heading? (e.g. Gwanghwamun, Seoul Stn.)",
-    zh: "您要去哪个站？（例：光化门站、首尔站）",
-    ja: "どの駅へ行きますか？（例：光化門駅、ソウル駅）",
+    ko: "역 이름 또는 '짐 많음, 엘베 출구' 검색",
+    en: "Station or 'luggage, elevator exit'...",
+    zh: "站名或搜尋「行李多、電梯出口」",
+    ja: "駅名や「荷物多い・エレベーター」検索",
+  },
+  ai: { ko: "AI", en: "AI", zh: "AI", ja: "AI" },
+  aiAria: {
+    ko: "AI 상황별 해결사 열기",
+    en: "Open AI situation helper",
+    zh: "開啟 AI 情境解決助手",
+    ja: "AIシチュエーション助手を開く",
   },
   reportCta: { ko: "나도 1초 제보하기", en: "Report in 1 second", zh: "1秒快速上报", ja: "1秒で投稿する" },
   reportDone: {
@@ -70,13 +78,21 @@ export default function HomeScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiSeed, setAiSeed] = useState("");
+  const [homeQuery, setHomeQuery] = useState("");
   const [searchMode, setSearchMode] = useState<SearchMode>("dashboard");
   const alarm = useArrivalAlarm();
   const closeLocation = useCallback(() => setLocationOpen(false), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
+  const closeAi = useCallback(() => {
+    setAiOpen(false);
+    setAiSeed("");
+  }, []);
   const { toast, showToast } = useToast();
   const mainRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const homeQueryRef = useRef<HTMLInputElement>(null);
   const resetToken = useHomeResetToken();
   const [handledReset, setHandledReset] = useState(resetToken);
 
@@ -85,6 +101,8 @@ export default function HomeScreen() {
     setSheetOpen(false);
     setLocationOpen(false);
     setSearchOpen(false);
+    setAiOpen(false);
+    setAiSeed("");
   }
 
   const confirming =
@@ -132,6 +150,28 @@ export default function HomeScreen() {
       setSearchOpen(true);
     });
     searchInputRef.current?.focus();
+  }
+
+  function openAi(seed = homeQuery) {
+    const text = seed.trim();
+    setAiSeed(text);
+    setAiOpen(true);
+  }
+
+  function onHomeQueryKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const value = homeQuery.trim();
+    if (!value) {
+      openSearch("dashboard");
+      return;
+    }
+    // Situation-style prompts go to AI; short station-like queries open station search.
+    if (value.length >= 8 || /[,\s]/.test(value) || /짐|엘베|화장실|캐리어|luggage|elevator|toilet|荷物|廁所|電梯/.test(value)) {
+      openAi(value);
+      return;
+    }
+    openSearch("dashboard");
   }
 
   function openDashboard(next: StationOption) {
@@ -186,16 +226,36 @@ export default function HomeScreen() {
 
         <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-5">
           <WebGuideBanner />
-          <button
-            type="button"
-            onClick={() => openSearch("dashboard")}
-            aria-haspopup="dialog"
-            aria-expanded={searchOpen}
-            className="mt-3 flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-muted px-3.5 py-3 text-left transition active:scale-[0.99]"
-          >
-            <SearchIcon />
-            <span className="min-w-0 flex-1 break-words text-[13px] leading-snug text-neutral-400">{t(COPY.search, locale)}</span>
-          </button>
+          <div className="mt-3 flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-muted py-2 pl-3 pr-2">
+            <button
+              type="button"
+              onClick={() => openSearch("dashboard")}
+              aria-label={t(COPY.search, locale)}
+              className="shrink-0 rounded-lg p-1 text-neutral-400 transition active:scale-95"
+            >
+              <SearchIcon />
+            </button>
+            <input
+              ref={homeQueryRef}
+              value={homeQuery}
+              onChange={(event) => setHomeQuery(event.target.value)}
+              onFocus={() => {
+                // Keep focus here for situation typing; station picker is via search icon / short Enter.
+              }}
+              onKeyDown={onHomeQueryKeyDown}
+              placeholder={t(COPY.search, locale)}
+              className="min-w-0 flex-1 bg-transparent text-[13px] leading-snug text-ink outline-none placeholder:text-neutral-400"
+            />
+            <button
+              type="button"
+              onClick={() => openAi(homeQuery)}
+              aria-label={t(COPY.aiAria, locale)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#1E293B] px-2.5 py-1.5 text-[12px] font-bold text-white shadow-[0_2px_8px_rgba(15,23,42,0.18)] transition active:scale-95"
+            >
+              <SparkleIcon size={12} className="text-[#FBBF24]" />
+              {t(COPY.ai, locale)}
+            </button>
+          </div>
 
           {myPlaces.length > 0 ? (
             <DragScroll className="-mx-4 mt-2.5 flex items-center gap-1.5 px-4">
@@ -286,6 +346,14 @@ export default function HomeScreen() {
           inputRef={searchInputRef}
           near={tracker.position ?? current?.center ?? null}
         />
+
+        {aiOpen ? (
+          <AIConciergeModal
+            onClose={closeAi}
+            initialQuery={aiSeed}
+            stationHint={station ? t(station.name, locale) : ""}
+          />
+        ) : null}
       </div>
     </div>
   );

@@ -24,10 +24,10 @@ import LineBadges from "./LineBadges";
 const COPY = {
   back: { ko: "뒤로", en: "Back", zh: "返回", ja: "戻る" },
   placeholder: {
-    ko: "역 이름을 입력하세요 (예: 광화문)",
-    en: "Enter a station (e.g. Gwanghwamun)",
-    zh: "输入车站名（例：光化门）",
-    ja: "駅名を入力（例：光化門）",
+    ko: "역 이름 또는 '짐 많음, 엘베 출구' 검색",
+    en: "Station or 'luggage, elevator exit'...",
+    zh: "站名或搜尋「行李多、電梯出口」",
+    ja: "駅名や「荷物多い・エレベーター」検索",
   },
   clear: { ko: "지우기", en: "Clear", zh: "清除", ja: "クリア" },
   submit: { ko: "검색", en: "Search", zh: "搜索", ja: "検索" },
