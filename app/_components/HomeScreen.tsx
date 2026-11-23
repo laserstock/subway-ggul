@@ -163,11 +163,14 @@ export default function HomeScreen() {
   }
 
   function openAi(seed = "") {
-    setLocationOpen(false);
-    setSearchOpen(false);
-    setSheetOpen(false);
-    setAiSeed(seed.trim());
-    setAiOpen(true);
+    // Close other overlays synchronously so the GPS sheet cannot paint under AI for a frame.
+    flushSync(() => {
+      setLocationOpen(false);
+      setSearchOpen(false);
+      setSheetOpen(false);
+      setAiSeed(seed.trim());
+      setAiOpen(true);
+    });
   }
 
   function openDashboard(next: StationOption) {
@@ -239,7 +242,11 @@ export default function HomeScreen() {
             </button>
             <button
               type="button"
-              onClick={() => openAi()}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                openAi();
+              }}
               aria-label={t(COPY.aiAria, locale)}
               aria-haspopup="dialog"
               aria-expanded={aiOpen}
@@ -320,20 +327,23 @@ export default function HomeScreen() {
           <ReportSheet station={station} onClose={() => setSheetOpen(false)} onPosted={onReportPosted} />
         ) : null}
 
-        <LocationSheet
-          isOpen={locationOpen}
-          onClose={closeLocation}
-          current={current}
-          source={selected?.source ?? null}
-          position={tracker.position}
-          searchCenter={tracker.lookupPosition}
-          issue={tracker.issue}
-          onRelocate={relocate}
-          onPick={pickCurrentStation}
-        />
+        {/* Unmount when closed/AI open — a hidden-but-mounted GPS sheet was still painting over AI. */}
+        {locationOpen && !aiOpen ? (
+          <LocationSheet
+            isOpen
+            onClose={closeLocation}
+            current={current}
+            source={selected?.source ?? null}
+            position={tracker.position}
+            searchCenter={tracker.lookupPosition}
+            issue={tracker.issue}
+            onRelocate={relocate}
+            onPick={pickCurrentStation}
+          />
+        ) : null}
 
         <SearchOverlay
-          isOpen={searchOpen}
+          isOpen={searchOpen && !aiOpen}
           onClose={closeSearch}
           onSelect={searchMode === "destination" ? pickDestination : openDashboard}
           inputRef={searchInputRef}

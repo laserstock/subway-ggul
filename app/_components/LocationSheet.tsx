@@ -171,10 +171,14 @@ export default function LocationSheet({
           setResult(null);
         }}
         ref={sheetRef}
-        style={sheetStyle}
-        className={`absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-[0_-8px_40px_rgba(15,23,42,0.18)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
-          isOpen ? "translate-y-0" : "translate-y-full"
-        }`}
+        // Inline transform must win over Tailwind: a stale drag offset used to keep the
+        // closed sheet at translateY(0) (visible + pointer-events-none = undismissable ghost).
+        style={
+          isOpen
+            ? sheetStyle
+            : { transform: "translateY(100%)", transition: "transform 300ms cubic-bezier(0.22,1,0.36,1)" }
+        }
+        className="absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-[0_-8px_40px_rgba(15,23,42,0.18)] will-change-transform"
       >
         <div {...handleProps} className="-mx-5 flex cursor-grab justify-center pb-3 pt-2.5 active:cursor-grabbing" aria-hidden>
           <span className="h-[5px] w-11 rounded-full bg-neutral-300" />
