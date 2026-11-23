@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    // Marks this checkout as the Next.js security agent upgrade path.
+    agentUpgrade: "security",
+  },
   async headers() {
     return [
       {
