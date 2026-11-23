@@ -23,7 +23,12 @@ function isHomePath(pathname: string) {
 
 /** Close the top-most in-app sheet/dialog before leaving the screen. */
 function closeTopOverlay(): boolean {
-  if (!document.querySelector('[role="dialog"]')) return false;
+  // Ignore closed overlays that stay mounted for exit animations (they used to
+  // keep role="dialog" and swallow every Android back press on the home screen).
+  const open = document.querySelector(
+    '[data-overlay-open="true"], [role="dialog"][aria-modal="true"]:not([aria-hidden="true"]):not([inert])',
+  );
+  if (!open) return false;
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   return true;
 }

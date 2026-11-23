@@ -242,9 +242,10 @@ export default function SideDrawer({
         }`}
       />
       <aside
-        role="dialog"
-        aria-modal="true"
+        role={isOpen ? "dialog" : undefined}
+        aria-modal={isOpen ? true : undefined}
         aria-label={m.app.name}
+        data-overlay-open={isOpen ? "true" : undefined}
         onTransitionEnd={(event) => {
           if (event.target === event.currentTarget && !isOpen) resetInnerState();
         }}

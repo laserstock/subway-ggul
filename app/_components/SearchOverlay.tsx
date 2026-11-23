@@ -145,11 +145,12 @@ export default function SearchOverlay({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      role={isOpen ? "dialog" : undefined}
+      aria-modal={isOpen ? true : undefined}
       aria-label={t(COPY.submit, locale)}
       aria-hidden={!isOpen}
       inert={!isOpen}
+      data-overlay-open={isOpen ? "true" : undefined}
       onTransitionEnd={(event) => {
         if (event.target !== event.currentTarget || isOpen) return;
         setQuery("");

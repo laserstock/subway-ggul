@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import AIConciergeModal from "./AIConciergeModal";
 import AppHeader from "./AppHeader";
@@ -80,7 +80,6 @@ export default function HomeScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiSeed, setAiSeed] = useState("");
-  const [homeQuery, setHomeQuery] = useState("");
   const [searchMode, setSearchMode] = useState<SearchMode>("dashboard");
   const alarm = useArrivalAlarm();
   const closeLocation = useCallback(() => setLocationOpen(false), []);
@@ -92,7 +91,6 @@ export default function HomeScreen() {
   const { toast, showToast } = useToast();
   const mainRef = useRef<HTMLElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const homeQueryRef = useRef<HTMLInputElement>(null);
   const resetToken = useHomeResetToken();
   const [handledReset, setHandledReset] = useState(resetToken);
 
@@ -146,32 +144,30 @@ export default function HomeScreen() {
 
   function openSearch(mode: SearchMode) {
     flushSync(() => {
+      setAiOpen(false);
+      setAiSeed("");
+      setLocationOpen(false);
+      setSheetOpen(false);
       setSearchMode(mode);
       setSearchOpen(true);
     });
     searchInputRef.current?.focus();
   }
 
-  function openAi(seed = homeQuery) {
-    const text = seed.trim();
-    setAiSeed(text);
-    setAiOpen(true);
+  function openLocation() {
+    setAiOpen(false);
+    setAiSeed("");
+    setSearchOpen(false);
+    setSheetOpen(false);
+    setLocationOpen(true);
   }
 
-  function onHomeQueryKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    const value = homeQuery.trim();
-    if (!value) {
-      openSearch("dashboard");
-      return;
-    }
-    // Situation-style prompts go to AI; short station-like queries open station search.
-    if (value.length >= 8 || /[,\s]/.test(value) || /짐|엘베|화장실|캐리어|luggage|elevator|toilet|荷物|廁所|電梯/.test(value)) {
-      openAi(value);
-      return;
-    }
-    openSearch("dashboard");
+  function openAi(seed = "") {
+    setLocationOpen(false);
+    setSearchOpen(false);
+    setSheetOpen(false);
+    setAiSeed(seed.trim());
+    setAiOpen(true);
   }
 
   function openDashboard(next: StationOption) {
@@ -226,31 +222,28 @@ export default function HomeScreen() {
 
         <main ref={mainRef} className="no-scrollbar flex-1 overflow-y-auto px-4 pb-5">
           <WebGuideBanner />
-          <div className="mt-3 flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-muted py-2 pl-3 pr-2">
+          <div className="mt-3 flex w-full items-center gap-2">
             <button
               type="button"
               onClick={() => openSearch("dashboard")}
-              aria-label={t(COPY.search, locale)}
-              className="shrink-0 rounded-lg p-1 text-neutral-400 transition active:scale-95"
+              aria-haspopup="dialog"
+              aria-expanded={searchOpen}
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-line bg-surface-muted py-2.5 pl-3 pr-3 text-left transition active:scale-[0.99]"
             >
-              <SearchIcon />
+              <span className="shrink-0">
+                <SearchIcon />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[13px] leading-snug text-neutral-400">
+                {t(COPY.search, locale)}
+              </span>
             </button>
-            <input
-              ref={homeQueryRef}
-              value={homeQuery}
-              onChange={(event) => setHomeQuery(event.target.value)}
-              onFocus={() => {
-                // Keep focus here for situation typing; station picker is via search icon / short Enter.
-              }}
-              onKeyDown={onHomeQueryKeyDown}
-              placeholder={t(COPY.search, locale)}
-              className="min-w-0 flex-1 bg-transparent text-[13px] leading-snug text-ink outline-none placeholder:text-neutral-400"
-            />
             <button
               type="button"
-              onClick={() => openAi(homeQuery)}
+              onClick={() => openAi()}
               aria-label={t(COPY.aiAria, locale)}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#1E293B] px-2.5 py-1.5 text-[12px] font-bold text-white shadow-[0_2px_8px_rgba(15,23,42,0.18)] transition active:scale-95"
+              aria-haspopup="dialog"
+              aria-expanded={aiOpen}
+              className="inline-flex shrink-0 items-center gap-1 rounded-2xl bg-[#1E293B] px-3 py-2.5 text-[12px] font-bold text-white shadow-[0_2px_8px_rgba(15,23,42,0.18)] transition active:scale-95"
             >
               <SparkleIcon size={12} className="text-[#FBBF24]" />
               {t(COPY.ai, locale)}
@@ -296,7 +289,7 @@ export default function HomeScreen() {
             currentDistance={current && tracker.position ? distanceMeters(tracker.position, current.center) : null}
             locating={!tracker.issue}
             locale={locale}
-            onOrigin={() => setLocationOpen(true)}
+            onOrigin={openLocation}
             onChange={() => openSearch("destination")}
           />
 

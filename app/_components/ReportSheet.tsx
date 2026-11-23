@@ -104,7 +104,7 @@ export default function ReportSheet({
   }
 
   return (
-    <div className="absolute inset-0 z-[60] flex items-end bg-black/35" role="dialog" aria-modal>
+    <div className="absolute inset-0 z-[60] flex items-end bg-black/35" role="dialog" aria-modal="true" data-overlay-open="true">
       <button
         type="button"
         aria-label={t(COPY.close, locale)}
