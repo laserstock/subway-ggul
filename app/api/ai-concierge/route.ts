@@ -10,7 +10,9 @@ import { getAdminSupabase } from "../../_lib/db/admin";
 const DAILY_LIMIT = 5;
 const CACHE_HOURS = 24;
 const QUOTA_COOKIE = "ksub-ai-quota";
-const MODEL = "gemini-2.5-flash";
+/** Prefer lite for latency; fall back if a model is retired or overloaded. */
+const MODELS = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.8-flash"] as const;
+const MODEL = MODELS[0];
 
 type Card = {
   station: string;
@@ -79,6 +81,7 @@ async function writeCache(
   cacheKey: string,
   locale: ConciergeLocale,
   payload: Pick<ConciergePayload, "answer" | "cards" | "stations">,
+  model: string,
 ) {
   const db = getAdminSupabase();
   if (!db) return;
@@ -91,7 +94,7 @@ async function writeCache(
         response: payload,
         expires_at: expires,
         data_source: "gemini",
-        metadata: { model: MODEL },
+        metadata: { model },
       },
       { onConflict: "cache_key,locale" },
     );
@@ -100,7 +103,12 @@ async function writeCache(
   }
 }
 
-async function callGemini(query: string, locale: ConciergeLocale, context: string) {
+async function callGeminiOnce(
+  model: (typeof MODELS)[number],
+  query: string,
+  locale: ConciergeLocale,
+  context: string,
+) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("gemini_unconfigured");
 
@@ -116,18 +124,24 @@ Cards should be one per mentioned station when possible.
 VERIFIED FACTS:
 ${context}`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0.3,
+    maxOutputTokens: 1024,
+    responseMimeType: "application/json",
+  };
+  // Only the heavy 3.8 model needs an explicit low thinking level.
+  if (model === "gemini-3.8-flash") {
+    generationConfig.thinkingConfig = { thinkingLevel: "low" };
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: query }] }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 1024,
-        responseMimeType: "application/json",
-      },
+      generationConfig,
     }),
   });
   if (!response.ok) {
@@ -138,12 +152,32 @@ ${context}`;
     candidates?: { content?: { parts?: { text?: string }[] } }[];
   };
   const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+  if (!text.trim()) throw new Error("gemini_empty");
   const parsed = JSON.parse(text) as { answer?: string; cards?: Card[]; stations?: string[] };
   return {
     answer: parsed.answer?.trim() || text.trim(),
     cards: Array.isArray(parsed.cards) ? parsed.cards.slice(0, 6) : [],
     stations: Array.isArray(parsed.stations) ? parsed.stations.slice(0, 6) : [],
+    model,
   };
+}
+
+async function callGemini(query: string, locale: ConciergeLocale, context: string) {
+  let lastError: unknown;
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await callGeminiOnce(model, query, locale, context);
+      } catch (err) {
+        lastError = err;
+        const message = err instanceof Error ? err.message : String(err);
+        const retryable = /gemini_503|gemini_429|gemini_empty/.test(message);
+        if (!retryable) break;
+        await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("gemini_failed");
 }
 
 export async function POST(request: Request) {
@@ -205,7 +239,7 @@ export async function POST(request: Request) {
       cards: result.cards,
       stations: result.stations.length ? result.stations : stations,
     };
-    await writeCache(cacheKey, locale, payload);
+    await writeCache(cacheKey, locale, payload, result.model);
 
     const nextCount = quota.count + 1;
     jar.set(QUOTA_COOKIE, `${quota.day}:${nextCount}`, {
@@ -219,7 +253,8 @@ export async function POST(request: Request) {
       ...payload,
       cached: false,
       remaining: Math.max(0, DAILY_LIMIT - nextCount),
-    } satisfies ConciergePayload);
+      model: result.model,
+    });
   } catch (err) {
     console.error("[ai-concierge]", err);
     return Response.json({ error: "upstream_failed" }, { status: 502 });

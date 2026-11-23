@@ -125,7 +125,9 @@ export async function buildStationContext(query: string): Promise<{ stations: st
   const blocks: string[] = [];
   for (const stationKo of stations) {
     const fromDb = await supabaseFacts(stationKo);
-    const facts = fromDb.length ? fromDb : staticFacts(stationKo);
+    const fromStatic = staticFacts(stationKo);
+    // Prefer catalog rows, but always keep static toilet/transfer/elevator facts as backup.
+    const facts = fromDb.length ? [...fromDb, ...fromStatic] : fromStatic;
     blocks.push(`## ${stationKo}\n${facts.length ? facts.join("\n") : "- No verified facility rows; say so and avoid inventing exit numbers."}`);
   }
 
