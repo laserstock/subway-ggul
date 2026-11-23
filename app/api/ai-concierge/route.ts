@@ -7,8 +7,6 @@ import {
 } from "../../_lib/aiConciergeContext";
 import { getAdminSupabase } from "../../_lib/db/admin";
 
-export const runtime = "nodejs";
-
 const DAILY_LIMIT = 5;
 const CACHE_HOURS = 24;
 const QUOTA_COOKIE = "ksub-ai-quota";
