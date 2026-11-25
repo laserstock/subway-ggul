@@ -31,10 +31,17 @@ export async function generateMetadata({ params }: { params: StationSlugParams }
   const title = `${enName} Station Exit, Restroom & Elevator Guide | ${SITE_BRAND_DISPLAY}`;
   const description = `Find inside-gate restrooms, elevator exits, Daiso, Starbucks, and luggage lockers near ${enName} Station on Seoul Subway via k-sub.com.`;
   const url = `${SITE_URL}/station/${station.slug}`;
+  /**
+   * This is the in-app station screen (also opened from QR codes and shared links). Its crawlable summary
+   * duplicates the English guide, so it points Google at `/en/stations/{slug}` instead of competing with
+   * it: one canonical per station, with the full hreflang set declared on the guide itself. The page stays
+   * indexable and crawlable so shared links keep working and its signals pass to the guide.
+   */
+  const canonical = `${SITE_URL}/en/stations/${station.slug}`;
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical },
     openGraph: {
       type: "website",
       siteName: SITE_BRAND_DISPLAY,

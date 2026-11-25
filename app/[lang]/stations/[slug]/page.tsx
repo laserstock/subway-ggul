@@ -17,7 +17,6 @@ import {
   type GuideDetail,
   type GuideExit,
   type GuideStation,
-  type GuideTransfer,
 } from "../../../_lib/guide";
 import {
   BRAND,
@@ -25,7 +24,6 @@ import {
   GUIDE_YEAR,
   guideYearTag,
   gt,
-  lineLabel,
   stationFaq,
   stationKeywords,
   stationMetaDescription,
@@ -35,7 +33,6 @@ import {
   stationSummary,
   stationTitle,
   tc,
-  walkMinutesLabel,
 } from "../../../_lib/guideCopy";
 import { GUIDE_LANGUAGES, isGuideLocale, contentLocale, type GuideLocale } from "../../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
@@ -49,6 +46,7 @@ import RelatedStations from "../../_guide/RelatedStations";
 import StationFaq from "../../_guide/StationFaq";
 import { OverviewLead, TravelerTips } from "../../_guide/StationOverview";
 import StationSeoSchema from "../../_guide/StationSeoSchema";
+import { CourseCta, StationFactsTable, TransferTable } from "../../_guide/StationFacts";
 import { adjacentStations, hubStations, relatedStations } from "../../../_lib/stationRelated";
 
 export function generateStaticParams() {
@@ -262,43 +260,6 @@ function Empty({ children }: { children: ReactNode }) {
   return <p className="rounded-2xl bg-surface-muted px-4 py-3 text-[14px] text-ink-muted lg:px-5 lg:py-4 lg:text-[15px]">{children}</p>;
 }
 
-function towardName(station: GuideStation | null, fallback: string, locale: GuideLocale) {
-  return station ? gt(station.name, locale) : fallback;
-}
-
-function TransferRow({ row, locale }: { row: GuideTransfer; locale: GuideLocale }) {
-  const [car, door = ""] = row.alight.split("-");
-  return (
-    <li className="rounded-2xl border border-line bg-surface px-4 py-3 lg:px-5 lg:py-4">
-      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] font-semibold text-ink lg:text-[15px]">
-        <span className="break-words">
-          {tc("transferFrom", locale, {
-            line: lineLabel(row.fromLine, locale),
-            toward: towardName(row.fromToward, row.fromTowardKo, locale),
-          })}
-        </span>
-        <span aria-hidden className="text-ink-muted">
-          →
-        </span>
-        <span className="break-words">
-          {tc("transferFrom", locale, {
-            line: lineLabel(row.toLine, locale),
-            toward: towardName(row.toToward, row.toTowardKo, locale),
-          })}
-        </span>
-      </p>
-      <p className="mt-1.5 flex flex-wrap items-center gap-2">
-        <span className="rounded-lg bg-honey-soft px-2 py-0.5 text-[14px] font-extrabold text-honey-strong lg:text-[16px]">
-          {tc("carDoor", locale, { car, door })}
-        </span>
-        {row.seconds !== null ? (
-          <span className="text-[13px] text-ink-muted lg:text-[14px]">{walkMinutesLabel(row.seconds, locale)}</span>
-        ) : null}
-      </p>
-    </li>
-  );
-}
-
 export default async function StationGuide({ params }: PageProps<"/[lang]/stations/[slug]">) {
   "use cache";
   cacheLife("max");
@@ -427,6 +388,11 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
 
       <AdSense slot={AD_SLOTS.top} layout="in-article" label={tc("advertisement", lang)} className="mt-6" />
 
+      <Section id="facts" title={tc("factsTitle", lang, { station: title })}>
+        <StationFactsTable station={station} detail={detail} locale={lang} />
+        <CourseCta station={station} locale={lang} />
+      </Section>
+
       {overview.tips.length || overview.notes.length ? (
         <Section id="tips" title={tc("tipsTitle", lang, { station: title })}>
           <TravelerTips overview={overview} notesTitle={tc("localNotes", lang)} checked={checked} />
@@ -539,11 +505,7 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
 
       {detail.transfers.length ? (
         <Section id="transfers" title={tc("transfers", lang)} hint={tc("transfersHint", lang)}>
-          <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-4">
-            {detail.transfers.map((row, index) => (
-              <TransferRow key={index} row={row} locale={lang} />
-            ))}
-          </ul>
+          <TransferTable station={station} detail={detail} locale={lang} />
         </Section>
       ) : null}
 

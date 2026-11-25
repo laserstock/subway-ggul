@@ -27,6 +27,8 @@ function guideEntries(path: string, priority: number): MetadataRoute.Sitemap {
 /**
  * Built once and kept for 30 days. Planner `/route?from=&to=` URLs are omitted on purpose: those pages
  * take searchParams and materialize ISR entries on first crawl, which burned Hobby-plan ISR Reads.
+ * Every guide URL is listed with its full hreflang set, so `/ko`, `/en`, `/ja`, `/zh` and `/zh-tw` are
+ * separate documents rather than translations Google has to guess at.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   "use cache";
@@ -47,13 +49,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...GUIDE_STATIONS.flatMap((station) =>
       guideEntries(`/stations/${station.slug}`, stationSitemapPriority(station.slug)),
     ),
-    // Clean English app station URLs (`/station/myeongdong`, …)
-    ...GUIDE_STATIONS.map((station) => ({
-      url: `${SITE_URL}/station/${station.slug}`,
-      lastModified: GUIDE_UPDATED,
-      changeFrequency: "monthly" as const,
-      priority: stationSitemapPriority(station.slug),
-    })),
+    // NOTE: the language-neutral app screens (`/station/myeongdong`, …) are intentionally left out.
+    // Each one canonicalizes to `/en/stations/{slug}`, and a sitemap must list canonical URLs only;
+    // listing both is what made Google treat them as competing duplicates of the English guide.
     ...guideEntries("/planner", 0.8),
     ...["/about", "/editorial-policy"].flatMap((path) =>
       guideEntries(path, 0.5).map((entry) => ({ ...entry, lastModified: TRUST_UPDATED, changeFrequency: "yearly" as const })),

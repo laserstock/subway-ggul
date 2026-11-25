@@ -15,7 +15,10 @@ import {
   SITE_BRAND_DISPLAY,
   SITE_BRAND_NAME,
   SITE_BRAND_TITLE,
+  SITE_LOGO_URL,
+  SITE_ORGANIZATION_ID,
   SITE_URL,
+  SITE_WEBSITE_ID,
 } from "./_lib/site";
 import "./globals.css";
 
@@ -25,12 +28,36 @@ const notoSansKr = Noto_Sans_KR({
   weight: ["400", "500", "600", "700"],
 });
 
-const WEBSITE_JSON_LD = {
+/**
+ * One site-wide graph for the brand: the WebSite node answers “k-sub com” / “지하철꿀정보” navigational
+ * queries, and the Organization node gives AI answer engines a single publisher entity to cite.
+ * Pages reference these ids instead of repeating the entities.
+ */
+const SITE_JSON_LD = {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: SITE_BRAND_NAME,
-  alternateName: [...SITE_BRAND_ALTERNATE_NAMES],
-  url: `${SITE_URL}/`,
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": SITE_WEBSITE_ID,
+      name: SITE_BRAND_NAME,
+      alternateName: [...SITE_BRAND_ALTERNATE_NAMES],
+      url: `${SITE_URL}/`,
+      description: SITE_BRAND_DESCRIPTION,
+      inLanguage: "ko-KR",
+      publisher: { "@id": SITE_ORGANIZATION_ID },
+    },
+    {
+      "@type": "Organization",
+      "@id": SITE_ORGANIZATION_ID,
+      name: SITE_BRAND_NAME,
+      alternateName: [...SITE_BRAND_ALTERNATE_NAMES],
+      url: `${SITE_URL}/`,
+      logo: { "@type": "ImageObject", url: SITE_LOGO_URL },
+      description: SITE_BRAND_DESCRIPTION,
+      areaServed: { "@type": "Country", name: "South Korea" },
+      knowsLanguage: ["ko", "en", "ja", "zh"],
+    },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -80,7 +107,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: ADSENSE_LOADER }} />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSON_LD).replace(/</g, "\\u003c") }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE_JSON_LD).replace(/</g, "\\u003c") }}
         />
       </head>
       <GoogleTagManager gtmId="GTM-5RW9WQZH" />
