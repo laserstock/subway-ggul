@@ -49,7 +49,13 @@ import RelatedStations from "../../_guide/RelatedStations";
 import StationFaq from "../../_guide/StationFaq";
 import { OverviewLead, TravelerTips } from "../../_guide/StationOverview";
 import StationSeoSchema from "../../_guide/StationSeoSchema";
-import { adjacentStations, hubStations, relatedStations } from "../../../_lib/stationRelated";
+import {
+  adjacentStations,
+  hubStations,
+  lineAdjacentStations,
+  nearbyStations,
+  relatedStations,
+} from "../../../_lib/stationRelated";
 
 export function generateStaticParams() {
   return GUIDE_STATIONS.map((station) => ({ slug: station.slug }));
@@ -312,6 +318,11 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
   const overview = stationOverview(station, detail, lang);
   const related = relatedStations(station, detail, lang);
   const adjacent = adjacentStations(detail);
+  const lineAdjacent = lineAdjacentStations(detail);
+  const nearby = nearbyStations(
+    station,
+    adjacent.map((row) => row.slug),
+  );
   const hubs = hubStations(station);
   const deepGuide = stationDeepGuide(station, detail, lang);
   const checked = overview.checked
@@ -585,6 +596,18 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
               ))}
             </div>
           </div>
+          {deepGuide.hubTravel ? (
+            <div>
+              <h3 className="text-[17px] font-extrabold tracking-tight text-ink lg:text-[20px]">
+                {deepGuide.hubTravel.heading}
+              </h3>
+              <div className="mt-3 max-w-3xl space-y-3 text-[15px] leading-relaxed text-ink-muted lg:mt-4 lg:space-y-4 lg:text-[16px]">
+                {deepGuide.hubTravel.paragraphs.map((paragraph) => (
+                  <p key={paragraph.slice(0, 48)}>{paragraph}</p>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -594,10 +617,35 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
         </Section>
       ) : null}
 
-      {adjacent.length ? (
+      {lineAdjacent.length || adjacent.length ? (
         <Section id="adjacent-stations" title={tc("adjacentHeading", lang)}>
+          {lineAdjacent.length ? (
+            <div className="flex flex-col gap-3">
+              {lineAdjacent.map(({ line, stations }) => (
+                <div key={line} className="flex flex-wrap items-center gap-2">
+                  <LineChip line={line} locale={lang} />
+                  {stations.map((next) => (
+                    <StationLink key={`${line}-${next.slug}`} station={next} locale={lang} large />
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ul className="flex flex-wrap gap-2 lg:gap-3">
+              {adjacent.map((next) => (
+                <li key={next.slug}>
+                  <StationLink station={next} locale={lang} large />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      ) : null}
+
+      {nearby.length ? (
+        <Section id="nearby-stations" title={tc("nearbyHeading", lang)} hint={tc("nearbyLead", lang)}>
           <ul className="flex flex-wrap gap-2 lg:gap-3">
-            {adjacent.map((next) => (
+            {nearby.map((next) => (
               <li key={next.slug}>
                 <StationLink station={next} locale={lang} large />
               </li>
@@ -605,6 +653,29 @@ export default async function StationGuide({ params }: PageProps<"/[lang]/statio
           </ul>
         </Section>
       ) : null}
+
+      <Section id="feature-links" title={tc("featureLinksHeading", lang)}>
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 lg:gap-3">
+          {(
+            [
+              { href: "/urgent", label: tc("featureUrgent", lang) },
+              { href: "/luggage", label: tc("featureLuggage", lang) },
+              { href: "/transfer", label: tc("featureTransfer", lang) },
+              { href: "/meet", label: tc("featureMeet", lang) },
+              { href: `/${lang}/planner`, label: tc("featurePlanner", lang) },
+            ] as const
+          ).map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className="flex min-h-12 items-center rounded-2xl border border-line bg-surface px-4 py-3 text-[14px] font-bold text-ink transition hover:-translate-y-0.5 hover:border-honey/45 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] active:scale-[0.99] lg:text-[15px]"
+              >
+                {item.label} →
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
       {hubs.length ? (
         <Section id="hub-stations" title={tc("hubHeading", lang)}>

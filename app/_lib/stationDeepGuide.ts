@@ -1,4 +1,4 @@
-import { distanceMeters, type GuideDetail, type GuideStation } from "./guide";
+import { distanceMeters, guideByKo, type GuideDetail, type GuideStation } from "./guide";
 import {
   exitName,
   floorText,
@@ -13,6 +13,7 @@ import { contentLocale, type GuideLocale } from "./guideLocale";
 import { inScript } from "./hant";
 import { t, type Locale } from "./i18n";
 import { stationSpotsFor } from "./planner";
+import { findRoute, networkStationId } from "./routeFinder";
 import { STATION_LOCAL_GUIDES } from "./stationLocalGuides";
 
 export type DeepGuideBlock = { heading: string; paragraphs: string[] };
@@ -20,9 +21,13 @@ export type DeepGuideBlock = { heading: string; paragraphs: string[] };
 export type StationDeepGuide = {
   keySummary: DeepGuideBlock;
   exitRoutes: DeepGuideBlock;
+  hubTravel: DeepGuideBlock | null;
   /** Combined plain text length (content locale) for QA / thin-content checks. */
   charCount: number;
 };
+
+/** Major Seoul hubs used for unique “how long from here” sentences on every station page. */
+const HUB_TRAVEL_KOS = ["서울역", "명동역", "홍대입구역", "강남역", "인천공항1터미널역"] as const;
 
 function variant(slug: string, mod: number) {
   return [...slug].reduce((sum, char) => sum + char.charCodeAt(0), 0) % mod;
@@ -396,31 +401,99 @@ function exitRoutesNarrative(station: GuideStation, detail: GuideDetail, locale:
   return paragraphs;
 }
 
-function headings(title: string, locale: Locale): { summary: string; routes: string } {
+function headings(title: string, locale: Locale): { summary: string; routes: string; hubs: string } {
   if (locale === "en")
     return {
       summary: `${title}: key facility summary`,
       routes: `${title}: exit routes and nearby places`,
+      hubs: `${title}: travel times to major Seoul hubs`,
     };
   if (locale === "zh")
     return {
       summary: `${title}使用要点摘要`,
       routes: `${title}出口动线与周边景点`,
+      hubs: `${title}到首尔主要枢纽的预计车程`,
     };
   if (locale === "ja")
     return {
       summary: `${title}利用の要点まとめ`,
       routes: `${title}出口別おすすめ動線と周辺スポット`,
+      hubs: `${title}から主要拠点までの目安所要時間`,
     };
   return {
     summary: `${title} 이용 핵심 요약`,
     routes: `${title} 출구별 추천 동선 및 주변 명소`,
+    hubs: `${title}에서 서울 주요 거점까지 예상 이동 시간`,
   };
+}
+
+function hubTravelNarrative(station: GuideStation, locale: Locale, title: string): string | null {
+  const fromId = networkStationId(station.ko, station);
+  if (fromId === null) return null;
+
+  const bits: string[] = [];
+  for (const ko of HUB_TRAVEL_KOS) {
+    const hub = guideByKo(ko);
+    if (!hub || hub.slug === station.slug) continue;
+    const toId = networkStationId(hub.ko, hub);
+    if (toId === null) continue;
+    const route = findRoute(fromId, toId, "fastest");
+    if (!route) continue;
+    const mins = Math.max(1, Math.round(route.seconds / 60));
+    const hubTitle = stationTitle(hub, locale);
+    const xfers = route.transfers.length;
+    if (locale === "en") {
+      bits.push(
+        xfers === 0
+          ? `${hubTitle} about ${mins} min (no transfer)`
+          : `${hubTitle} about ${mins} min (${xfers} transfer${xfers === 1 ? "" : "s"})`,
+      );
+    } else if (locale === "zh") {
+      bits.push(xfers === 0 ? `到${hubTitle}约${mins}分钟（直达）` : `到${hubTitle}约${mins}分钟（换乘${xfers}次）`);
+    } else if (locale === "ja") {
+      bits.push(xfers === 0 ? `${hubTitle}まで約${mins}分（乗換なし）` : `${hubTitle}まで約${mins}分（乗換${xfers}回）`);
+    } else {
+      bits.push(xfers === 0 ? `${hubTitle}까지 약 ${mins}분(환승 없음)` : `${hubTitle}까지 약 ${mins}분(환승 ${xfers}회)`);
+    }
+    if (bits.length >= 5) break;
+  }
+  if (!bits.length) return null;
+
+  if (locale === "en")
+    return `Typical daytime subway times from ${title} (K-Sub fastest routing, waiting time excluded): ${listJoin(bits, locale)}. Actual rides vary with headways and crowding — re-check the in-app planner before you leave.`;
+  if (locale === "zh")
+    return `从${title}出发的白天常规地铁车程（K-Sub最快路径、不含候车）：${listJoin(bits, locale)}。实际会因发车间隔与拥挤而变化，出发前请再用应用内行程规划确认。`;
+  if (locale === "ja")
+    return `${title}からの日中の目安所要時間（K-Sub最短ルート・待ち時間除く）：${listJoin(bits, locale)}。運行間隔や混雑で前後するため、出発前にアプリの経路も再確認してください。`;
+  return `${title} 기준 낮 시간대 예상 이동 시간(K-Sub 최단 경로, 대기 시간 제외): ${listJoin(bits, locale)}. 배차·혼잡에 따라 달라질 수 있으니 출발 전 앱 경로 안내로 한 번 더 확인하세요.`;
+}
+
+function amenityNarrative(station: GuideStation, detail: GuideDetail, locale: Locale, title: string): string | null {
+  const spots = stationSpotsFor(station, detail, locale).slice(0, 4);
+  if (!spots.length) return null;
+  const names = spots.map((spot) =>
+    spot.exit
+      ? locale === "en"
+        ? `${spot.name} (~${spot.walk} min from Exit ${spot.exit})`
+        : locale === "zh"
+          ? `${spot.name}（${spot.exit}号出口步行约${spot.walk}分钟）`
+          : locale === "ja"
+            ? `${spot.name}（${spot.exit}番出口から徒歩約${spot.walk}分）`
+            : `${spot.name}(${spot.exit}번 출구 도보 약 ${spot.walk}분)`
+      : spot.name,
+  );
+  if (locale === "en")
+    return `Above ground near ${title}, curated pins include ${listJoin(names, locale)} — useful when you need a pharmacy, café, convenience stop or photo booth before the next train.`;
+  if (locale === "zh")
+    return `${title}出站后可参考的周边点位：${listJoin(names, locale)}。买药、喝咖啡、便利店或拍照打卡时，可按出口编号少走冤枉路。`;
+  if (locale === "ja")
+    return `${title}の地上スポット目安：${listJoin(names, locale)}。薬局・カフェ・コンビニ・プリクラの前に出口番号を合わせると移動が短くなります。`;
+  return `${title} 지상 주변 큐레이션 포인트: ${listJoin(names, locale)}. 약국·카페·편의점·사진 부스에 들를 때 출구 번호에 맞추면 동선이 짧아져요.`;
 }
 
 /**
  * Long-form, data-unique SSR copy so station URLs are not treated as thin duplicates.
- * Combines restrooms / lockers / elevators / transfers with exit–spot routing tips.
+ * Combines restrooms / lockers / elevators / transfers with exit–spot routing tips and hub ETAs.
  */
 export function stationDeepGuide(station: GuideStation, detail: GuideDetail, locale: GuideLocale): StationDeepGuide {
   const base = contentLocale(locale);
@@ -434,12 +507,14 @@ export function stationDeepGuide(station: GuideStation, detail: GuideDetail, loc
     lockerNarrative(station, detail, base, title),
     elevatorNarrative(station, detail, base, title),
     transferNarrative(station, detail, base, title),
+    amenityNarrative(station, detail, base, title),
   ].filter((p): p is string => !!p);
 
   const routeParas = exitRoutesNarrative(station, detail, locale, title);
-  let joined = [...summaryParas, ...routeParas].join("");
+  const hubPara = hubTravelNarrative(station, base, title);
+  let joined = [...summaryParas, ...routeParas, hubPara].filter(Boolean).join("");
   for (const pad of lengthPads(station, detail, base, title)) {
-    if (joined.length >= 520) break;
+    if (joined.length >= 650) break;
     summaryParas.push(pad);
     joined += pad;
   }
@@ -447,9 +522,13 @@ export function stationDeepGuide(station: GuideStation, detail: GuideDetail, loc
   const write = (text: string) => inScript(locale, text);
   const keySummary = { heading: write(heads.summary), paragraphs: summaryParas.map(write) };
   const exitRoutes = { heading: write(heads.routes), paragraphs: routeParas.map(write) };
-  const charCount = [...keySummary.paragraphs, ...exitRoutes.paragraphs].join("").length;
+  const hubTravel = hubPara
+    ? { heading: write(heads.hubs), paragraphs: [write(hubPara)] }
+    : null;
+  const charCount = [...keySummary.paragraphs, ...exitRoutes.paragraphs, ...(hubTravel?.paragraphs ?? [])].join("")
+    .length;
 
-  return { keySummary, exitRoutes, charCount };
+  return { keySummary, exitRoutes, hubTravel, charCount };
 }
 
 /** Extra station-specific sentences when facility data alone would stay under ~500 characters. */

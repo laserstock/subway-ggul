@@ -40,14 +40,30 @@ function sameSite(request: NextRequest) {
 }
 
 /**
- * Arriving at www.k-sub.com from outside (search result, typed address, bookmark): visitors whose browser
- * isn't Korean go to the guide home in their saved language, else their browser's. Korean browsers, anyone
- * who chose Korean, the app's own host, crawlers, client navigations, links from inside the site and anyone
- * who has opened the web app this session keep `/` as the app home.
+ * 1) Crawlers hitting legacy `/station/[slug]` get a 301 to `/en/stations/[slug]` (canonical guide).
+ *    Humans and the Capacitor/WebView app keep the interactive station shell.
+ * 2) Arriving at www.k-sub.com `/` from outside: non-Korean browsers go to the guide home.
  */
 export function proxy(request: NextRequest) {
   const agent = request.headers.get("user-agent") ?? "";
-  const { searchParams } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  const legacyStation = /^\/station\/([^/]+)\/?$/.exec(pathname);
+  if (
+    legacyStation &&
+    request.method === "GET" &&
+    BOT_AGENT.test(agent) &&
+    !WEBVIEW_AGENT.test(agent) &&
+    searchParams.get("platform") !== "app" &&
+    searchParams.get("utm_source") !== "app"
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/en/stations/${legacyStation[1]}`;
+    url.search = "";
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (pathname !== "/") return NextResponse.next();
 
   if (searchParams.has("lang")) {
     const response = NextResponse.next();
@@ -82,5 +98,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/",
+  matcher: ["/", "/station/:slug"],
 };

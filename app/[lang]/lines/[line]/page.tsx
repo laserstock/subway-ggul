@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdSense from "../../../_components/AdSense";
@@ -15,7 +16,7 @@ import { BRAND, gt, lineLabel, stationTitle, tc } from "../../../_lib/guideCopy"
 import { isGuideLocale } from "../../../_lib/guideLocale";
 import { guideAlternates, OG_LOCALES, SITE_URL } from "../../../_lib/site";
 import { Icon } from "../../_guide/icons";
-import { AppPromo, JsonLd, LineLink } from "../../_guide/parts";
+import { AppPromo, JsonLd, LineChip, LineLink } from "../../_guide/parts";
 
 export function generateStaticParams() {
   return ALL_LINES.map((line) => ({ line: lineSlug(line) }));
@@ -29,6 +30,8 @@ async function resolve(params: PageProps<"/[lang]/lines/[line]">["params"]) {
 }
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/lines/[line]">): Promise<Metadata> {
+  "use cache";
+  cacheLife("max");
   const found = await resolve(params);
   if (!found) return {};
   const { lang, line, slug } = found;
@@ -51,6 +54,8 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/lines/[lin
 }
 
 export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[line]">) {
+  "use cache";
+  cacheLife("max");
   const found = await resolve(params);
   if (!found) notFound();
   const { lang, line, slug } = found;
@@ -148,6 +153,7 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
           {tc("lineStations", lang)}
         </h2>
         <p className="mt-1 text-[13px] leading-relaxed text-ink-muted lg:mt-2 lg:text-[16px]">{tc("lineStationsHint", lang)}</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-ink-muted lg:text-[15px]">{tc("lineStationsGridHint", lang)}</p>
         <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-semibold text-ink-muted">
           <span className="inline-flex items-center gap-1">
             <Icon name="luggage" size={15} className="text-honey-strong" />
@@ -158,46 +164,47 @@ export default async function LineGuide({ params }: PageProps<"/[lang]/lines/[li
             {tc("exitElevator", lang)}
           </span>
         </p>
-        <ol className="mt-3 border-l-4 pl-0" style={{ borderColor: color }}>
-          {rows.map((row) => (
-            <li key={row.station.slug} className="relative -ml-[10px] flex items-start gap-3 py-1.5 lg:gap-4 lg:py-2.5">
-              <span
-                className="mt-1.5 h-4 w-4 shrink-0 rounded-full border-[3px] bg-surface"
-                style={{ borderColor: color }}
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-baseline gap-x-2">
-                  <Link
-                    href={`/${lang}/stations/${row.station.slug}`}
-                    className="break-words text-[15px] font-bold text-ink underline-offset-2 hover:text-honey-strong hover:underline lg:text-[17px] lg:transition-colors lg:duration-200"
-                  >
-                    {row.title}
-                  </Link>
-                  {lang !== "ko" ? (
-                    <span lang="ko" className="text-[12px] text-ink-muted">
-                      {row.station.ko}
+        <ol className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 lg:gap-3">
+          {rows.map((row, index) => (
+            <li key={row.station.slug}>
+              <Link
+                href={`/${lang}/stations/${row.station.slug}`}
+                className="flex h-full min-h-[4.5rem] flex-col justify-between gap-2 rounded-2xl border border-line bg-surface px-3.5 py-3 transition hover:-translate-y-0.5 hover:border-honey/45 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] active:scale-[0.99]"
+                style={{ borderLeftWidth: 4, borderLeftColor: color }}
+              >
+                <span className="flex items-start justify-between gap-2">
+                  <span className="min-w-0">
+                    <span className="block text-[11px] font-bold text-ink-muted">#{index + 1}</span>
+                    <span className="mt-0.5 block break-words text-[15px] font-extrabold leading-snug text-ink lg:text-[16px]">
+                      {row.title}
                     </span>
-                  ) : null}
-                  {row.lockers ? (
-                    <span role="img" aria-label={tc("lockers", lang)} className="self-center text-honey-strong">
-                      <Icon name="luggage" size={15} />
-                    </span>
-                  ) : null}
-                  {row.stepFree ? (
-                    <span role="img" aria-label={tc("exitElevator", lang)} className="self-center text-[#2563eb]">
-                      <Icon name="elevator" size={15} />
-                    </span>
-                  ) : null}
-                </p>
+                    {lang !== "ko" ? (
+                      <span lang="ko" className="mt-0.5 block text-[12px] text-ink-muted">
+                        {row.station.ko}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    {row.lockers ? (
+                      <span role="img" aria-label={tc("lockers", lang)} className="text-honey-strong">
+                        <Icon name="luggage" size={15} />
+                      </span>
+                    ) : null}
+                    {row.stepFree ? (
+                      <span role="img" aria-label={tc("exitElevator", lang)} className="text-[#2563eb]">
+                        <Icon name="elevator" size={15} />
+                      </span>
+                    ) : null}
+                  </span>
+                </span>
                 {row.others.length ? (
-                  <p className="mt-1 flex flex-wrap gap-1">
+                  <span className="flex flex-wrap gap-1">
                     {row.others.map((other) => (
-                      <LineLink key={other} line={other} locale={lang} />
+                      <LineChip key={other} line={other} locale={lang} />
                     ))}
-                  </p>
+                  </span>
                 ) : null}
-              </div>
+              </Link>
             </li>
           ))}
         </ol>

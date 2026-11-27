@@ -6,6 +6,7 @@ import { top15Stations } from "./seoHubs";
 import { STATION_LOCAL_GUIDES } from "./stationLocalGuides";
 
 const MAX_RELATED = 4;
+const MAX_NEARBY = 5;
 
 /**
  * Curated “visit next” hubs for the stations travelers search most. Korean keys match GUIDE_STATIONS.
@@ -47,6 +48,32 @@ export type RelatedStation = {
 /** Unique previous/next neighbours across all lines at this station. */
 export function adjacentStations(detail: GuideDetail): GuideStation[] {
   return [...new Map(detail.neighbors.flatMap((group) => group.stations).map((next) => [next.slug, next])).values()];
+}
+
+/** Per-line prev/next pairs for labeled internal links on the station page. */
+export function lineAdjacentStations(detail: GuideDetail): { line: string; stations: GuideStation[] }[] {
+  return detail.neighbors
+    .map((group) => ({
+      line: group.line,
+      stations: [...new Map(group.stations.map((next) => [next.slug, next])).values()],
+    }))
+    .filter((group) => group.stations.length > 0);
+}
+
+/**
+ * Closest stations by map distance (not only same-line neighbours) — fills crawl gaps
+ * around single-line stops with sparse neighbor graphs.
+ */
+export function nearbyStations(station: GuideStation, exclude: Iterable<string> = []): GuideStation[] {
+  const skip = new Set<string>([station.slug, ...exclude]);
+  return GUIDE_STATIONS.map((row) => ({
+    row,
+    d: distanceMeters(station.lat, station.lng, row.lat, row.lng),
+  }))
+    .filter(({ row, d }) => !skip.has(row.slug) && d > 80 && d < 4500)
+    .sort((a, b) => a.d - b.d)
+    .slice(0, MAX_NEARBY)
+    .map(({ row }) => row);
 }
 
 /** TOP 15 traveler hubs for crawl-depth internal links (excludes the current station). */

@@ -36,7 +36,7 @@ export const APP_RELEASED = PLAY_STORE_URL.length > 0;
 export const APP_SCREEN_ROBOTS: Metadata["robots"] = { index: false, follow: true };
 
 /** Bump when the guide pages' data or copy change, for the sitemap's lastmod. */
-export const GUIDE_UPDATED = "2026-11-22";
+export const GUIDE_UPDATED = "2026-11-27";
 
 /** Server-rendered, crawlable station guides live under /ko, /en, /zh, /zh-tw and /ja; returns the app locale. */
 export function guideLocale(pathname: string | null): Locale | null {

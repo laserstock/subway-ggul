@@ -36,20 +36,21 @@ export async function generateMetadata({ params }: { params: StationSlugParams }
   const elevatorBit = detail.elevators.length ? ", elevator exits" : "";
   const lockerBit = detail.lockers.length ? ", luggage lockers" : "";
   const description = `Find ${toiletBit}${elevatorBit}${lockerBit} near ${enName} Station (${station.lines.join(", ")}) on Seoul Subway via k-sub.com.`;
-  const url = `${SITE_URL}/station/${station.slug}`;
+  /** Canonical guide URL — legacy `/station/[slug]` stays the app shell but is not indexed. */
+  const canonical = `${SITE_URL}/en/stations/${station.slug}`;
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical },
     openGraph: {
       type: "website",
       siteName: SITE_BRAND_DISPLAY,
       title,
       description,
-      url,
+      url: canonical,
     },
     twitter: { card: "summary_large_image", title, description, site: SITE_BRAND_DISPLAY },
-    robots: { index: true, follow: true },
+    robots: { index: false, follow: true },
   };
 }
 

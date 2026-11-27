@@ -3,8 +3,9 @@ import { cacheLife } from "next/cache";
 import { SITE_URL } from "./_lib/site";
 
 /**
- * Allow all crawlers on public HTML. Block only API/admin.
- * Clean `/station/[slug]` paths and multilingual `/…/stations/` guides stay crawlable.
+ * Public HTML (including `/[lang]/stations/*` and `/[lang]/lines/*`) is crawlable.
+ * `/api/` is blocked on purpose — GSC “Blocked by robots.txt” rows for `/api/og/station/…`
+ * are OG image endpoints, not station guides. `/admin/` stays private.
  */
 export default async function robots(): Promise<MetadataRoute.Robots> {
   "use cache";
@@ -13,7 +14,18 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: [
+          "/",
+          "/ko/",
+          "/en/",
+          "/ja/",
+          "/zh/",
+          "/zh-tw/",
+          "/*/stations/",
+          "/*/stations/*",
+          "/*/lines/",
+          "/*/lines/*",
+        ],
         disallow: ["/api/", "/admin/"],
       },
     ],
