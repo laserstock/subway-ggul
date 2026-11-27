@@ -6,7 +6,7 @@ import { GUIDE_STATIONS, guideDetail, guideStation } from "../../_lib/guide";
 import { SITE_BRAND_DISPLAY, SITE_URL } from "../../_lib/site";
 import { stationOptionFromGuide } from "../../_lib/stationAppPath";
 import StationDashboard from "../StationDashboard";
-import StationSeoPanel from "../StationSeoPanel";
+import StationSeoJsonLd from "../StationSeoJsonLd";
 
 export function generateStaticParams() {
   return GUIDE_STATIONS.map((station) => ({ slug: station.slug }));
@@ -26,10 +26,16 @@ export async function generateMetadata({ params }: { params: StationSlugParams }
   cacheLife("max");
   const found = await resolve(params);
   if (!found) return {};
-  const { station } = found;
+  const { station, detail } = found;
   const enName = station.name.en.replace(/\s+station$/i, "");
   const title = `${enName} Station Exit, Restroom & Elevator Guide | ${SITE_BRAND_DISPLAY}`;
-  const description = `Find inside-gate restrooms, elevator exits, Daiso, Starbucks, and luggage lockers near ${enName} Station on Seoul Subway via k-sub.com.`;
+  const inside = detail.toilets.filter((row) => row.gate === "inside").length;
+  const toiletBit = detail.toilets.length
+    ? `${detail.toilets.length} restrooms${inside ? ` (${inside} inside gates)` : ""}`
+    : "restroom tips";
+  const elevatorBit = detail.elevators.length ? ", elevator exits" : "";
+  const lockerBit = detail.lockers.length ? ", luggage lockers" : "";
+  const description = `Find ${toiletBit}${elevatorBit}${lockerBit} near ${enName} Station (${station.lines.join(", ")}) on Seoul Subway via k-sub.com.`;
   const url = `${SITE_URL}/station/${station.slug}`;
   return {
     title,
@@ -49,8 +55,9 @@ export async function generateMetadata({ params }: { params: StationSlugParams }
 
 function DashboardFallback() {
   return (
-    <div className="flex min-h-[50vh] justify-center bg-frame">
-      <div className="relative flex h-[70vh] w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
+    <div className="flex min-h-dvh justify-center bg-frame">
+      <div className="relative flex h-dvh w-full max-w-[393px] flex-col overflow-hidden bg-app shadow-[0_0_40px_rgba(15,23,42,0.12)]">
+        <div className="mx-4 mt-[max(16px,env(safe-area-inset-top))] h-[52px] animate-pulse rounded-2xl bg-surface-muted" />
         <div className="mx-4 mt-4 h-[118px] animate-pulse rounded-2xl bg-[#fff3c4]" />
         <div className="mx-4 mt-4 grid grid-cols-2 gap-2">
           {[0, 1, 2, 3].map((index) => (
@@ -70,12 +77,11 @@ export default async function StationSlugPage({ params }: { params: StationSlugP
   const { station, detail, option } = found;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-frame">
-      {/* App UI first — SEO panel is crawlable HTML below, CSS-hidden in native WebView. */}
+    <>
+      <StationSeoJsonLd station={station} detail={detail} />
       <Suspense fallback={<DashboardFallback />}>
         <StationDashboard station={option} />
       </Suspense>
-      <StationSeoPanel station={station} detail={detail} />
-    </div>
+    </>
   );
 }
