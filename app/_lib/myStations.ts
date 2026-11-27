@@ -186,6 +186,38 @@ export function removePlace(id: string) {
   update((current) => ({ ...current, places: current.places.filter((place) => place.id !== id) }));
 }
 
+/** Persist My 역 order. Home uses the first place that is not the current station as the default 도착. */
+export function reorderPlaces(orderedIds: string[]) {
+  update((current) => {
+    const byId = new Map(current.places.map((place) => [place.id, place]));
+    const next: StoredPlace[] = [];
+    for (const id of orderedIds) {
+      const place = byId.get(id);
+      if (place) {
+        next.push(place);
+        byId.delete(id);
+      }
+    }
+    for (const place of byId.values()) next.push(place);
+    if (next.length === current.places.length && next.every((place, index) => place.id === current.places[index]?.id)) {
+      return current;
+    }
+    return { ...current, places: next };
+  });
+}
+
+export function movePlace(id: string, direction: -1 | 1) {
+  update((current) => {
+    const index = current.places.findIndex((place) => place.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= current.places.length) return current;
+    const places = current.places.slice();
+    const [item] = places.splice(index, 1);
+    places.splice(target, 0, item);
+    return { ...current, places };
+  });
+}
+
 export function addRoute(from: RouteEndpoint, to: RouteEndpoint) {
   const route: StoredRoute = {
     id: newId("route"),

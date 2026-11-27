@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import AppHeader from "../_components/AppHeader";
 import BottomNav from "../_components/BottomNav";
 import { NotebookIcon, SeatIcon } from "../_components/icons";
@@ -14,8 +22,10 @@ import { useLastStation } from "../_lib/lastStation";
 import { useLocale } from "../_lib/locale";
 import { countLogsForStation, useStationLogs } from "../_lib/myStationLogs";
 import {
+  movePlace,
   removePlace,
   removeRoute,
+  reorderPlaces,
   reverseRoute,
   useMyStations,
   type MyPlace,
@@ -49,10 +59,10 @@ const COPY = {
   },
   placesTitle: { ko: "내가 즐겨찾는 My 역", en: "My favorite stations", zh: "我收藏的 My 车站", ja: "お気に入りの My 駅" },
   placesHint: {
-    ko: "탭하면 그 역에 남긴 발자국·노트를 모아 봐요",
-    en: "Tap to see footprints & notes for that station",
-    zh: "点击可查看该站的足迹与笔记",
-    ja: "タップでその駅の足跡・ノートを集めます",
+    ko: "위쪽 My 역일수록 홈 도착역 우선 · 탭하면 발자국·노트를 모아 봐요",
+    en: "Higher My stations become home arrival first · tap for footprints & notes",
+    zh: "越靠上的 My 站越优先作为首页到达站 · 点击查看足迹与笔记",
+    ja: "上の My 駅ほどホーム到着の優先 · タップで足跡・ノート",
   },
   seatWin: {
     ko: "오늘 착석 성공!",
@@ -82,10 +92,30 @@ const COPY = {
   },
   noteBadge: { ko: "노트 {n}", en: "{n} notes", zh: "{n}条笔记", ja: "ノート{n}" },
   placesEditHint: {
-    ko: "칩을 눌러 수정하거나 ✕로 삭제하세요",
-    en: "Tap a chip to edit, or ✕ to delete",
-    zh: "点击标签可编辑，点 ✕ 删除",
-    ja: "チップをタップで編集、✕で削除",
+    ko: "≡을 길게 끌어 순서 변경 · 1순위가 앱 켤 때 도착역 · 칩 탭=수정 · ✕=삭제",
+    en: "Drag ≡ to reorder · #1 is home arrival on launch · tap=edit · ✕=delete",
+    zh: "长按 ≡ 拖动排序 · 第1名为启动时到达站 · 点标签编辑 · ✕删除",
+    ja: "≡を長押しドラッグで並び替え · 1位が起動時の到着駅 · タップ=編集 · ✕=削除",
+  },
+  arrivalPriority: {
+    ko: "도착 1순위",
+    en: "Arrival #1",
+    zh: "到达优先",
+    ja: "到着1位",
+  },
+  moveUp: { ko: "위로", en: "Move up", zh: "上移", ja: "上へ" },
+  moveDown: { ko: "아래로", en: "Move down", zh: "下移", ja: "下へ" },
+  reorderHandle: {
+    ko: "끌어서 순서 바꾸기",
+    en: "Drag to reorder",
+    zh: "拖动排序",
+    ja: "ドラッグで並べ替え",
+  },
+  orderUpdated: {
+    ko: "순서를 저장했어요 · 홈 도착 우선이 바뀌어요",
+    en: "Order saved · home arrival priority updated",
+    zh: "已保存顺序 · 首页到达优先已更新",
+    ja: "順序を保存 · ホーム到着の優先が変わります",
   },
   placesEmpty: {
     ko: "집·회사처럼 자주 가는 역을 저장해 두면 1초 만에 꿀정보를 볼 수 있어요",
@@ -197,19 +227,17 @@ function fill(template: string, values: Record<string, string | number>) {
 function PlaceChip({
   place,
   locale,
-  editing,
   status,
   noteCount,
+  priority,
   onOpen,
-  onRemove,
 }: {
   place: MyPlace;
   locale: Locale;
-  editing: boolean;
   status: Localized | null;
   noteCount: number;
+  priority: boolean;
   onOpen: () => void;
-  onRemove: () => void;
 }) {
   return (
     <li className="relative">
@@ -217,18 +245,27 @@ function PlaceChip({
         type="button"
         onClick={onOpen}
         className="flex min-h-[48px] items-center gap-1.5 rounded-2xl bg-surface px-3 py-2.5 pr-3.5 text-left transition active:scale-[0.96]"
-        style={{ boxShadow: `inset 0 0 0 1px ${place.station.color}40` }}
+        style={{
+          boxShadow: priority
+            ? `inset 0 0 0 2px ${place.station.color}`
+            : `inset 0 0 0 1px ${place.station.color}40`,
+        }}
       >
         <LineBadges station={place.station} locale={locale} size="md" />
         <span className="text-[12px] font-bold text-ink-muted">{placeLabel(place, locale)}:</span>
         <span className="text-[14px] font-extrabold text-ink">{t(place.station.name, locale)}</span>
+        {priority ? (
+          <span className="ml-0.5 rounded-full bg-[#fff4cc] px-1.5 py-[1px] text-[10px] font-extrabold text-[#a16207]">
+            {t(COPY.arrivalPriority, locale)}
+          </span>
+        ) : null}
         {status ? (
           <span className="ml-0.5 rounded-full bg-white/90 px-1.5 py-[1px] text-[10px] font-bold text-[#2563eb]">
             {t(status, locale)}
           </span>
         ) : null}
       </button>
-      {noteCount > 0 && !editing ? (
+      {noteCount > 0 ? (
         <span
           className="pointer-events-none absolute -right-1 -top-1.5 inline-flex items-center gap-0.5 rounded-full bg-[#1e3a8a] px-1.5 py-[2px] text-[10px] font-extrabold text-white shadow-sm"
           aria-label={fill(t(COPY.noteBadge, locale), { n: noteCount })}
@@ -237,16 +274,89 @@ function PlaceChip({
           {noteCount}
         </span>
       ) : null}
-      {editing ? (
+    </li>
+  );
+}
+
+function EditablePlaceRow({
+  place,
+  locale,
+  index,
+  total,
+  dragging,
+  onEdit,
+  onRemove,
+  onMove,
+  onDragStart,
+}: {
+  place: MyPlace;
+  locale: Locale;
+  index: number;
+  total: number;
+  dragging: boolean;
+  onEdit: () => void;
+  onRemove: () => void;
+  onMove: (direction: -1 | 1) => void;
+  onDragStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+}) {
+  const priority = index === 0;
+  return (
+    <li
+      data-place-id={place.id}
+      className={`flex items-center gap-2 rounded-2xl bg-surface px-2 py-2 transition ${
+        dragging ? "scale-[1.02] opacity-90 shadow-[0_8px_24px_rgba(15,23,42,0.14)] ring-2 ring-[#fbbf24]" : ""
+      }`}
+      style={{ boxShadow: priority ? `inset 0 0 0 2px ${place.station.color}` : `inset 0 0 0 1px ${place.station.color}40` }}
+    >
+      <button
+        type="button"
+        aria-label={t(COPY.reorderHandle, locale)}
+        onPointerDown={onDragStart}
+        className="flex h-11 w-9 shrink-0 touch-none items-center justify-center rounded-xl text-[18px] font-bold text-neutral-400 active:bg-neutral-100"
+      >
+        ≡
+      </button>
+      <button type="button" onClick={onEdit} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-[11px] font-extrabold text-neutral-600">
+          {index + 1}
+        </span>
+        <LineBadges station={place.station} locale={locale} size="md" />
+        <span className="min-w-0 truncate text-[13px] font-bold text-ink-muted">{placeLabel(place, locale)}:</span>
+        <span className="min-w-0 truncate text-[14px] font-extrabold text-ink">{t(place.station.name, locale)}</span>
+        {priority ? (
+          <span className="shrink-0 rounded-full bg-[#fff4cc] px-1.5 py-[1px] text-[10px] font-extrabold text-[#a16207]">
+            {t(COPY.arrivalPriority, locale)}
+          </span>
+        ) : null}
+      </button>
+      <div className="flex shrink-0 flex-col gap-0.5">
         <button
           type="button"
-          onClick={onRemove}
-          aria-label={`${t(COPY.remove, locale)}: ${placeLabel(place, locale)}`}
-          className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-neutral-800 text-[11px] font-bold text-white shadow-md active:scale-90"
+          disabled={index === 0}
+          onClick={() => onMove(-1)}
+          aria-label={t(COPY.moveUp, locale)}
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-[12px] font-bold text-neutral-600 disabled:opacity-30 active:bg-neutral-100"
         >
-          ✕
+          ▲
         </button>
-      ) : null}
+        <button
+          type="button"
+          disabled={index >= total - 1}
+          onClick={() => onMove(1)}
+          aria-label={t(COPY.moveDown, locale)}
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-[12px] font-bold text-neutral-600 disabled:opacity-30 active:bg-neutral-100"
+        >
+          ▼
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`${t(COPY.remove, locale)}: ${placeLabel(place, locale)}`}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-[12px] font-bold text-white active:scale-90"
+      >
+        ✕
+      </button>
     </li>
   );
 }
@@ -541,12 +651,31 @@ export default function MyScreen() {
   const [placeSheet, setPlaceSheet] = useState<{ place: MyPlace | null } | null>(null);
   const [routeSheetOpen, setRouteSheetOpen] = useState(false);
   const [stationFilter, setStationFilter] = useState<StationFilter>({ key: null, nameKo: null });
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
+  const dragIdRef = useRef<string | null>(null);
+  const draftOrderRef = useRef<string[] | null>(null);
   const closePlaceSheet = useCallback(() => setPlaceSheet(null), []);
   const closeRouteSheet = useCallback(() => setRouteSheetOpen(false), []);
 
   useEffect(() => {
     router.prefetch("/station");
   }, [router]);
+
+  useEffect(() => {
+    if (!editing) {
+      setDragId(null);
+      setDraftOrder(null);
+      dragIdRef.current = null;
+      draftOrderRef.current = null;
+    }
+  }, [editing]);
+
+  const visiblePlaces = useMemo(() => {
+    if (!draftOrder) return places;
+    const byId = new Map(places.map((place) => [place.id, place]));
+    return draftOrder.map((id) => byId.get(id)).filter((place): place is MyPlace => Boolean(place));
+  }, [draftOrder, places]);
 
   function openDashboard(station: StationOption) {
     setDestinationStation(station);
@@ -565,6 +694,73 @@ export default function MyScreen() {
     if (place.station.key === destination?.key) return COPY.viewing;
     if (place.station.key === lastStation?.key) return COPY.here;
     return null;
+  }
+
+  function preferredArrival(ordered: MyPlace[]) {
+    const here = lastStation?.key;
+    return ordered.find((place) => place.station.key !== here)?.station ?? ordered[0]?.station ?? null;
+  }
+
+  function commitReorder(nextIds: string[]) {
+    const same = nextIds.length === places.length && nextIds.every((id, index) => id === places[index]?.id);
+    reorderPlaces(nextIds);
+    setDraftOrder(null);
+    draftOrderRef.current = null;
+    if (same) return;
+    const byId = new Map(places.map((place) => [place.id, place]));
+    const ordered = nextIds.map((id) => byId.get(id)).filter((place): place is MyPlace => Boolean(place));
+    const arrival = preferredArrival(ordered);
+    if (arrival) setDestinationStation(arrival);
+    showToast(t(COPY.orderUpdated, locale));
+  }
+
+  function onPlaceDragStart(placeId: string, event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    const pointerId = event.pointerId;
+    event.currentTarget.setPointerCapture(pointerId);
+    const order = places.map((place) => place.id);
+    dragIdRef.current = placeId;
+    draftOrderRef.current = order;
+    setDragId(placeId);
+    setDraftOrder(order);
+
+    function moveOver(clientX: number, clientY: number) {
+      const el = document.elementFromPoint(clientX, clientY);
+      const row = el?.closest("[data-place-id]") as HTMLElement | null;
+      const targetId = row?.dataset.placeId;
+      const activeId = dragIdRef.current;
+      const current = draftOrderRef.current;
+      if (!targetId || !activeId || !current || activeId === targetId) return;
+      const from = current.indexOf(activeId);
+      const to = current.indexOf(targetId);
+      if (from < 0 || to < 0 || from === to) return;
+      const next = current.slice();
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      draftOrderRef.current = next;
+      setDraftOrder(next);
+    }
+
+    function onMove(moveEvent: PointerEvent) {
+      if (moveEvent.pointerId !== pointerId) return;
+      moveOver(moveEvent.clientX, moveEvent.clientY);
+    }
+
+    function onUp(upEvent: PointerEvent) {
+      if (upEvent.pointerId !== pointerId) return;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      const next = draftOrderRef.current;
+      dragIdRef.current = null;
+      setDragId(null);
+      if (next) commitReorder(next);
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   }
 
   const summary = fill(t(COPY.summary, locale), { places: places.length, routes: routes.length });
@@ -607,32 +803,70 @@ export default function MyScreen() {
                 {t(COPY.placesEmpty, locale)}
               </p>
             ) : null}
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {places.map((place) => (
-                <PlaceChip
-                  key={place.id}
-                  place={place}
-                  locale={locale}
-                  editing={editing}
-                  status={placeStatus(place)}
-                  noteCount={countLogsForStation(logs, place.station.key, place.station.name.ko)}
-                  onOpen={() => (editing ? setPlaceSheet({ place }) : filterToPlace(place))}
-                  onRemove={() => {
-                    removePlace(place.id);
-                    showToast(t(COPY.placeRemoved, locale));
-                  }}
-                />
-              ))}
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setPlaceSheet({ place: null })}
-                  className="flex min-h-[48px] items-center rounded-2xl border-2 border-dashed border-neutral-300 px-4 py-2.5 text-[13px] font-bold text-neutral-500 transition active:scale-[0.96] active:bg-neutral-50"
-                >
-                  {t(COPY.addPlace, locale)}
-                </button>
-              </li>
-            </ul>
+            {editing ? (
+              <ul className="mt-3 space-y-2">
+                {visiblePlaces.map((place, index) => (
+                  <EditablePlaceRow
+                    key={place.id}
+                    place={place}
+                    locale={locale}
+                    index={index}
+                    total={visiblePlaces.length}
+                    dragging={dragId === place.id}
+                    onEdit={() => setPlaceSheet({ place })}
+                    onRemove={() => {
+                      removePlace(place.id);
+                      showToast(t(COPY.placeRemoved, locale));
+                    }}
+                    onMove={(direction) => {
+                      const index = places.findIndex((item) => item.id === place.id);
+                      const target = index + direction;
+                      if (index < 0 || target < 0 || target >= places.length) return;
+                      const next = places.slice();
+                      const [item] = next.splice(index, 1);
+                      next.splice(target, 0, item);
+                      movePlace(place.id, direction);
+                      const arrival = preferredArrival(next);
+                      if (arrival) setDestinationStation(arrival);
+                      showToast(t(COPY.orderUpdated, locale));
+                    }}
+                    onDragStart={(event) => onPlaceDragStart(place.id, event)}
+                  />
+                ))}
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setPlaceSheet({ place: null })}
+                    className="flex min-h-[48px] w-full items-center justify-center rounded-2xl border-2 border-dashed border-neutral-300 px-4 py-2.5 text-[13px] font-bold text-neutral-500 transition active:scale-[0.96] active:bg-neutral-50"
+                  >
+                    {t(COPY.addPlace, locale)}
+                  </button>
+                </li>
+              </ul>
+            ) : (
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {places.map((place, index) => (
+                  <PlaceChip
+                    key={place.id}
+                    place={place}
+                    locale={locale}
+                    status={placeStatus(place)}
+                    noteCount={countLogsForStation(logs, place.station.key, place.station.name.ko)}
+                    priority={index === 0}
+                    onOpen={() => filterToPlace(place)}
+                  />
+                ))}
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setPlaceSheet({ place: null })}
+                    className="flex min-h-[48px] items-center rounded-2xl border-2 border-dashed border-neutral-300 px-4 py-2.5 text-[13px] font-bold text-neutral-500 transition active:scale-[0.96] active:bg-neutral-50"
+                  >
+                    {t(COPY.addPlace, locale)}
+                  </button>
+                </li>
+              </ul>
+            )}
           </section>
 
           <section className="mt-4">

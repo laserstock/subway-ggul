@@ -213,6 +213,7 @@ export default function HomeScreen() {
     showToast(t(COPY.reportDone, locale));
   }
 
+  // 도착 기본값: 세션 목적지 → My 역 배열 순서상 현재역이 아닌 첫 역 (드래그 순서가 곧 우선순위).
   const alarmTarget =
     (destination && destination.key !== current?.key ? destination : null) ??
     myPlaces.find((place) => place.station.key !== current?.key)?.station ??
