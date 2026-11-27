@@ -583,6 +583,57 @@ export const COPY = {
     zh: "价格由运营方制定，可能会调整。",
     ja: "料金は運営会社の都合で変わることがあります。",
   },
+  factsTitle: {
+    ko: "{station} 한눈에 보기",
+    en: "{station} at a glance",
+    zh: "{station} 车站信息一览",
+    ja: "{station} 駅情報ひと目で",
+  },
+  factsItem: { ko: "항목", en: "Item", zh: "项目", ja: "項目" },
+  factsDetail: { ko: "내용", en: "Details", zh: "内容", ja: "内容" },
+  factsExitsCount: { ko: "출구 {n}개", en: "{n} numbered exits", zh: "{n}个出口", ja: "出口{n}か所" },
+  factsNoTransfer: {
+    ko: "환승 없음",
+    en: "No transfer at this station",
+    zh: "本站无换乘",
+    ja: "この駅に乗り換えなし",
+  },
+  transferCaption: {
+    ko: "{station} 빠른환승 (내리는 칸과 문)",
+    en: "Fastest transfer at {station}: which car and door to ride",
+    zh: "{station} 最快换乘：乘坐哪节车厢与车门",
+    ja: "{station} 最速乗り換え：乗る号車とドア",
+  },
+  transferColumnRoute: { ko: "환승 구간", en: "Transfer", zh: "换乘区间", ja: "乗り換え区間" },
+  transferColumnCar: { ko: "칸·문", en: "Car & door", zh: "车厢·车门", ja: "号車・ドア" },
+  transferColumnWalk: { ko: "도보", en: "Walk", zh: "步行", ja: "徒歩" },
+  courseCta: {
+    ko: "{station}에서 출발하는 코스 짜기",
+    en: "Plan a half-day course from {station}",
+    zh: "从{station}出发规划半日行程",
+    ja: "{station}発の半日コースを組む",
+  },
+  courseBody: {
+    ko: "이 역 주변에서 갈 만한 곳을 골라 반나절 동선으로 묶어 드려요. 앱을 따로 열 필요 없이 웹에서 바로 이어집니다.",
+    en: "Pick places around this station and we lay them out as one half-day route, right here on the web.",
+    zh: "选好车站周边的去处，自动排成半日路线，无需另行打开App。",
+    ja: "この駅周辺の立ち寄り先を選ぶだけで、半日コースにまとめます。アプリを開かずにそのまま続けられます。",
+  },
+  lineHubTitle: {
+    ko: "노선별 역 가이드",
+    en: "Station guides by line",
+    zh: "按线路查看车站指南",
+    ja: "路線別の駅ガイド",
+  },
+  lineHubLead: {
+    ko: "노선을 고르면 그 노선의 모든 역 가이드와 주요 역 정보를 바로 볼 수 있어요.",
+    en: "Choose a line to reach every station guide on it, plus the stations travelers open most.",
+    zh: "选择线路，即可查看该线路全部车站指南和旅客最常查看的车站。",
+    ja: "路線を選ぶと、その路線の全駅ガイドと人気の駅情報へすぐ移動できます。",
+  },
+  lineColumnLine: { ko: "노선", en: "Line", zh: "线路", ja: "路線" },
+  lineColumnCount: { ko: "역 수", en: "Stations", zh: "车站数", ja: "駅数" },
+  lineColumnTop: { ko: "주요 역", en: "Top stations", zh: "主要车站", ja: "主な駅" },
 } satisfies Record<string, Localized>;
 
 export function fill(template: string, values: Record<string, string | number>) {

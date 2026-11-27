@@ -4,21 +4,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ALL_LINES, GUIDE_STATIONS, POPULAR_GUIDES } from "../_lib/guide";
 import GoogleSeoSchema from "../_components/GoogleSeoSchema";
-import { BRAND, COPY, gt, HOME_FAQ_EN, HOME_KEYWORDS, homeMetaTitle, tc } from "../_lib/guideCopy";
+import { COPY, gt, HOME_FAQ_EN, HOME_KEYWORDS, homeMetaTitle, tc } from "../_lib/guideCopy";
 import { GUIDE_LANGUAGES, isGuideLocale } from "../_lib/guideLocale";
 import { pt } from "../_lib/plannerText";
-import {
-  APP_RELEASED,
-  guideAlternates,
-  OG_LOCALES,
-  PLAY_STORE_URL,
-  SITE_BRAND_DISPLAY,
-  SITE_URL,
-} from "../_lib/site";
+import { top15Stations } from "../_lib/seoHubs";
+import { guideAlternates, OG_LOCALES, SITE_BRAND_DISPLAY, SITE_URL } from "../_lib/site";
 import GuideSearch from "./_guide/GuideSearch";
 import { Icon, IconTile } from "./_guide/icons";
 import { DesktopWide } from "./_guide/desktop";
-import { AppPromo, JsonLd, LineLink, searchItems, StationLink } from "./_guide/parts";
+import { AppPromo, LineLink, searchItems, StationLink } from "./_guide/parts";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
   "use cache";
@@ -52,12 +46,21 @@ const FEATURES = [
   ["clock", "featureLive"],
 ] as const;
 
+/** Traveler hubs, used to give each line row in the station table a few worth-clicking entries. */
+const HUB_STATIONS = top15Stations();
+
 export default async function GuideHome({ params }: PageProps<"/[lang]">) {
   "use cache";
   cacheLife("max");
   const { lang } = await params;
   if (!isGuideLocale(lang)) notFound();
   const faq = lang === "en" ? HOME_FAQ_EN : [];
+  /** One row per line for the crawlable station hub table: how many guides it has and where to start. */
+  const lineRows = ALL_LINES.map((line) => {
+    const stations = GUIDE_STATIONS.filter((station) => station.lines.includes(line));
+    const hubs = HUB_STATIONS.filter((station) => station.lines.includes(line)).slice(0, 3);
+    return { line, count: stations.length, picks: hubs.length ? hubs : stations.slice(0, 3) };
+  });
   return (
     <DesktopWide>
       <GoogleSeoSchema
@@ -65,18 +68,6 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
         inLanguage={GUIDE_LANGUAGES[lang].htmlLang}
         faq={faq}
         publisherId={`${SITE_URL}/#organization`}
-      />
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          "@id": `${SITE_URL}/#organization`,
-          name: "K-Sub",
-          alternateName: [gt(BRAND, lang), "지하철꿀정보"],
-          url: SITE_URL,
-          logo: `${SITE_URL}/icon.png`,
-          ...(APP_RELEASED ? { sameAs: [PLAY_STORE_URL] } : {}),
-        }}
       />
       <section className="pt-2 lg:pt-4">
         <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink lg:max-w-4xl lg:text-[44px] lg:leading-[1.15]">
@@ -172,6 +163,51 @@ export default async function GuideHome({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
       </div>
+
+      <section className="mt-8 lg:mt-16" aria-labelledby="line-hub">
+        <h2 id="line-hub" className="text-[17px] font-extrabold text-ink lg:text-[22px]">
+          {tc("lineHubTitle", lang)}
+        </h2>
+        <p className="mt-1 text-[13px] leading-relaxed text-ink-muted lg:mt-2 lg:max-w-3xl lg:text-[15px]">
+          {tc("lineHubLead", lang)}
+        </p>
+        <div className="mt-3 overflow-x-auto rounded-2xl border border-line bg-surface lg:mt-4">
+          <table className="w-full border-collapse text-left align-top">
+            <thead>
+              <tr className="bg-surface-muted text-[12px] font-bold text-ink-muted lg:text-[13px]">
+                <th scope="col" className="whitespace-nowrap px-3 py-2.5 lg:px-4 lg:py-3">
+                  {tc("lineColumnLine", lang)}
+                </th>
+                <th scope="col" className="whitespace-nowrap px-3 py-2.5 lg:px-4 lg:py-3">
+                  {tc("lineColumnCount", lang)}
+                </th>
+                <th scope="col" className="px-3 py-2.5 lg:px-4 lg:py-3">
+                  {tc("lineColumnTop", lang)}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineRows.map(({ line, count, picks }) => (
+                <tr key={line} className="border-t border-line align-top">
+                  <th scope="row" className="whitespace-nowrap px-3 py-3 text-left lg:px-4">
+                    <LineLink line={line} locale={lang} />
+                  </th>
+                  <td className="whitespace-nowrap px-3 py-3 text-[13px] font-semibold text-ink-muted lg:px-4 lg:text-[14px]">
+                    {tc("stationsCount", lang, { n: count })}
+                  </td>
+                  <td className="px-3 py-3 lg:px-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      {picks.map((station) => (
+                        <StationLink key={station.slug} station={station} locale={lang} />
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="mt-8 lg:mt-16" aria-labelledby="features">
         <h2 id="features" className="text-[17px] font-extrabold text-ink lg:text-[22px]">

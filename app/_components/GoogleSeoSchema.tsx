@@ -1,15 +1,14 @@
 import { JsonLd } from "../[lang]/_guide/parts";
-import {
-  SITE_BRAND_ALTERNATE_NAMES,
-  SITE_BRAND_NAME,
-  SITE_URL,
-} from "../_lib/site";
+import { SITE_WEBSITE_ID } from "../_lib/site";
 
 type Faq = { question: string; answer: string };
 
 /**
- * Site-wide WebSite identity (brand / navigational queries) plus an optional FAQPage.
- * `url` stays the canonical homepage so “k-sub com” resolves to www.k-sub.com, not ksub.com.
+ * Per-page WebPage entity plus an optional FAQPage.
+ *
+ * The WebSite/Organization entities live once in the root layout (`#website`, `#organization`); this block
+ * only declares which page it is and which language that page is written in, so Google and AI answer engines
+ * can tell `/ko/…`, `/en/…`, `/ja/…` and `/zh/…` apart instead of clustering them as duplicates.
  */
 export default function GoogleSeoSchema({
   url,
@@ -27,19 +26,23 @@ export default function GoogleSeoSchema({
       data={[
         {
           "@context": "https://schema.org",
-          "@type": "WebSite",
-          name: SITE_BRAND_NAME,
-          alternateName: [...SITE_BRAND_ALTERNATE_NAMES],
-          url: `${SITE_URL}/`,
+          "@type": "WebPage",
+          "@id": url,
+          url,
           inLanguage,
+          isPartOf: { "@id": SITE_WEBSITE_ID },
           ...(publisherId ? { publisher: { "@id": publisherId } } : {}),
-          ...(url !== `${SITE_URL}/` ? { mainEntityOfPage: url } : {}),
+          ...(faq.length ? { mainEntity: { "@id": `${url}#faq` } } : {}),
         },
         ...(faq.length
           ? [
               {
                 "@context": "https://schema.org",
                 "@type": "FAQPage",
+                "@id": `${url}#faq`,
+                url,
+                inLanguage,
+                isPartOf: { "@id": SITE_WEBSITE_ID },
                 mainEntity: faq.map((item) => ({
                   "@type": "Question",
                   name: item.question,

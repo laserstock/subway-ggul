@@ -12,7 +12,20 @@ export const SITE_BRAND_TITLE =
 export const SITE_BRAND_DESCRIPTION =
   "k-sub com (www.k-sub.com) is the official K-SUB Seoul Subway Guide — restrooms, elevators, luggage lockers and a trip planner for every station at www.k-sub.com.";
 /** WebSite JSON-LD alternate names so “k-sub com” maps to this domain, not ksub.com. */
-export const SITE_BRAND_ALTERNATE_NAMES = ["k-sub.com", "k-sub com", "케이서브"] as const;
+export const SITE_BRAND_ALTERNATE_NAMES = [
+  "K-SUB",
+  "k-sub.com",
+  "k-sub com",
+  "k-sub",
+  "ksub",
+  "지하철꿀정보",
+  "케이서브",
+] as const;
+
+/** Stable node ids so the site-wide WebSite/Organization graph is one entity, referenced by every page. */
+export const SITE_WEBSITE_ID = `${SITE_URL}/#website`;
+export const SITE_ORGANIZATION_ID = `${SITE_URL}/#organization`;
+export const SITE_LOGO_URL = `${SITE_URL}/icon.png`;
 
 /** AdSense publisher id (public: it appears in every page and in ads.txt). */
 export const ADSENSE_CLIENT_ID = "ca-pub-5995977562355838";
@@ -30,7 +43,7 @@ export const APP_RELEASED = false;
 export const APP_SCREEN_ROBOTS: Metadata["robots"] = { index: false, follow: true };
 
 /** Bump when the guide pages' data or copy change, for the sitemap's lastmod. */
-export const GUIDE_UPDATED = "2026-11-22";
+export const GUIDE_UPDATED = "2026-11-26";
 
 /** Server-rendered, crawlable station guides live under /ko, /en, /zh, /zh-tw and /ja; returns the app locale. */
 export function guideLocale(pathname: string | null): Locale | null {

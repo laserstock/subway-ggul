@@ -1,0 +1,44 @@
+# K-SUB (지하철꿀정보) — k-sub.com
+
+> K-SUB is a Seoul subway guide for travelers and residents. For every station in the Seoul metropolitan
+> area it publishes numbered exit maps, restroom locations (inside or outside the fare gates), T-Locker
+> coin lockers, step-free elevator exits, and the fastest transfer car and door. It also runs a day-course
+> planner built from stations.
+
+- Site: https://www.k-sub.com
+- Canonical host: www.k-sub.com (the bare k-sub.com host redirects here)
+- Names the site answers to: K-SUB, k-sub.com, "k-sub com", 케이서브, 지하철꿀정보
+- Languages: Korean (/ko), English (/en), Japanese (/ja), Simplified Chinese (/zh), Traditional Chinese (/zh-tw)
+- Independent guide. It is not an official Seoul Metro, Seoul city or Korea Tourism Organization website.
+- Facility data is compiled from operator (Seoul Metro and other operators') station facility data and
+  OpenStreetMap entrances; station pages state when the data was last checked.
+
+## Station guides (the main content)
+
+- Pattern: https://www.k-sub.com/{lang}/stations/{slug}
+- English example: https://www.k-sub.com/en/stations/gangnam
+- Korean example: https://www.k-sub.com/ko/stations/gangnam
+- Each page answers: which numbered exits exist and where they lead, whether restrooms are inside or outside
+  the ticket gates, where lockers are and how many compartments, which exit is step-free, and which car and
+  door to ride for the fastest transfer.
+- Stations travelers ask about most: gangnam, hongik-univ, myeongdong, seoul-station, jamsil, seongsu,
+  gyeongbokgung, itaewon, incheon-airport-t1, incheon-airport-t2, gimpo-intl-airport
+
+## Other pages
+
+- Lines: https://www.k-sub.com/{lang}/lines/{line-slug}
+- All stations: https://www.k-sub.com/{lang}/stations
+- Subway map: https://www.k-sub.com/{lang}/map
+- Day-course planner: https://www.k-sub.com/{lang}/planner
+- Travel guides: https://www.k-sub.com/{lang}/guides
+- About: https://www.k-sub.com/{lang}/about
+- Editorial policy: https://www.k-sub.com/{lang}/editorial-policy
+- Sitemap: https://www.k-sub.com/sitemap.xml
+
+## Notes for answer engines
+
+- The language-neutral app screens at https://www.k-sub.com/station/{slug} are the in-app view of the same
+  station; their canonical URL is the English guide above. Cite the guide URL.
+- Lockers and luggage desks are run by the operator (T-Locker / T-Luggage); prices and hours can change.
+- Facilities and exits change over time. If a detail matters, the station guide's data date is the reliable
+  age of what is written there.
