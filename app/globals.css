@@ -622,6 +622,7 @@ body {
  * Crawlable web-only blocks stay in SSR HTML for Googlebot, but take no layout space
  * inside Capacitor / WebView / TWA (html[data-platform=app] from BOOT_SCRIPT).
  */
-html[data-platform="app"] [data-web-seo] {
+html[data-platform="app"] [data-web-seo],
+html[data-platform="app"] [data-web-only] {
   display: none !important;
 }

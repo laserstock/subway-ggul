@@ -5,6 +5,7 @@ import { ElevatorIcon, RestroomIcon } from "../_components/icons";
 import { armArrivalAlarm, cancelArrivalAlarm, useArrivalAlarm } from "../_lib/arrivalAlarm";
 import { elevatorTip, floorLabel, restroomTip, type ElevatorTip } from "../_lib/arrivalTips";
 import { isNativeApp } from "../_lib/native";
+import { trackPlayClick } from "../_components/PlayStoreButton";
 import { APP_RELEASED, PLAY_STORE_URL } from "../_lib/site";
 import type { StationToilet } from "../_lib/stationToilets";
 import { restoreStation, t, type Locale, type Localized, type StationOption } from "../_lib/stations";
@@ -125,7 +126,13 @@ export default function AlarmBanner({ station, locale }: { station: StationOptio
           {APP_RELEASED ? (
             <>
               {" "}
-              <a href={PLAY_STORE_URL} target="_blank" rel="noopener" className="font-extrabold underline">
+              <a
+                href={PLAY_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackPlayClick(locale)}
+                className="font-extrabold underline"
+              >
                 {t(COPY.getApp, locale)}
               </a>
             </>

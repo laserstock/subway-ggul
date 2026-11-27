@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Footer from "../_components/Footer";
+import SmartAppBanner from "../_components/SmartAppBanner";
 import { GUIDE_LANGUAGES, GUIDE_LOCALES, isGuideLocale } from "../_lib/guideLocale";
 import LocaleSync from "./_guide/LocaleSync";
 import { GuideHeader } from "./_guide/parts";
@@ -19,6 +20,7 @@ export default async function GuideLayout({ children, params }: LayoutProps<"/[l
       <GuideHeader locale={lang} />
       <main className="mx-auto w-full max-w-[760px] flex-1 px-4 pb-12 pt-5">{children}</main>
       <Footer locale={lang} />
+      <SmartAppBanner locale={lang} />
     </div>
   );
 }

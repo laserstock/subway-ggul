@@ -1,11 +1,12 @@
 import Link from "next/link";
+import PlayStoreButton from "../../_components/PlayStoreButton";
 import { TrainMark } from "../../_components/icons";
 import LanguageSelector from "../../_components/LanguageSelector";
 import { GUIDE_STATIONS, lineSlug, stationLineColor, type GuideStation } from "../../_lib/guide";
 import { BRAND_SHORT, gt, lineLabel, TAGLINE, tc } from "../../_lib/guideCopy";
 import { contentLocale, type GuideLocale } from "../../_lib/guideLocale";
 import { inScript } from "../../_lib/hant";
-import { APP_RELEASED, PLAY_STORE_URL } from "../../_lib/site";
+import { APP_RELEASED } from "../../_lib/site";
 import type { GuideSearchItem } from "./GuideSearch";
 import { normalizeQuery } from "./searchKeys";
 
@@ -41,22 +42,12 @@ export function GuideHeader({ locale }: { locale: GuideLocale }) {
   );
 }
 
-function PlayLogo() {
-  return (
-    <svg width="22" height="24" viewBox="0 0 22 24" aria-hidden>
-      <path d="M1 1.2 12.6 12 1 22.8c-.4-.3-.6-.8-.6-1.4V2.6c0-.6.2-1.1.6-1.4z" fill="#00d7fe" />
-      <path d="m16.4 8.4-3.8 3.6L1 1.2c.4-.4 1.1-.5 1.7-.1z" fill="#00f076" />
-      <path d="M16.4 15.6 2.7 22.9c-.6.4-1.3.3-1.7-.1L12.6 12z" fill="#ff3a44" />
-      <path d="m16.4 8.4 3.9 2.2c1 .6 1 2.2 0 2.8l-3.9 2.2-3.8-3.6z" fill="#ffd500" />
-    </svg>
-  );
-}
-
-/** Download box: Google Play (marked "coming soon" until release) plus the web app as the fallback. */
+/** Download box: Google Play (env-gated) plus the web app as the fallback. Hidden inside the native app shell. */
 export function AppPromo({ locale }: { locale: GuideLocale }) {
   return (
     <section
       aria-labelledby="get-app"
+      data-web-only
       className="rounded-3xl bg-gradient-to-br from-[#fff8e1] to-[#fffdf6] p-5 ring-1 ring-[#f6e3a8] lg:p-8"
     >
       <div className="flex items-start gap-3 lg:gap-4">
@@ -73,20 +64,7 @@ export function AppPromo({ locale }: { locale: GuideLocale }) {
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2 lg:mt-6 lg:gap-3 lg:pl-16">
-        <a
-          href={PLAY_STORE_URL}
-          target="_blank"
-          rel="noopener"
-          className="inline-flex min-h-11 items-center gap-2.5 rounded-xl bg-[#111827] px-4 py-2.5 text-white transition hover:-translate-y-0.5 hover:bg-black hover:shadow-[0_8px_18px_rgba(15,23,42,0.25)] active:scale-[0.98] lg:duration-200"
-        >
-          <PlayLogo />
-          <span className="text-left leading-tight">
-            <span className="block text-[10px] font-semibold uppercase tracking-wide text-white/80">
-              {APP_RELEASED ? tc("getOnPlay", locale) : tc("comingSoon", locale)}
-            </span>
-            <span className="block text-[16px] font-bold">Google Play</span>
-          </span>
-        </a>
+        <PlayStoreButton locale={locale} />
         <a
           href={`/?lang=${contentLocale(locale)}`}
           className="inline-flex min-h-11 items-center rounded-xl bg-honey px-4 py-2.5 text-[14px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_8px_18px_rgba(245,167,0,0.35)] active:scale-[0.98] lg:px-5 lg:text-[15px] lg:duration-200"
@@ -94,9 +72,9 @@ export function AppPromo({ locale }: { locale: GuideLocale }) {
           {tc("openWebApp", locale)} →
         </a>
       </div>
-      {APP_RELEASED ? null : (
-        <p className="mt-2.5 text-[12px] text-ink-muted lg:pl-16 lg:text-[13px]">{tc("appSoonNote", locale)}</p>
-      )}
+      <p className="mt-2.5 text-[12px] text-ink-muted lg:pl-16 lg:text-[13px]">
+        {tc(APP_RELEASED ? "appLiveNote" : "appSoonNote", locale)}
+      </p>
     </section>
   );
 }

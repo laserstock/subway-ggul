@@ -18,9 +18,15 @@ export const SITE_BRAND_ALTERNATE_NAMES = ["k-sub.com", "k-sub com", "케이서�
 export const ADSENSE_CLIENT_ID = "ca-pub-5995977562355838";
 export const ADSENSE_SCRIPT_URL = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`;
 
-export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.ksub.app";
-/** Flip to true once the Play Store listing is live; until then download buttons say "coming soon". */
-export const APP_RELEASED = false;
+/**
+ * Play Store listing URL. Set `NEXT_PUBLIC_PLAY_STORE_URL` in `.env.local` or Vercel
+ * (e.g. `https://play.google.com/store/apps/details?id=com.ksub.app`) to flip every
+ * "coming soon" Play CTA to the live download UI on the next deploy. Leave empty to keep
+ * the pre-launch state.
+ */
+export const PLAY_STORE_URL = (process.env.NEXT_PUBLIC_PLAY_STORE_URL ?? "").trim();
+/** True when `NEXT_PUBLIC_PLAY_STORE_URL` is set to a non-empty Play Store link. */
+export const APP_RELEASED = PLAY_STORE_URL.length > 0;
 
 /**
  * App screens (/station, /route, …) take their station from the query string, so every guide link spawns another

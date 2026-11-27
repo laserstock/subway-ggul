@@ -162,13 +162,36 @@ export const COPY = {
     zh: "实时列车到站、下车前提醒、出口地图与换乘提示，尽在手机。免费，支持中文、英语、日语和韩语。",
     ja: "リアルタイム列車到着、降車駅アラーム、出口マップ、乗り換えのコツをスマホで。無料・日本語/英語/中国語/韓国語対応。",
   },
-  getOnPlay: { ko: "Google Play에서 받기", en: "Get it on Google Play", zh: "在 Google Play 下载", ja: "Google Play で手に入れよう" },
+  getOnPlay: {
+    ko: "다운로드하기",
+    en: "GET IT ON",
+    zh: "立即下载",
+    ja: "Google Play で手に入れよう",
+  },
   comingSoon: { ko: "곧 출시", en: "Coming soon", zh: "即将上线", ja: "近日公開" },
   appSoonNote: {
     ko: "출시 전까지는 웹에서 모든 기능을 무료로 쓸 수 있어요.",
     en: "Until launch, every feature works free in your browser.",
     zh: "正式上线前，所有功能均可在浏览器中免费使用。",
     ja: "リリースまではブラウザで全機能を無料で使えます。",
+  },
+  appLiveNote: {
+    ko: "하차 진동 알림과 원클릭 AI 동선 안내는 앱에서 더 빠르게 이용할 수 있어요.",
+    en: "Get real-time stop alerts and 1-tap AI transit guides faster on the mobile app.",
+    zh: "下车震动提醒与一键 AI 路线导航，使用 App 体验更流畅。",
+    ja: "降車アラームやワンタップAIルート案内はアプリでさらに快適にご利用いただけます。",
+  },
+  smartBannerLead: {
+    ko: "지하철꿀정보 앱으로 더 빠르게 보기",
+    en: "See it faster in the K-SUB app",
+    zh: "用地铁蜜信息 App 更快查看",
+    ja: "地下鉄みつ情報アプリでもっと快適に",
+  },
+  smartBannerInstall: {
+    ko: "설치",
+    en: "Install",
+    zh: "安装",
+    ja: "インストール",
   },
   openInApp: {
     ko: "실시간 도착·지도 보기",
