@@ -57,7 +57,15 @@ function hasWebViewUserAgent() {
 function detectIsAppWebView() {
   if (typeof window === "undefined") return true;
   persistAppFlagFromUrl();
-  return hasAppQueryOrSession() || hasWebViewBridge() || hasWebViewUserAgent();
+  const isApp = hasAppQueryOrSession() || hasWebViewBridge() || hasWebViewUserAgent();
+  // Keep in sync with BOOT_SCRIPT so [data-web-seo] CSS hide stays reliable after client nav.
+  try {
+    if (isApp) document.documentElement.setAttribute("data-platform", "app");
+    else document.documentElement.removeAttribute("data-platform");
+  } catch {
+    /* ignore */
+  }
+  return isApp;
 }
 
 const noopSubscribe = () => () => {};

@@ -71,10 +71,11 @@ export default async function StationSlugPage({ params }: { params: StationSlugP
 
   return (
     <div className="flex min-h-dvh flex-col bg-frame">
-      <StationSeoPanel station={station} detail={detail} />
+      {/* App UI first — SEO panel is crawlable HTML below, CSS-hidden in native WebView. */}
       <Suspense fallback={<DashboardFallback />}>
         <StationDashboard station={option} />
       </Suspense>
+      <StationSeoPanel station={station} detail={detail} />
     </div>
   );
 }
