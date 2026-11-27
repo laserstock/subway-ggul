@@ -23,6 +23,7 @@ import { useLocale } from "../_lib/locale";
 import { countLogsForStation, useStationLogs } from "../_lib/myStationLogs";
 import {
   movePlace,
+  preferredArrivalStation,
   removePlace,
   removeRoute,
   reorderPlaces,
@@ -59,10 +60,10 @@ const COPY = {
   },
   placesTitle: { ko: "내가 즐겨찾는 My 역", en: "My favorite stations", zh: "我收藏的 My 车站", ja: "お気に入りの My 駅" },
   placesHint: {
-    ko: "위쪽 My 역일수록 홈 도착역 우선 · 탭하면 발자국·노트를 모아 봐요",
-    en: "Higher My stations become home arrival first · tap for footprints & notes",
-    zh: "越靠上的 My 站越优先作为首页到达站 · 点击查看足迹与笔记",
-    ja: "上の My 駅ほどホーム到着の優先 · タップで足跡・ノート",
+    ko: "짧게 탭=수정 · 길게 눌러 끌면 순서 변경 · 1순위가 현위치면 2순위가 홈 도착",
+    en: "Tap=edit · long-press & drag to reorder · if #1 is here, home uses #2",
+    zh: "轻点=编辑 · 长按拖动排序 · 若第1名为当前位置则首页用第2名",
+    ja: "タップ=編集 · 長押しドラッグで並べ替え · 1位が現在地ならホームは2位",
   },
   seatWin: {
     ko: "오늘 착석 성공!",
@@ -98,10 +99,16 @@ const COPY = {
     ja: "≡を長押しドラッグで並び替え · 1位が起動時の到着駅 · タップ=編集 · ✕=削除",
   },
   arrivalPriority: {
-    ko: "도착 1순위",
-    en: "Arrival #1",
-    zh: "到达优先",
-    ja: "到着1位",
+    ko: "홈 도착",
+    en: "Home arrival",
+    zh: "首页到达",
+    ja: "ホーム到着",
+  },
+  rankFirst: {
+    ko: "1순위",
+    en: "#1",
+    zh: "第1",
+    ja: "1位",
   },
   moveUp: { ko: "위로", en: "Move up", zh: "上移", ja: "上へ" },
   moveDown: { ko: "아래로", en: "Move down", zh: "下移", ja: "下へ" },
@@ -224,37 +231,120 @@ function fill(template: string, values: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
 }
 
+const LONG_PRESS_MS = 380;
+const DRAG_SLOP_PX = 10;
+
 function PlaceChip({
   place,
   locale,
   status,
   noteCount,
-  priority,
-  onOpen,
+  rank,
+  isArrival,
+  dragging,
+  onEdit,
+  onLongPressDrag,
 }: {
   place: MyPlace;
   locale: Locale;
   status: Localized | null;
   noteCount: number;
-  priority: boolean;
-  onOpen: () => void;
+  rank: number;
+  isArrival: boolean;
+  dragging: boolean;
+  onEdit: () => void;
+  onLongPressDrag: (placeId: string, target: HTMLElement, pointerId: number) => void;
 }) {
+  const timerRef = useRef<number | null>(null);
+  const startRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const armedRef = useRef(false);
+
+  function clearTimer() {
+    if (timerRef.current != null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    armedRef.current = false;
+    startRef.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+    clearTimer();
+    const target = event.currentTarget;
+    const pointerId = event.pointerId;
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      armedRef.current = true;
+      try {
+        navigator.vibrate?.(12);
+      } catch {
+        /* ignore */
+      }
+      onLongPressDrag(place.id, target, pointerId);
+    }, LONG_PRESS_MS);
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const start = startRef.current;
+    if (!start || start.pointerId !== event.pointerId || armedRef.current) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (dx * dx + dy * dy > DRAG_SLOP_PX * DRAG_SLOP_PX) clearTimer();
+  }
+
+  function onPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    const start = startRef.current;
+    clearTimer();
+    startRef.current = null;
+    if (!start || start.pointerId !== event.pointerId) return;
+    if (armedRef.current) {
+      armedRef.current = false;
+      return;
+    }
+    onEdit();
+  }
+
+  function onPointerCancel() {
+    clearTimer();
+    startRef.current = null;
+    armedRef.current = false;
+  }
+
   return (
-    <li className="relative">
+    <li
+      data-place-id={place.id}
+      className={`relative transition ${dragging ? "z-10 scale-[1.03] opacity-95" : ""}`}
+    >
       <button
         type="button"
-        onClick={onOpen}
-        className="flex min-h-[48px] items-center gap-1.5 rounded-2xl bg-surface px-3 py-2.5 pr-3.5 text-left transition active:scale-[0.96]"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        className={`flex min-h-[48px] w-full touch-none items-center gap-1.5 rounded-2xl bg-surface px-3 py-2.5 pr-3.5 text-left transition active:scale-[0.99] ${
+          dragging ? "shadow-[0_10px_28px_rgba(15,23,42,0.16)] ring-2 ring-[#fbbf24]" : ""
+        }`}
         style={{
-          boxShadow: priority
-            ? `inset 0 0 0 2px ${place.station.color}`
-            : `inset 0 0 0 1px ${place.station.color}40`,
+          boxShadow: dragging
+            ? undefined
+            : isArrival
+              ? `inset 0 0 0 2px ${place.station.color}`
+              : `inset 0 0 0 1px ${place.station.color}40`,
         }}
       >
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-[11px] font-extrabold text-neutral-600">
+          {rank}
+        </span>
         <LineBadges station={place.station} locale={locale} size="md" />
         <span className="text-[12px] font-bold text-ink-muted">{placeLabel(place, locale)}:</span>
         <span className="text-[14px] font-extrabold text-ink">{t(place.station.name, locale)}</span>
-        {priority ? (
+        {rank === 1 ? (
+          <span className="ml-0.5 rounded-full bg-neutral-100 px-1.5 py-[1px] text-[10px] font-extrabold text-neutral-600">
+            {t(COPY.rankFirst, locale)}
+          </span>
+        ) : null}
+        {isArrival ? (
           <span className="ml-0.5 rounded-full bg-[#fff4cc] px-1.5 py-[1px] text-[10px] font-extrabold text-[#a16207]">
             {t(COPY.arrivalPriority, locale)}
           </span>
@@ -299,14 +389,13 @@ function EditablePlaceRow({
   onMove: (direction: -1 | 1) => void;
   onDragStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
 }) {
-  const priority = index === 0;
   return (
     <li
       data-place-id={place.id}
       className={`flex items-center gap-2 rounded-2xl bg-surface px-2 py-2 transition ${
         dragging ? "scale-[1.02] opacity-90 shadow-[0_8px_24px_rgba(15,23,42,0.14)] ring-2 ring-[#fbbf24]" : ""
       }`}
-      style={{ boxShadow: priority ? `inset 0 0 0 2px ${place.station.color}` : `inset 0 0 0 1px ${place.station.color}40` }}
+      style={{ boxShadow: `inset 0 0 0 1px ${place.station.color}40` }}
     >
       <button
         type="button"
@@ -323,9 +412,9 @@ function EditablePlaceRow({
         <LineBadges station={place.station} locale={locale} size="md" />
         <span className="min-w-0 truncate text-[13px] font-bold text-ink-muted">{placeLabel(place, locale)}:</span>
         <span className="min-w-0 truncate text-[14px] font-extrabold text-ink">{t(place.station.name, locale)}</span>
-        {priority ? (
-          <span className="shrink-0 rounded-full bg-[#fff4cc] px-1.5 py-[1px] text-[10px] font-extrabold text-[#a16207]">
-            {t(COPY.arrivalPriority, locale)}
+        {index === 0 ? (
+          <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 py-[1px] text-[10px] font-extrabold text-neutral-600">
+            {t(COPY.rankFirst, locale)}
           </span>
         ) : null}
       </button>
@@ -662,20 +751,13 @@ export default function MyScreen() {
     router.prefetch("/station");
   }, [router]);
 
-  useEffect(() => {
-    if (!editing) {
-      setDragId(null);
-      setDraftOrder(null);
-      dragIdRef.current = null;
-      draftOrderRef.current = null;
-    }
-  }, [editing]);
-
   const visiblePlaces = useMemo(() => {
     if (!draftOrder) return places;
     const byId = new Map(places.map((place) => [place.id, place]));
     return draftOrder.map((id) => byId.get(id)).filter((place): place is MyPlace => Boolean(place));
   }, [draftOrder, places]);
+
+  const arrivalStation = preferredArrivalStation(visiblePlaces, lastStation?.key);
 
   function openDashboard(station: StationOption) {
     setDestinationStation(station);
@@ -683,22 +765,10 @@ export default function MyScreen() {
     router.push(stationAppPath(station));
   }
 
-  function filterToPlace(place: MyPlace) {
-    setStationFilter({ key: place.station.key, nameKo: place.station.name.ko });
-    requestAnimationFrame(() => {
-      footprintRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }
-
   function placeStatus(place: MyPlace): Localized | null {
     if (place.station.key === destination?.key) return COPY.viewing;
     if (place.station.key === lastStation?.key) return COPY.here;
     return null;
-  }
-
-  function preferredArrival(ordered: MyPlace[]) {
-    const here = lastStation?.key;
-    return ordered.find((place) => place.station.key !== here)?.station ?? ordered[0]?.station ?? null;
   }
 
   function commitReorder(nextIds: string[]) {
@@ -709,16 +779,17 @@ export default function MyScreen() {
     if (same) return;
     const byId = new Map(places.map((place) => [place.id, place]));
     const ordered = nextIds.map((id) => byId.get(id)).filter((place): place is MyPlace => Boolean(place));
-    const arrival = preferredArrival(ordered);
+    const arrival = preferredArrivalStation(ordered, lastStation?.key);
     if (arrival) setDestinationStation(arrival);
     showToast(t(COPY.orderUpdated, locale));
   }
 
-  function onPlaceDragStart(placeId: string, event: ReactPointerEvent<HTMLButtonElement>) {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    event.preventDefault();
-    const pointerId = event.pointerId;
-    event.currentTarget.setPointerCapture(pointerId);
+  function beginPlaceDrag(placeId: string, target: HTMLElement, pointerId: number) {
+    try {
+      target.setPointerCapture(pointerId);
+    } catch {
+      /* already captured / unsupported */
+    }
     const order = places.map((place) => place.id);
     dragIdRef.current = placeId;
     draftOrderRef.current = order;
@@ -761,6 +832,12 @@ export default function MyScreen() {
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
+  }
+
+  function onPlaceDragStart(placeId: string, event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    beginPlaceDrag(placeId, event.currentTarget, event.pointerId);
   }
 
   const summary = fill(t(COPY.summary, locale), { places: places.length, routes: routes.length });
@@ -826,7 +903,7 @@ export default function MyScreen() {
                       const [item] = next.splice(index, 1);
                       next.splice(target, 0, item);
                       movePlace(place.id, direction);
-                      const arrival = preferredArrival(next);
+                      const arrival = preferredArrivalStation(next, lastStation?.key);
                       if (arrival) setDestinationStation(arrival);
                       showToast(t(COPY.orderUpdated, locale));
                     }}
@@ -844,23 +921,26 @@ export default function MyScreen() {
                 </li>
               </ul>
             ) : (
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {places.map((place, index) => (
+              <ul className="mt-3 space-y-2">
+                {visiblePlaces.map((place, index) => (
                   <PlaceChip
                     key={place.id}
                     place={place}
                     locale={locale}
                     status={placeStatus(place)}
                     noteCount={countLogsForStation(logs, place.station.key, place.station.name.ko)}
-                    priority={index === 0}
-                    onOpen={() => filterToPlace(place)}
+                    rank={index + 1}
+                    isArrival={arrivalStation?.key === place.station.key}
+                    dragging={dragId === place.id}
+                    onEdit={() => setPlaceSheet({ place })}
+                    onLongPressDrag={beginPlaceDrag}
                   />
                 ))}
                 <li>
                   <button
                     type="button"
                     onClick={() => setPlaceSheet({ place: null })}
-                    className="flex min-h-[48px] items-center rounded-2xl border-2 border-dashed border-neutral-300 px-4 py-2.5 text-[13px] font-bold text-neutral-500 transition active:scale-[0.96] active:bg-neutral-50"
+                    className="flex min-h-[48px] w-full items-center justify-center rounded-2xl border-2 border-dashed border-neutral-300 px-4 py-2.5 text-[13px] font-bold text-neutral-500 transition active:scale-[0.96] active:bg-neutral-50"
                   >
                     {t(COPY.addPlace, locale)}
                   </button>

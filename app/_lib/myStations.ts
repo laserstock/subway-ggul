@@ -218,6 +218,12 @@ export function movePlace(id: string, direction: -1 | 1) {
   });
 }
 
+/** Home 도착 기본값: My 역 순서상 현재역이 아닌 첫 역(1순위가 현위치면 2순위). */
+export function preferredArrivalStation(places: MyPlace[], currentKey?: string | null) {
+  if (!places.length) return null;
+  return places.find((place) => place.station.key !== currentKey)?.station ?? places[0]?.station ?? null;
+}
+
 export function addRoute(from: RouteEndpoint, to: RouteEndpoint) {
   const route: StoredRoute = {
     id: newId("route"),
